@@ -5,15 +5,18 @@
 # reads at build time and the landing slideshow reads in the browser
 # (front-office#210).
 #
-# Per item: generated_at is that file's OWN modification time (UTC ISO-8601), never
-# the run's start time; duration_ms is one GIF loop (NA -> JSON null when the GIF
+# Per item: generated_at is when that file was really built (UTC ISO-8601), never the run's
+# start time: media_generated_at() (R/media_generated_at.R). A tracked file unchanged against
+# git HEAD shows the time of the last commit that changed it (its publish time, which may be
+# later than the render, but a copy or fresh clone never makes an old file look new); a file
+# re-rendered this run or not yet committed shows its mtime. duration_ms is one GIF loop (NA -> JSON null when the GIF
 # cannot be read) and is absent for images. Only files actually present in the media
 # directory AND described in MLB_MEDIA_METADATA are indexed: a metadata entry whose
 # file (or still frame) is absent produces no item, and a file with no metadata is
 # logged and omitted (no placeholder or invented caption is ever written). The JSON
 # is written atomically (temp file in the same directory, then rename).
 # MLB keeps three extra fields per item: previewPng, phase, categoryLabel.
-# Needs R/gif_duration.R sourced.
+# Needs R/gif_duration.R and R/media_generated_at.R sourced.
 #
 # Sourced by tests/test_visual_media_index.R (functions only) and run as a pipeline
 # stage by run_full_pipeline.R (the stage calls run_export_visual_media_index()).
@@ -184,8 +187,9 @@ MLB_MEDIA_METADATA <- list(
 #' @param dir      media directory
 #' @param metadata named list keyed by GIF basename:
 #'                 list(title, category, categoryLabel, phase, previewPng, desc)
+#' @param repo     git repo root containing `dir`, for media_generated_at()
 #' @return list of items in metadata order (possibly empty)
-build_media_index <- function(dir, metadata) {
+build_media_index <- function(dir, metadata, repo = ".") {
   present <- if (dir.exists(dir)) list.files(dir) else character(0)
   # A described entry's still frame (previewPng) is its reduced-motion companion, not unknown.
   stills <- unlist(lapply(metadata, function(m) m$previewPng), use.names = FALSE)
@@ -195,6 +199,7 @@ build_media_index <- function(dir, metadata) {
                     length(unknown), paste(unknown, collapse = ", ")), call. = FALSE)
   }
   index <- list()
+  git_state <- if (length(present)) media_git_state(dir, repo) else NULL
   for (bname in intersect(names(metadata), present)) {
     f <- file.path(dir, bname)
     meta <- metadata[[bname]]
@@ -207,7 +212,7 @@ build_media_index <- function(dir, metadata) {
     is_gif <- grepl("[.]gif$", bname, ignore.case = TRUE)
     item <- list(
       id            = sub("\\.[^.]+$", "", bname),
-      generated_at  = format(file.mtime(f), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+      generated_at  = media_generated_at(f, repo = repo, git_state = git_state),
       filename      = bname,
       title         = meta$title,
       category      = meta$category,
@@ -246,6 +251,7 @@ run_export_visual_media_index <- function(media_dir = file.path("web", "public",
                                           out_file = file.path("web", "public", "data", "visual_media_index.json"),
                                           metadata = MLB_MEDIA_METADATA) {
   if (!exists("gif_duration_ms", mode = "function")) source("R/gif_duration.R")
+  if (!exists("media_generated_at", mode = "function")) source("R/media_generated_at.R")
   index <- build_media_index(media_dir, metadata)
   if (length(index) == 0L) stop("visual_media_index: no indexable media found in ", media_dir)
   write_text_atomic(visual_media_index_json(index), out_file)
