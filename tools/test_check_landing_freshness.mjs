@@ -35,4 +35,17 @@ t('a sport with no scores file is skipped, not failed', r.status === 0 && r.out.
 r = spawnSync(process.execPath, [script], { encoding: 'utf8' });
 t('missing site root is a usage error', r.status === 2);
 
+// Warn-only sports. No real NFL digest has been behind its scores file yet,
+// so the real stale NBA fixture is checked with NBA marked warn-only instead
+// of making up an NFL record.
+const { checkSite, WARN_ONLY } = await import('./check_landing_freshness.mjs');
+t('nfl is warn-only, and nba, wnba and mlb are not',
+  WARN_ONLY.has('nfl') && !WARN_ONLY.has('nba') && !WARN_ONLY.has('wnba') && !WARN_ONLY.has('mlb'));
+let res = checkSite(join(fx, 'stale'), { warnOnly: new Map([['nba', 'test reason']]) });
+t('a warn-only sport mismatch does not fail', res.failures.length === 0 && res.warnings.length === 1);
+t('a warn-only sport mismatch prints >>> [WARN]',
+  res.lines.some((l) => l.startsWith('>>> [WARN] nba game_id=401909305 CHA @ ATL: landing_digest status=scheduled')));
+res = checkSite(join(fx, 'stale'));
+t('with the real warn-only list the NBA mismatch still blocks', res.failures.length === 1 && res.warnings.length === 0);
+
 process.exit(failed ? 1 : 0);

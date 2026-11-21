@@ -12,7 +12,7 @@ const script = join(here, 'check_refresh_paths_sync.mjs');
 const fx = join(here, 'fixtures', 'refresh_paths');
 let failed = 0;
 
-function scratch(slotFixture) {
+function scratch(slotFixture, allowFixture) {
   const d = mkdtempSync(join(tmpdir(), 'refresh-paths-'));
   mkdirSync(join(d, 'tools'));
   copyFileSync(join(fx, slotFixture), join(d, 'tools', 'run_refresh_slot.ps1'));
@@ -20,6 +20,7 @@ function scratch(slotFixture) {
     mkdirSync(join(d, sport, '.github', 'workflows'), { recursive: true });
     copyFileSync(join(fx, `workflow_${sport}.yml`), join(d, sport, '.github', 'workflows', 'refresh-results.yml'));
   }
+  if (allowFixture) copyFileSync(join(fx, allowFixture), join(d, 'tools', 'refresh_paths_allowlist.json'));
   return d;
 }
 function run(root) {
@@ -47,7 +48,15 @@ t('failure names the extra path', /nba: tools\/run_refresh_slot\.ps1 stages web\
 r = run(scratch('slot_mlb_file_under_dir.ps1'));
 t('a directory covers a file under it', r.status === 0);
 
+r = run(scratch('slot_missing_digest.ps1', 'allowlist_nba_digest.json'));
+t('an allowlisted gap passes', r.status === 0);
+t('an allowlisted gap is printed as a known exception', r.out.includes('>>> [SKIP] known exception -- nba:'));
+
+r = run(scratch('slot_in_sync.ps1', 'allowlist_nba_digest.json'));
+t('a stale exception fails', r.status === 1 && r.out.includes('STALE exception in tools/refresh_paths_allowlist.json: nba missing_from_slot web/public/data/landing_digest.json'));
+
 r = run(null);
 t('the real slot script and subtree workflows agree', r.status === 0);
+t('the NFL hold is reported as a known exception', r.out.includes('>>> [SKIP] known exception -- nfl:') && r.out.includes('held by owner pending NFL work'));
 
 process.exit(failed ? 1 : 0);

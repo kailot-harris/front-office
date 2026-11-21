@@ -25,9 +25,18 @@
  * Usage:
  *   node tools/check_refresh_paths_sync.mjs
  *
+ * KNOWN EXCEPTIONS. A gap the owner has decided to keep goes in
+ * tools/refresh_paths_allowlist.json as { sport, path, direction, reason }.
+ * It is printed as a `>>> [SKIP] known exception` line instead of failing.
+ * An entry that no longer matches a real gap fails the check, so it gets
+ * removed once the lists agree. As of 2026-11-21 the one entry is NFL's
+ * landing_digest.json, held by the owner pending NFL work.
+ *
  * CHECK_REFRESH_PATHS_ROOT points the script at a scratch directory instead
  * of the repo root, so tests can exercise a real failure without touching the
- * subtree mirrors. CI never sets it.
+ * subtree mirrors. CHECK_REFRESH_PATHS_ALLOWLIST overrides the allowlist path
+ * (default: <root>/tools/refresh_paths_allowlist.json; a missing file means no
+ * exceptions). CI sets neither.
  */
 
 import { readFileSync, existsSync } from 'node:fs';
@@ -42,6 +51,7 @@ const REPO_ROOT = process.env.CHECK_REFRESH_PATHS_ROOT
 const SPORTS = ['mlb', 'nba', 'nfl', 'wnba'];
 const SLOT_SCRIPT = 'tools/run_refresh_slot.ps1';
 const WORKFLOW = '.github/workflows/refresh-results.yml';
+const ALLOWLIST = 'tools/refresh_paths_allowlist.json';
 
 /**
  * Parses `$SPORT_REFRESH = [ordered]@{ ... }` into { sport: [paths] }.
@@ -78,28 +88,53 @@ function covers(dirOrFile, path) {
   return path === dirOrFile || path.startsWith(`${dirOrFile}/`);
 }
 
+
 /** Paths in `a` that no entry of `b` covers. */
 function uncovered(a, b) {
   return a.filter((p) => !b.some((q) => covers(q, p) || covers(p, q)));
 }
 
-export function compare(slot, workflowBySport) {
-  const failures = [];
+/**
+ * Returns every gap as { sport, path, direction } plus problems that are not
+ * per-path (a sport present on only one side).
+ */
+export function findGaps(slot, workflowBySport) {
+  const gaps = [];
+  const problems = [];
   for (const [sport, wf] of Object.entries(workflowBySport)) {
     const s = slot[sport];
     if (!s) {
-      failures.push(`${sport}: has ${WORKFLOW} but no entry in $SPORT_REFRESH`);
+      problems.push(`${sport}: has ${WORKFLOW} but no entry in $SPORT_REFRESH`);
       continue;
     }
-    const missing = uncovered(wf, s);
-    const extra = uncovered(s, wf);
-    if (missing.length) failures.push(`${sport}: ${SLOT_SCRIPT} does not stage ${missing.join(', ')} (staged by ${sport}/${WORKFLOW})`);
-    if (extra.length) failures.push(`${sport}: ${SLOT_SCRIPT} stages ${extra.join(', ')}, which ${sport}/${WORKFLOW} does not`);
+    for (const path of uncovered(wf, s)) gaps.push({ sport, path, direction: 'missing_from_slot' });
+    for (const path of uncovered(s, wf)) gaps.push({ sport, path, direction: 'extra_in_slot' });
   }
   for (const sport of Object.keys(slot)) {
-    if (!workflowBySport[sport]) failures.push(`${sport}: in $SPORT_REFRESH but ${sport}/${WORKFLOW} has no git add paths`);
+    if (!workflowBySport[sport]) problems.push(`${sport}: in $SPORT_REFRESH but ${sport}/${WORKFLOW} has no git add paths`);
   }
-  return failures;
+  return { gaps, problems };
+}
+
+function describe(g) {
+  return g.direction === 'missing_from_slot'
+    ? `${g.sport}: ${SLOT_SCRIPT} does not stage ${g.path} (staged by ${g.sport}/${WORKFLOW})`
+    : `${g.sport}: ${SLOT_SCRIPT} stages ${g.path}, which ${g.sport}/${WORKFLOW} does not`;
+}
+
+const keyOf = (e) => `${e.sport}\u0000${e.path}\u0000${e.direction}`;
+
+function loadAllowlist() {
+  const p = process.env.CHECK_REFRESH_PATHS_ALLOWLIST || join(REPO_ROOT, ALLOWLIST);
+  if (!existsSync(p)) return [];
+  const parsed = JSON.parse(readFileSync(p, 'utf8'));
+  if (!Array.isArray(parsed.entries)) throw new Error(`${ALLOWLIST} must contain an 'entries' array`);
+  for (const e of parsed.entries) {
+    if (!e.sport || !e.path || !['missing_from_slot', 'extra_in_slot'].includes(e.direction) || !e.reason) {
+      throw new Error(`${ALLOWLIST}: every entry needs sport, path, direction (missing_from_slot|extra_in_slot) and reason`);
+    }
+  }
+  return parsed.entries;
 }
 
 function main() {
@@ -125,16 +160,32 @@ function main() {
     if (paths.length) workflowBySport[sport] = paths;
   }
 
-  const failures = compare(slot, workflowBySport);
+  const allowlist = loadAllowlist();
+  const { gaps, problems } = findGaps(slot, workflowBySport);
+  const gapKeys = new Set(gaps.map(keyOf));
+  const allowKeys = new Set(allowlist.map(keyOf));
+
+  for (const e of allowlist.filter((x) => gapKeys.has(keyOf(x)))) {
+    console.log(`>>> [SKIP] known exception -- ${describe(e)}: ${e.reason}`);
+  }
+  const failures = [
+    ...problems,
+    ...gaps.filter((g) => !allowKeys.has(keyOf(g))).map(describe),
+    ...allowlist.filter((e) => !gapKeys.has(keyOf(e))).map((e) =>
+      `STALE exception in ${ALLOWLIST}: ${e.sport} ${e.direction} ${e.path} is no longer a gap; remove the entry`),
+  ];
+
   if (failures.length) {
     console.error('check_refresh_paths_sync: FAILED -- slot refresh and sport refresh workflows stage different files:');
     for (const f of failures) console.error(`  - ${f}`);
     console.error('');
     console.error(`Make the Paths in ${SLOT_SCRIPT} ($SPORT_REFRESH) match the "git add" in each`);
-    console.error(`sport's ${WORKFLOW}, or the slot run writes files it never commits.`);
+    console.error(`sport's ${WORKFLOW}, or the slot run writes files it never commits. A gap the`);
+    console.error(`owner has decided to keep goes in ${ALLOWLIST} with a reason.`);
     process.exit(1);
   }
-  console.log(`check_refresh_paths_sync: OK -- ${Object.keys(workflowBySport).sort().join(', ')} stage the same files in both places`);
+  const held = allowlist.length ? ` (${allowlist.length} known exception(s) in ${ALLOWLIST})` : '';
+  console.log(`check_refresh_paths_sync: OK -- ${Object.keys(workflowBySport).sort().join(', ')} checked, no unexpected gaps${held}`);
 }
 
 if (process.argv[1] && resolve(fileURLToPath(import.meta.url)) === resolve(process.argv[1])) main();

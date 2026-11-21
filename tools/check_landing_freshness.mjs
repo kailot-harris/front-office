@@ -22,6 +22,11 @@
  * A sport with no digest or no comparable scores file is skipped with a
  * `>>> [SKIP]` line; nothing is inferred or filled in.
  *
+ * NFL IS WARN-ONLY. The owner is holding NFL's slot refresh change for other
+ * NFL work, so slots B/C still do not commit NFL's re-graded digest and an NFL
+ * mismatch is expected after a slot run. NFL mismatches print `>>> [WARN]`
+ * and do not fail the deploy; NBA, WNBA and MLB still block. See WARN_ONLY.
+ *
  * Usage:
  *   node tools/check_landing_freshness.mjs <site-root>
  *
@@ -35,6 +40,13 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SPORTS = ['mlb', 'nba', 'nfl', 'wnba'];
+
+// Sports whose mismatches are reported as `>>> [WARN]` and never fail the
+// deploy, with the reason. Remove a sport once its slot refresh commits its
+// digest (tools/refresh_paths_allowlist.json holds the matching exception).
+export const WARN_ONLY = new Map([
+  ['nfl', 'held by owner pending NFL work: the slot refresh does not commit NFL\'s landing digest yet'],
+]);
 
 function readJson(p) {
   return JSON.parse(readFileSync(p, 'utf8'));
@@ -93,9 +105,10 @@ function fmtScore(away, home) {
   return away === null || away === undefined || home === null || home === undefined ? 'no score' : `${away}-${home}`;
 }
 
-/** Returns { failures: string[], lines: string[] } for one site root. */
-export function checkSite(root) {
+/** Returns { failures, warnings, lines, skipped } for one site root. */
+export function checkSite(root, { warnOnly = WARN_ONLY } = {}) {
   const failures = [];
+  const warnings = [];
   const lines = [];
   const skipped = [];
   for (const sport of SPORTS) {
@@ -128,12 +141,16 @@ export function checkSite(root) {
         && g.home_score !== null && g.away_score !== null;
       if (!ok) {
         sportFails++;
-        const msg = `>>> [FAIL] ${sport} game_id=${g.game_id} ${g.away ?? s.away} @ ${g.home ?? s.home}: `
+        const isWarnOnly = warnOnly.has(sport);
+        const msg = `>>> [${isWarnOnly ? 'WARN' : 'FAIL'}] ${sport} game_id=${g.game_id} ${g.away ?? s.away} @ ${g.home ?? s.home}: `
           + `landing_digest status=${g.status} (${fmtScore(g.away_score, g.home_score)}), `
           + `${scores.file} is_completed=true (${fmtScore(s.away_score, s.home_score)})`;
-        failures.push(msg);
+        (isWarnOnly ? warnings : failures).push(msg);
         lines.push(msg);
       }
+    }
+    if (sportFails > 0 && warnOnly.has(sport)) {
+      lines.push(`>>> [WARN] ${sport}: ${sportFails} mismatch(es) reported but not blocking -- ${sport} is warn-only (${warnOnly.get(sport)})`);
     }
     if (sportFails === 0) {
       lines.push(`>>> [OK] ${sport}: digest generated_at=${digest.generated_at ?? 'unknown'}, `
@@ -141,7 +158,7 @@ export function checkSite(root) {
         + (notInScores ? `, ${notInScores} not in ${scores.file}` : ''));
     }
   }
-  return { failures, lines, skipped };
+  return { failures, warnings, lines, skipped };
 }
 
 function main() {
@@ -150,8 +167,11 @@ function main() {
     console.error('usage: node tools/check_landing_freshness.mjs <site-root>');
     process.exit(2);
   }
-  const { failures, lines } = checkSite(root);
+  const { failures, warnings, lines } = checkSite(root);
   for (const l of lines) console.log(l);
+  if (warnings.length) {
+    console.log(`check_landing_freshness: ${warnings.length} warn-only mismatch(es) above did not block the deploy.`);
+  }
   if (failures.length) {
     console.log('');
     console.log(`check_landing_freshness: FAILED -- ${failures.length} game(s) are final in a scores file but not in the landing digest.`);
