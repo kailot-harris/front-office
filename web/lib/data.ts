@@ -3,6 +3,7 @@ import path from 'path';
 import { TeamProjection, PlayerProjection, ModelMetadata, ModelDiagnostics } from './types';
 import { PlayoffBracketSeason } from './playoffTypes';
 import { OffseasonMonitorDataset } from './offseasonTypes';
+import type { VisualMediaIndexEntry } from './visualMedia';
 
 export function getTeamsData(): TeamProjection[] {
   const filePath = path.join(process.cwd(), 'public', 'data', 'projections_season_teams.json');
@@ -122,3 +123,10 @@ export function getOffseasonMonitorData(): OffseasonMonitorDataset | null {
 }
 
 
+
+/** Visual media index (export_visual_media_index.R): the single source for the Gallery page. */
+export function getVisualMediaIndex(): VisualMediaIndexEntry[] {
+  const filePath = path.join(process.cwd(), 'public', 'data', 'visual_media_index.json');
+  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(fileContent) as VisualMediaIndexEntry[];
+}

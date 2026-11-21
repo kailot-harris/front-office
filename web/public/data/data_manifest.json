@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "sport": "wnba",
-  "generated_at": "2026-11-20T17:55:24Z",
+  "generated_at": "2026-11-21T01:47:59Z",
   "schedule_through_date": null,
   "datasets": [
     {
@@ -236,6 +236,17 @@
       "through_date": null,
       "through_date_source": "not_game_dated",
       "coverage_note": "League shot-zone averages; no game dates",
+      "builder": "run_full_pipeline.R",
+      "static": false
+    },
+    {
+      "file": "visual_media_index.json",
+      "generated_at": "2026-11-21T01:47:59Z",
+      "stamp_source": "manifest:content_hash",
+      "content_sha256": "8979be535230924f58883b0e3fb7f6cdaf02c9522d2f1417b0e6669ce5948d0d",
+      "through_date": null,
+      "through_date_source": "not_game_dated",
+      "coverage_note": "Media inventory (per-item build stamps); content carries no game date",
       "builder": "run_full_pipeline.R",
       "static": false
     }

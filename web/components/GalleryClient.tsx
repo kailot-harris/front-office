@@ -18,124 +18,11 @@ export interface VisualMediaItem {
   unrendered?: boolean;
 }
 
-export const WNBA_GALLERY_ITEMS: VisualMediaItem[] = [
-  {
-    id: 'gif_elo_rank_bump',
-    filename: 'gif_elo_rank_bump.gif',
-    title: 'League-Wide Elo Rating & Rank Evolution',
-    category: 'standings',
-    description: 'Animated bump chart illustrating all 15 WNBA teams Elo rating movements and ranking transitions across the season.',
-    type: 'gif',
-    sizeBytes: 368391,
-  },
-  {
-    id: 'gif_point_diff_race',
-    filename: 'gif_point_diff_race.gif',
-    title: 'Cumulative Point Differential Race',
-    category: 'standings',
-    description: 'Animated race chart displaying cumulative scoring differential trajectories across all 15 WNBA franchises.',
-    type: 'gif',
-    sizeBytes: 475808,
-  },
-  {
-    id: 'gif_standings_race',
-    filename: 'gif_standings_race.gif',
-    title: 'League-Wide Standings Wins Race',
-    category: 'standings',
-    description: 'Animated cumulative regular-season wins race across all 15 WNBA teams in one combined table — the league has run no conferences or divisions since 2022.',
-    type: 'gif',
-    sizeBytes: 435750,
-  },
-  {
-    id: 'gif_net_rating_quadrant',
-    filename: 'gif_net_rating_quadrant.gif',
-    title: 'Offensive vs Defensive Efficiency Dynamics',
-    category: 'efficiency',
-    description: 'Evolution of offensive rating vs defensive rating across all 15 teams with championship quadrant dividers.',
-    type: 'gif',
-    sizeBytes: 328162,
-  },
-  {
-    id: 'gif_pace_efficiency_quadrant',
-    filename: 'gif_pace_efficiency_quadrant.gif',
-    title: 'Pace vs Net Rating Efficiency Matrix',
-    category: 'efficiency',
-    description: 'Pace (possessions/40 min) vs Net Rating scatter animating team tactical styles from fast & dominant to methodical grinders.',
-    type: 'gif',
-    sizeBytes: 285127,
-  },
-  {
-    id: 'gif_shot_profile_shift',
-    filename: 'gif_shot_profile_shift.gif',
-    title: 'Team Shot-Profile Shift: Three-Point Share vs Last Season',
-    category: 'shots',
-    description:
-      "Share of each team's field-goal attempts taken from three this season against last season (2026 vs. 2025). Known limitation, documented in the rendering script itself: this chart currently classifies arc distance using the NBA's unchanged 23.75ft threshold rather than the WNBA's real ~22.1ft arc, which understates the league's true 3PT attempt share.",
-    type: 'gif',
-    sizeBytes: 98300,
-  },
-  {
-    id: 'gif_rapm_leaders_2026',
-    filename: 'gif_rapm_leaders_2026.gif',
-    title: 'Top-10 Offensive & Defensive RAPM — 2026',
-    category: 'players',
-    description: 'The top 10 players by Offensive and Defensive Regularized Adjusted Plus-Minus (ORAPM/DRAPM) from the full 2026 season, revealed from 10th to 1st.',
-    type: 'gif',
-    sizeBytes: 66253,
-  },
-  {
-    id: 'gif_rapm_leaders_by_season',
-    filename: 'gif_rapm_leaders_by_season.gif',
-    title: 'RAPM Leaders Across Seasons',
-    category: 'players',
-    description: 'Top RAPM leaders animated across 8 seasons (2019-2026), each an independent per-season fit.',
-    type: 'gif',
-    sizeBytes: 246580,
-  },
-  {
-    id: 'gif_upset_timeline',
-    filename: 'gif_upset_timeline.gif',
-    title: 'Underdog Upset Timeline & Giant-Killer Tracker',
-    category: 'predictions',
-    description: 'Chronological timeline of genuine, resolved upsets where pre-game win expectation favored the loser, tracking giant-killing franchises.',
-    type: 'gif',
-    sizeBytes: 140848,
-  },
-  {
-    id: 'gif_forecast_calibration',
-    filename: 'gif_forecast_calibration.gif',
-    title: 'Forecast Calibration: Predicted vs Actual',
-    category: 'predictions',
-    description: 'Predicted-vs-actual calibration plot built only from genuine, resolved model forecasts.',
-    type: 'gif',
-    sizeBytes: 111056,
-  },
-  {
-    id: 'gif_playoff_bracket_progression',
-    filename: 'gif_playoff_bracket_progression.gif',
-    title: '2026 Playoff Bracket Progression',
-    category: 'playoffs',
-    description: 'The 2026 playoff bracket progressing round-by-round — Round 1 to Semifinals to Finals — built from real series results.',
-    type: 'gif',
-    sizeBytes: 74616,
-  },
-  {
-    id: 'gif_finals_closing_stretch',
-    filename: 'gif_finals_closing_stretch.gif',
-    title: 'Finals Closing Stretch: Score Margin & Shot Locations',
-    category: 'playoffs',
-    description:
-      'The score margin through the closing stretch of the Finals-deciding game, paired with where each shot in that stretch was taken. Not yet rendered: wehoop has not ingested this game\'s play-by-play/shot data, so this chart has no media files on disk until that data lands and the script is re-run.',
-    type: 'gif',
-    unrendered: true,
-  },
-];
-
 export interface GalleryClientProps {
-  mediaItems?: VisualMediaItem[];
+  mediaItems: VisualMediaItem[];
 }
 
-export const GalleryClient: React.FC<GalleryClientProps> = ({ mediaItems = WNBA_GALLERY_ITEMS }) => {
+export const GalleryClient: React.FC<GalleryClientProps> = ({ mediaItems }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeMedia, setActiveMedia] = useState<VisualMediaItem | null>(null);
@@ -178,9 +65,7 @@ export const GalleryClient: React.FC<GalleryClientProps> = ({ mediaItems = WNBA_
         </h1>
         <p className="text-slate-400 text-sm mt-1 max-w-3xl">
           High-resolution animated races, Elo trajectory bump charts, RAPM leader reveals, and
-          playoff bracket progressions generated directly by the R analytical pipeline. One
-          entry (Finals closing stretch) is listed even though it has not rendered yet, pending
-          play-by-play data for the deciding game.
+          playoff bracket progressions generated directly by the R analytical pipeline.
         </p>
       </div>
 

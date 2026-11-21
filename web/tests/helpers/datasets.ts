@@ -100,6 +100,8 @@ export const EXPECTED_DATA_FILES = [
   'matchups_slates.json',
   'offseason_monitor.json',
   'landing_digest.json',
+  // Read by the Gallery page at build time and the landing slideshow (front-office#210).
+  'visual_media_index.json',
 ] as const;
 
 /** Sidecar freshness manifest (front-office#102); excluded from its own coverage. */
