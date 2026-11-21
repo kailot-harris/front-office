@@ -157,6 +157,17 @@ jobs:
             cp -r "artifacts/site-$sport/." "site/$sport/"
           done
 
+      # Stops the deploy when a sport's landing digest shows a game as not
+      # final that the same sport's scores file has as final (2026-11-21: the
+      # slot refresh committed NBA's scores but not its re-graded digest, and
+      # the landing page showed nine finished games as "Not final"). Runs on
+      # the assembled output, before the Pages upload, so a failure here
+      # leaves the previously deployed site live. NFL is warn-only for now
+      # (held by the owner pending NFL work); NBA, WNBA and MLB block. See
+      # tools/check_landing_freshness.mjs.
+      - name: Check landing digests agree with scores files
+        run: node tools/check_landing_freshness.mjs site
+
       - name: Generate sitemap.xml
         run: |
           set -euo pipefail

@@ -1,0 +1,13 @@
+# FIXTURE for tools/test_check_refresh_paths_sync.mjs -- the "Commit any
+# changes" step of mlb/.github/workflows/refresh-results.yml.
+jobs:
+  refresh:
+    steps:
+      - name: Commit any changes
+        run: |
+          if [ -z "$(git status --porcelain -- web/public/data)" ]; then
+            exit 0
+          fi
+          git add web/public/data
+          git commit -m "chore(data): refresh finished game results"
+          git push

@@ -230,14 +230,22 @@ $MODEL_REFRESH = [ordered]@{
 # checkout (only used to reach its git object store); Paths are the files the
 # refresh may rewrite, and the only ones ever staged. These mirror the "Commit
 # any changes" step of each sport's refresh-results.yml; keep the two in step.
+# tools/check_refresh_paths_sync.mjs fails CI when they drift. NBA and WNBA
+# list landing_digest.json because their refresh re-grades the landing
+# digest's yesterday from the same patched rows (NBA#211); leaving it out
+# wrote the patched digest and never committed it, so the landing page showed
+# finished games as not final. MLB stages the whole data directory, which
+# already covers its digest. NFL's refresh-results.yml stages its digest too,
+# but adding it here is held by the owner pending NFL work: the gap is a
+# documented exception in tools/refresh_paths_allowlist.json.
 # Args mirror what each workflow passes by default: NBA and WNBA get an
 # explicit 3-day lookback, as their workflows send. MLB and NFL default to
 # the current season inside the script, so nothing is passed.
 $SPORT_REFRESH = [ordered]@{
     mlb  = @{ Dir = 'MLB Analytics';  Args = @();    Paths = @('web/public/data') }
     nfl  = @{ Dir = 'NFL Analytics';  Args = @();    Paths = @('web/public/data/matchups_current_week.json', 'web/public/data/model_diagnostics.json') }
-    nba  = @{ Dir = 'NBA Analytics';  Args = @('3'); Paths = @('web/public/data/matchups_slates.json') }
-    wnba = @{ Dir = 'WNBA Analytics'; Args = @('3'); Paths = @('web/public/data/matchups_slates.json') }
+    nba  = @{ Dir = 'NBA Analytics';  Args = @('3'); Paths = @('web/public/data/matchups_slates.json', 'web/public/data/landing_digest.json') }
+    wnba = @{ Dir = 'WNBA Analytics'; Args = @('3'); Paths = @('web/public/data/matchups_slates.json', 'web/public/data/landing_digest.json') }
 }
 
 # The sport checkouts sit beside the aggregator checkout this script lives in:

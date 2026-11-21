@@ -1,0 +1,72 @@
+name: Check refresh paths sync
+
+# tools/run_refresh_slot.ps1 (slots B/C) stages only the files listed in each
+# sport's $SPORT_REFRESH Paths, and each sport's own refresh-results.yml stages
+# its own `git add` list. When the two drifted, the NBA landing digest was
+# re-graded on every slot run and never committed, and the landing page showed
+# finished games as not final. This fails CI if any sport's two lists differ.
+#
+# Runs on push/PR against main for either file set: a direct edit of the slot
+# script here, or a subtree-sync PR that updates a sport's refresh-results.yml
+# under mlb/, nba/, nfl/ or wnba/.
+#
+# The second job tests tools/check_landing_freshness.mjs, the deploy-time
+# guard for the same failure (deploy.yml runs it on the assembled site), so a
+# change to it is tested on its PR rather than first exercised by a deploy.
+#
+# No dependencies: both scripts are plain Node.
+on:
+  push:
+    branches: [main]
+    paths:
+      - tools/run_refresh_slot.ps1
+      - '*/.github/workflows/refresh-results.yml'
+      - tools/check_refresh_paths_sync.mjs
+      - tools/test_check_refresh_paths_sync.mjs
+      - tools/refresh_paths_allowlist.json
+      - tools/fixtures/refresh_paths/**
+      - tools/check_landing_freshness.mjs
+      - tools/test_check_landing_freshness.mjs
+      - tools/fixtures/landing_freshness/**
+      - .github/workflows/check-refresh-paths-sync.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - tools/run_refresh_slot.ps1
+      - '*/.github/workflows/refresh-results.yml'
+      - tools/check_refresh_paths_sync.mjs
+      - tools/test_check_refresh_paths_sync.mjs
+      - tools/refresh_paths_allowlist.json
+      - tools/fixtures/refresh_paths/**
+      - tools/check_landing_freshness.mjs
+      - tools/test_check_landing_freshness.mjs
+      - tools/fixtures/landing_freshness/**
+      - .github/workflows/check-refresh-paths-sync.yml
+
+jobs:
+  check-refresh-paths:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Test the check
+        run: node tools/test_check_refresh_paths_sync.mjs
+
+      - name: Check slot refresh stages the same files as each sport's refresh workflow
+        run: node tools/check_refresh_paths_sync.mjs
+
+  test-landing-freshness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Test the deploy-time landing freshness check
+        run: node tools/test_check_landing_freshness.mjs

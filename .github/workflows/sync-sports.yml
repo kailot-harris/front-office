@@ -19,9 +19,13 @@ name: Sync sport subtrees and deploy
 
 on:
   schedule:
-    # 13:30 UTC = slot A + 30 minutes. Cron is UTC-only and does not shift with
-    # DST, so this drifts an hour against local time twice a year, which is
-    # tolerable here only because of how much slack slot A leaves (below).
+    # BACKSTOP ONLY. Slot A does not depend on this cron: each sport's slot A
+    # script dispatches this workflow itself once its publish lands. 13:30 UTC
+    # was meant to be slot A + 30 minutes, but GitHub starts this scheduled run
+    # hours late -- the scheduled runs of 2026-11-16..20 were created between
+    # 21:21 and 22:57 UTC, 8-9 hours after 13:30 -- so treat it as a late
+    # catch-all that re-syncs anything a dispatch missed, not as a slot A step.
+    # Cron is UTC-only and does not shift with DST.
     #
     # WHY 13:30 AND NOT THE OLD 11:30. The binding constraint is upstream data,
     # not this repo. Measured from the providers' own Actions history on
@@ -34,8 +38,8 @@ on:
     # NBA and WNBA both finish by ~12:20 UTC and nothing before that has seen
     # last night's games. The four sport pipelines run at 09:00 local (13:00 UTC
     # during EDT) -- slot A -- and each publishes behind its own
-    # tools/publish_web.R gate; this job pulls what they published 30 minutes
-    # later. The old 11:30 was pinned to MLB's refresh-results.yml at 11:00 and
+    # tools/publish_web.R gate, then dispatches this job to pull it; the cron
+    # only catches what a dispatch missed. The old 11:30 was pinned to MLB's refresh-results.yml at 11:00 and
     # predates the other three sports being scheduled at all.
     - cron: '30 13 * * *'
     # Slots B (22:30 UTC) and C (05:30 UTC) crons were removed because GitHub

@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "description": "Known, owner-approved gaps between the Paths in tools/run_refresh_slot.ps1 ($SPORT_REFRESH) and the git add paths in a sport's .github/workflows/refresh-results.yml, read by tools/check_refresh_paths_sync.mjs. direction is 'missing_from_slot' (the workflow stages it, the slot script does not) or 'extra_in_slot' (the reverse). An entry that no longer matches a real gap fails the check, so remove it once the two lists agree.",
+  "entries": [
+    {
+      "sport": "nfl",
+      "path": "web/public/data/landing_digest.json",
+      "direction": "missing_from_slot",
+      "reason": "held by owner pending NFL work"
+    }
+  ]
+}
