@@ -4,6 +4,7 @@
  * Serves this repo's files, and maps /front-office/<sport>/data/<file> to
  * <sport data dir>/<file>. By default that is <sport>/web/public/data in the subtree mirror;
  * override with LANDING_DATA_<SPORT>=<dir> (e.g. a sport worktree's web/public/data).
+ * Slideshow media: set LANDING_MEDIA_<SPORT>=<dir> to serve <sport>/media|animations/<file> from it.
  * Usage: node tools/serve_landing_preview.mjs [port]
  */
 import { createServer } from 'node:http';
@@ -15,7 +16,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = Number(process.env.PORT || process.argv[2] || 4173);
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
   '.json': 'application/json', '.png': 'image/png', '.webp': 'image/webp', '.mp4': 'video/mp4',
-  '.woff2': 'font/woff2', '.svg': 'image/svg+xml' };
+  '.woff2': 'font/woff2', '.svg': 'image/svg+xml', '.gif': 'image/gif' };
 
 function resolve(urlPath) {
   const p = decodeURIComponent(urlPath.split('?')[0]);
@@ -26,6 +27,8 @@ function resolve(urlPath) {
     const dir = process.env['LANDING_DATA_' + m[1].toUpperCase()] || join(ROOT, m[1], 'web', 'public', 'data');
     return join(dir, m[2]);
   }
+  const mm = rel.match(/^(nfl|nba|wnba|mlb)\/(media|animations)\/([\w.-]+\.(?:gif|png))$/);
+  if (mm && process.env['LANDING_MEDIA_' + mm[1].toUpperCase()]) return join(process.env['LANDING_MEDIA_' + mm[1].toUpperCase()], mm[3]);
   if (rel.split('/').includes('..')) return null;
   const safe = normalize(rel || 'index.html');
   return join(ROOT, safe.endsWith('/') || safe === '' ? safe + 'index.html' : safe);

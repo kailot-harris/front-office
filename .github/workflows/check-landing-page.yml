@@ -16,8 +16,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Digest helper tests
-        run: node --test tools/test_landing_digest.mjs
+      - name: Digest and slideshow helper tests
+        run: node --test tools/test_landing_digest.mjs tools/test_landing_gifs.mjs
       - name: Install axe tooling
         run: |
           npm i --no-save --no-package-lock playwright @axe-core/playwright

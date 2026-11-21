@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="assets/fonts/fonts.css" />
   <link rel="stylesheet" href="assets/design-tokens.css" />
   <link rel="stylesheet" href="assets/landing/digest.css" />
+  <link rel="stylesheet" href="assets/landing/gifs.css" />
   <link rel="canonical" href="https://kailot-harris.github.io/front-office/" />
   <!-- robots.txt can only be honored at the domain root for a GitHub Pages
        project site (outside this repo's control), so this <link> is the
@@ -750,8 +751,21 @@
       </div>
     </section>
   </section>
+  <section id="gifs" class="gifs" aria-labelledby="gifs-heading" hidden>
+    <h2 id="gifs-heading">This week's visuals</h2>
+    <figure class="gf-figure">
+      <a class="gf-link" href="./"><div class="gf-frame"></div></a>
+      <figcaption class="gf-caption"></figcaption>
+    </figure>
+    <div class="gf-controls">
+      <button type="button" class="gf-pause" aria-label="Pause slideshow">Pause</button>
+      <button type="button" class="gf-next" aria-label="Next slide">Next</button>
+    </div>
+    <p class="gf-live fo-sr-only" aria-live="polite"></p>
+  </section>
   </main>
   <script src="assets/landing/digest.js" defer></script>
+  <script src="assets/landing/gifs.js" defer></script>
   <script>
     (function initTrophyShowcase() {
       var showcase = document.querySelector('.trophy-showcase');
