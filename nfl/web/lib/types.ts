@@ -194,6 +194,8 @@ export interface VisualMediaItem {
   description: string;
   type: 'gif' | 'image';
   size_bytes: number;
+  /** One full GIF loop in ms; null when unreadable; absent for images. */
+  duration_ms?: number | null;
 }
 
 /**

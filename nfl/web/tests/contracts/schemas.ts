@@ -232,6 +232,7 @@ export const visualMediaItemSchema = z.object({
   description: z.string(),
   type: z.enum(['gif', 'image']),
   size_bytes: z.number().int().min(1),
+  duration_ms: z.number().int().min(1).nullable().optional(),
 }).strict();
 
 /**
