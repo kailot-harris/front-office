@@ -782,6 +782,12 @@ CACHE_TURNOVER_HISTORY <- file.path(CACHE_DIR, "turnover_margin_history.rds")
 WEB_PUBLIC_DIR   <- file.path("web", "public")
 WEB_DATA_DIR     <- file.path(WEB_PUBLIC_DIR, "data")
 WEB_ANIM_DIR     <- file.path(WEB_PUBLIC_DIR, "animations")
+# GIF_RERENDER_DAYS (front-office weekly GIF re-render, 2026-11-21 design): render_weekly_gifs.R
+# re-runs tools/gif_*.R in season once the last successful render is this many days old (last_success_at in
+# cache/gif_render_status.json; newest GIF mtime in WEB_ANIM_DIR only as fallback when that file is missing).
+# 6, not 7, so a weekly re-render lands before the landing slideshow's 7-day window drops the
+# previous set. Override for manual runs with FO_FORCE_GIF_RENDER=1.
+GIF_RERENDER_DAYS <- 6
 
 # MEDIA_GIF_MAX_AGE_DAYS: the web gallery only shows a GIF whose cache/ file was
 # modified within this many days (rule in web_media_filter.R, applied by

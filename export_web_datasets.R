@@ -31,6 +31,7 @@ suppressPackageStartupMessages({
 source("config.R")
 source("web_media_filter.R")
 source("R/gif_duration.R")
+source("R/media_generated_at.R")
 source("web_media_index.R")
 
 # log_warn()/log_info() live in logging_utils.R. run_full_pipeline.R already source()s it
@@ -142,13 +143,26 @@ run_export_web_datasets <- function() {
 
   # Files with no metadata entry are logged and left out (never a placeholder item).
   media_index <- withCallingHandlers(
-    build_media_index(gif_files, media_metadata),
+    build_media_index(gif_files, media_metadata, published_dir = WEB_ANIM_DIR),
     warning = function(w) {
       log_warn(conditionMessage(w))
       invokeRestart("muffleWarning")
     })
+  # copy.date = TRUE: the published file keeps the cache render time (never the copy time).
+  # A file whose gif script failed this run is not copied (see gif_cache_copy_ok), and a
+  # byte-identical published file is left untouched.
+  outcome_path <- file.path(CACHE_DIR, "gif_render_outcome.json")
   for (m in media_index) {
-    file.copy(file.path(CACHE_DIR, m$filename), file.path(WEB_ANIM_DIR, m$filename), overwrite = TRUE)
+    src <- file.path(CACHE_DIR, m$filename)
+    dst <- file.path(WEB_ANIM_DIR, m$filename)
+    dec <- gif_cache_copy_ok(m$filename, src, outcome_path)
+    if (!dec$copy) {
+      log_warn(sprintf("media %s not refreshed: %s", m$filename, dec$reason))
+      next
+    }
+    if (file.exists(dst) && file.size(dst) == file.size(src) &&
+        identical(readBin(dst, "raw", file.size(dst)), readBin(src, "raw", file.size(src)))) next
+    file.copy(src, dst, overwrite = TRUE, copy.date = TRUE)
   }
   write_json_clean(media_index, "visual_media_index.json", na = "null")
 

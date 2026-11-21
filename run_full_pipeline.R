@@ -112,7 +112,8 @@ log_info(sprintf("Pipeline run started."), script = "run_full_pipeline.R")
 # indistinguishable from success. WARN, never stop() — the repo's fail-safe principle is that the
 # pipeline reports and continues. A 1-second tolerance absorbs filesystem mtime granularity.
 .check_stage_output <- function(script_name, description, output, start) {
-  if (is.null(output) || length(output) == 0) return(invisible(NULL))
+  all_fresh <- TRUE
+  if (is.null(output) || length(output) == 0) return(invisible(all_fresh))
   for (path in output) {
     if (!file.exists(path)) {
       message(sprintf(">>> [WARN] %s: declared output %s does not exist after the stage ran.",
@@ -120,6 +121,7 @@ log_info(sprintf("Pipeline run started."), script = "run_full_pipeline.R")
       log_warn(sprintf("Declared stage output missing: %s", path),
                script = "run_full_pipeline.R", stage = script_name,
                description = description, output = path)
+      all_fresh <- FALSE
       next
     }
     mt <- tryCatch(file.info(path)$mtime, error = function(e) NA)
@@ -134,15 +136,19 @@ log_info(sprintf("Pipeline run started."), script = "run_full_pipeline.R")
                output = path, output_mtime = format(mt, "%Y-%m-%d %H:%M:%S"),
                stage_start = format(start, "%Y-%m-%d %H:%M:%S"),
                hours_stale = round(age_h, 2))
+      all_fresh <- FALSE
     } else {
       message(sprintf(">>> [FRESH] %s -> %s (mtime %s)", script_name, path,
                       format(mt, "%Y-%m-%d %H:%M:%S")))
     }
   }
-  invisible(NULL)
+  invisible(all_fresh)
 }
 
-run_stage <- function(script_name, description, call_fn = NULL, entry_fn = NULL, output = NULL) {
+# `strict_output` (front-office#210 / weekly GIF render): when TRUE, a missing or not-rewritten
+#   declared output makes the stage FAIL (">>> [FAIL]", returns FALSE). Still never stop()s.
+run_stage <- function(script_name, description, call_fn = NULL, entry_fn = NULL, output = NULL,
+                      strict_output = FALSE) {
   message(sprintf("\n>>> [STAGE] %s (%s)...", description, script_name))
   if (!is.null(call_fn) && !is.null(entry_fn)) {
     stop("run_stage(): pass either call_fn (invoke) or entry_fn (verify), not both.")
@@ -174,7 +180,13 @@ run_stage <- function(script_name, description, call_fn = NULL, entry_fn = NULL,
                  script = "run_full_pipeline.R", stage = script_name, entry_fn = entry_fn)
       }
       # C-2: declared-output freshness check.
-      .check_stage_output(script_name, description, output, start)
+      fresh <- .check_stage_output(script_name, description, output, start)
+      if (strict_output && !isTRUE(fresh)) {
+        message(sprintf(">>> [FAIL] %s: declared output missing or not rewritten (strict_output).", script_name))
+        log_error(sprintf("Stage failed strict output check: %s", script_name),
+                  script = "run_full_pipeline.R", stage = script_name, description = description)
+        return(FALSE)
+      }
       elapsed <- as.numeric(difftime(Sys.time(), start, units = "secs"))
       message(sprintf(">>> [COMPLETED] %s in %.2f seconds.", script_name, elapsed))
       log_info(sprintf("Stage completed: %s", script_name), script = "run_full_pipeline.R",
@@ -345,6 +357,17 @@ run_stage("accuracy_governance.R", "Compute Forecast Accuracy Governance & Calib
 # log_warn() in logs/nfl_pipeline.log - naming the file and the reason - is the staleness
 # signal, not this assertion (the publish gate's Assertion F also catches it through the
 # embedded generated_at). See config.R's WEB_* block for the full rationale.
+# Stage 13.9: weekly GIF re-render (front-office weekly GIF design, 2026-11-21). Runs the
+# scheduled tools/gif_*.R scripts (each in its own Rscript, 10-min timeout) when in season and
+# the last successful render (last_success_at in cache/gif_render_status.json; newest GIF mtime only as fallback when that file is missing) is GIF_RERENDER_DAYS+ days old (FO_FORCE_GIF_RENDER=1 forces it).
+# Must run immediately before the export below, which copies cache/ GIFs into
+# web/public/animations and rebuilds visual_media_index.json. Its status file is rewritten on
+# every run except a total failure, so strict_output reports "every script failed" as FAIL.
+run_stage("render_weekly_gifs.R", "Re-render Weekly GIFs (tools/gif_*.R, in season, every 6+ days)",
+          call_fn = "run_render_weekly_gifs",
+          output = file.path(CACHE_DIR, "gif_render_status.json"),
+          strict_output = TRUE)
+
 run_stage("export_web_datasets.R", "Export Web Application JSON Datasets (web/public/data)",
           call_fn = "run_export_web_datasets",
           output = setdiff(WEB_DATA_FILES, WEB_JSON_COACHING_PROFILES))
