@@ -130,7 +130,8 @@ DM_UNDATED_NOTES <- c(
   "player_dna_profiles.json" = "Season player profiles; no game dates",
   "cba_cap_sheet.json" = "Cap sheet; not game-dated",
   "offseason_draft.json" = "Draft order; not game-dated",
-  "offseason_teams.json" = "Team off-season profiles; not game-dated"
+  "offseason_teams.json" = "Team off-season profiles; not game-dated",
+  "visual_media_index.json" = "Media inventory (per-item build stamps); content carries no game date"
 )
 
 .dm_read_previous <- function(path) {

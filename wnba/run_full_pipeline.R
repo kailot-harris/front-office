@@ -75,10 +75,14 @@ log_info(sprintf("Pipeline run started."), script = "run_full_pipeline.R")
 # inside its own tryCatch, will leave a stale file behind and is reported here instead of being
 # indistinguishable from success. WARN, never stop() — Ground Rule 3 / the repo's fail-safe
 # principle: report and continue. A 1-second tolerance absorbs filesystem mtime granularity.
-.check_stage_output <- function(script_name, description, output, start) {
+.check_stage_output <- function(script_name, description, output, start, strict = FALSE) {
   if (is.null(output) || length(output) == 0) return(invisible(NULL))
   for (path in output) {
     if (!file.exists(path)) {
+      if (isTRUE(strict)) {
+        stop(sprintf(">>> [FAIL] %s: declared output %s does not exist after the stage ran.",
+                     script_name, path), call. = FALSE)
+      }
       message(sprintf(">>> [WARN] %s: declared output %s does not exist after the stage ran.",
                       script_name, path))
       log_warn(sprintf("Declared stage output missing: %s", path),
@@ -90,6 +94,10 @@ log_info(sprintf("Pipeline run started."), script = "run_full_pipeline.R")
     if (length(mt) != 1 || is.na(mt)) next
     if (as.numeric(difftime(mt, start, units = "secs")) < -1) {
       age_h <- as.numeric(difftime(Sys.time(), mt, units = "hours"))
+      if (isTRUE(strict)) {
+        stop(sprintf(">>> [FAIL] %s: declared output %s was NOT rewritten (mtime %s, %.1f hours old).",
+                     script_name, path, format(mt, "%Y-%m-%d %H:%M:%S"), age_h), call. = FALSE)
+      }
       message(sprintf(
         ">>> [WARN] %s reported success but its declared output %s was NOT rewritten (mtime %s, %.1f hours old). Possible silent no-op — see finding C-2.",
         script_name, path, format(mt, "%Y-%m-%d %H:%M:%S"), age_h))
@@ -123,7 +131,11 @@ log_info(sprintf("Pipeline run started."), script = "run_full_pipeline.R")
 ##   their outputs sat frozen at a four-day-old mtime. Deliberately a WARN and not a stop() — the
 ##   repo's fail-safe principle is that the pipeline reports and continues; the point is to make
 ##   the silent failure loud, not to turn it into a crash.
-run_stage <- function(script_name, description, call_fn = NULL, entry_fn = NULL, output = NULL) {
+## `strict_output` (front-office#210): a missing or not-rewritten declared output becomes a stage
+## FAILURE (">>> [FAIL]", run_stage() returns FALSE) instead of a WARN. Still never stop()s the
+## pipeline: the caller records the failure and re-reports it at the bottom.
+run_stage <- function(script_name, description, call_fn = NULL, entry_fn = NULL, output = NULL,
+                      strict_output = FALSE) {
   message(sprintf("\n>>> [STAGE] %s (%s)...", description, script_name))
   if (!is.null(call_fn) && !is.null(entry_fn)) {
     stop("run_stage(): pass either call_fn (invoke) or entry_fn (verify), not both.")
@@ -184,7 +196,7 @@ run_stage <- function(script_name, description, call_fn = NULL, entry_fn = NULL,
                  script = "run_full_pipeline.R", stage = script_name, entry_fn = entry_fn)
       }
       # C-2: declared-output freshness check.
-      .check_stage_output(script_name, description, output, start)
+      .check_stage_output(script_name, description, output, start, strict = strict_output)
       elapsed <- as.numeric(difftime(Sys.time(), start, units = "secs"))
       message(sprintf(">>> [COMPLETED] %s in %.2f seconds.", script_name, elapsed))
       log_info(sprintf("Stage completed: %s", script_name), script = "run_full_pipeline.R",
@@ -230,6 +242,7 @@ run_registered_stage <- function(id) {
 # ------------------------------------------------------------------------------
 # Chronological Execution Sequence
 # ------------------------------------------------------------------------------
+strict_failures <- character(0)
 
 # 0. Pre-flight Data Integrity Check
 # Output: Console report / log entries. Fails if critical caches are corrupt or missing.
@@ -512,6 +525,16 @@ run_registered_stage("matchups_dataset")
 # 18. Landing digest for the front-office landing page (WNBA#224); reads matchups_slates.json.
 run_registered_stage("landing_digest")
 
+# 18b. Visual media index (front-office#210). Scans web/public/media (the GIFs and PNGs
+# rendered by the tools/gif_*.R scripts) and writes web/public/data/visual_media_index.json:
+# per-file mtime as generated_at, GIF loop duration_ms. The Gallery page reads it at build
+# time and the landing slideshow in the browser. strict_output: a failed or no-op export is
+# re-reported as ">>> [FAIL]" at the bottom (exit code unchanged, never stop()).
+if (!run_stage("export_visual_media_index.R", "Publish Visual Media Index (Gallery + Landing Slideshow)",
+               call_fn = "run_export_visual_media_index",
+               output = file.path("web", "public", "data", "visual_media_index.json"),
+               strict_output = TRUE)) strict_failures <- c(strict_failures, "export_visual_media_index.R")
+
 # 16. Front-Office Operations Alert Dispatcher (Issue #18)
 run_registered_stage("notify_pipeline_ops")
 
@@ -586,3 +609,12 @@ message("\n==================================================================")
 message(sprintf(">>> FULL WNBA PIPELINE EXECUTED IN %.2f SECONDS", pipeline_total_time))
 message("==================================================================")
 log_info(sprintf("Pipeline run finished in %.2f seconds.", pipeline_total_time), script = "run_full_pipeline.R")
+
+# Strict-stage failures must not change the exit code (the publish step only runs on exit 0).
+# Each is re-emitted in the ">>> [FAIL] <script>: ..." shape so the alert lists it.
+for (.sf in strict_failures) {
+  message(sprintf(">>> [FAIL] %s: strict stage failed (missing or stale output); its file keeps the previous published copy. Other stages ran and the run exits 0.", .sf))
+}
+if (length(strict_failures) > 0) {
+  warning(sprintf("Strict stage(s) failed: %s", paste(strict_failures, collapse = ", ")), call. = FALSE)
+}
