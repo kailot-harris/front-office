@@ -404,11 +404,13 @@ run_full_pipeline <- function(season = MLB_CURRENT_SEASON, force_refresh = FALSE
   )
   
   # ----------------------------------------------------------------------------
-  # Stage 16: High-Dimensional Player DNA & Historical Twins Engine (1980-2026)
+  # Stage 16: Player DNA - current-season skill percentiles & same-season peer
+  # comps. On failure the engine logs a ">>> [FAIL] [PLAYER DNA]" line and returns
+  # without writing; it never calls stop(), so the pipeline exit code is untouched.
   # ----------------------------------------------------------------------------
   run_stage(
     script_name   = "mlb_player_dna_engine.R",
-    description   = "Compute 16-D Skill Vectors & Cosine Historical Comps",
+    description   = "Compute Skill Percentiles & Same-Season Peer Comps",
     call_fn       = "run_mlb_player_dna_engine",
     output        = WEB_JSON_PLAYER_DNA_PROFILES,
     require_fresh = force_refresh

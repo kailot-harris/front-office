@@ -295,6 +295,13 @@ CACHE_MLB_SCHEDULE <- function(season = MLB_CURRENT_SEASON) {
   cache_path("ingest", sprintf("mlb_schedule_%d.rds", as.integer(season)))
 }
 
+# /player-dna inputs (mlb_player_dna_engine.R): read by these EXACT filenames, never a
+# glob. The two FanGraphs leaderboards (written by mlb_stats_sync.R) may hold several
+# seasons; the engine uses only their MLB_CURRENT_SEASON rows.
+CACHE_DNA_FG_BATTERS  <- cache_path("stats_sync", "fg_batters.rds", create = FALSE)
+CACHE_DNA_FG_PITCHERS <- cache_path("stats_sync", "fg_pitchers.rds", create = FALSE)
+CACHE_DNA_SCHEDULE    <- cache_path("ingest", sprintf("mlb_schedule_%d.rds", MLB_CURRENT_SEASON), create = FALSE)
+
 # Game types that make up a published slate: regular season plus the four
 # postseason rounds (F wild card, D division, L league championship, W World
 # Series). Spring training (S), the All-Star game (A) and exhibitions (E) are

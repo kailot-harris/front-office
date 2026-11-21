@@ -63,9 +63,16 @@ describe('Cross-dataset referential integrity', () => {
     expect(metadata.pitchers_count).toBe(pitchers);
   });
 
-  it('clutch and playerDna catalog total counts match their profiles array lengths', () => {
+  it('clutch catalog total count matches its profiles array length', () => {
     expect(clutch.totalProfiles).toBe(clutch.profiles.length);
-    expect(playerDna.totalPlayers).toBe(playerDna.profiles.length);
+  });
+
+  it('playerDna profile and peer-comp teams are canonical MLB codes (or null for multi-club players)', () => {
+    const allowed = new Set<string>(MLB_TEAMS);
+    for (const p of playerDna.profiles) {
+      expect(p.team === null || allowed.has(p.team), `${p.playerName} team ${p.team}`).toBe(true);
+      for (const c of p.peerComps) expect(c.team === null || allowed.has(c.team), `${c.compName} team ${c.team}`).toBe(true);
+    }
   });
 
   it('team logos and hex color metadata are valid for all 30 franchises', () => {
