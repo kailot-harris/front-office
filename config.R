@@ -287,6 +287,12 @@ MLB_DISCORD_WEBHOOK <- Sys.getenv("MLB_DISCORD_WEBHOOK", Sys.getenv("DISCORD_WEB
 # each season; nothing else should carry a literal season number.
 MLB_CURRENT_SEASON <- 2026L
 
+# GIF_RERENDER_DAYS (front-office weekly GIF re-render, 2026-11-21 design): render_weekly_gifs.R
+# re-runs tools/gif_*.R in season once the last successful render (cache/gif_render_status.json)
+# is this many days old. 6, not 7, so a weekly re-render lands before the landing slideshow's
+# 7-day window drops the previous set. Override for manual runs with FO_FORCE_GIF_RENDER=1.
+GIF_RERENDER_DAYS <- 6
+
 # Season schedule cache written by mlb_ingest.R. Promoted here from the
 # `cache_path("ingest", sprintf("mlb_schedule_%d.rds", season))` expression that
 # several stages build by hand, so the publish gate and the engines name the
