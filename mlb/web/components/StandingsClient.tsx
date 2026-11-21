@@ -20,13 +20,15 @@ import {
 import { TeamLogo } from '@/components/TeamLogo';
 import { PlayoffContendersBoxWhisker } from '@/components/PlayoffContendersBoxWhisker';
 import { exportToCsv } from '@/lib/exportToCsv';
-import { MLB_VISUAL_MEDIA_ITEMS } from '@/lib/visualMedia';
+import type { VisualMediaItem } from '@/lib/visualMedia';
 import { BASE_PATH } from '@/lib/basePath';
 import { useTableScrollHint } from '@/lib/useTableScrollHint';
 
 interface StandingsClientProps {
   teams: TeamProjection[];
   metadata?: ModelMetadata;
+  /** GIF items from visual_media_index.json (loaded by the server page). */
+  mediaItems: VisualMediaItem[];
   initialTab?: 'visualizer' | 'table' | 'gallery';
 }
 
@@ -45,12 +47,13 @@ export type StandingsSortField =
 
 export const StandingsClient: React.FC<StandingsClientProps> = ({
   teams,
+  mediaItems,
   initialTab = 'visualizer',
 }) => {
   const [activeTab, setActiveTab] = useState<'visualizer' | 'table' | 'gallery'>(initialTab);
   const [selectedLeague, setSelectedLeague] = useState<'All' | 'AL' | 'NL'>('All');
   const [selectedDivision, setSelectedDivision] = useState<string>('All');
-  const [selectedGifId, setSelectedGifId] = useState<string>(MLB_VISUAL_MEDIA_ITEMS[0].id);
+  const [selectedGifId, setSelectedGifId] = useState<string>(mediaItems[0]?.id ?? '');
   const [sortBy, setSortBy] = useState<StandingsSortField>('ensemble_mean_wins');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const { scrollRef: tableScrollRef, showScrollHint, onScroll: handleTableScroll } = useTableScrollHint<HTMLDivElement>();
@@ -362,35 +365,35 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                 className="w-full bg-slate-900 border border-sky-500/40 text-white font-semibold text-xs sm:text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-lg cursor-pointer"
               >
                 <optgroup label="Phase 1: Standings & Team Parity">
-                  {MLB_VISUAL_MEDIA_ITEMS.filter((m) => m.phase === 1).map((m) => (
+                  {mediaItems.filter((m) => m.phase === 1).map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.title}
                     </option>
                   ))}
                 </optgroup>
                 <optgroup label="Phase 2: October Postseason & Fall Classic">
-                  {MLB_VISUAL_MEDIA_ITEMS.filter((m) => m.phase === 2).map((m) => (
+                  {mediaItems.filter((m) => m.phase === 2).map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.title}
                     </option>
                   ))}
                 </optgroup>
                 <optgroup label="Phase 3: Macro Season Trends">
-                  {MLB_VISUAL_MEDIA_ITEMS.filter((m) => m.phase === 3).map((m) => (
+                  {mediaItems.filter((m) => m.phase === 3).map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.title}
                     </option>
                   ))}
                 </optgroup>
                 <optgroup label="Phase 4: Sabermetrics & Player-Tracking">
-                  {MLB_VISUAL_MEDIA_ITEMS.filter((m) => m.phase === 4).map((m) => (
+                  {mediaItems.filter((m) => m.phase === 4).map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.title}
                     </option>
                   ))}
                 </optgroup>
                 <optgroup label="Phase 5: Synthesis & Meta Finale">
-                  {MLB_VISUAL_MEDIA_ITEMS.filter((m) => m.phase === 5).map((m) => (
+                  {mediaItems.filter((m) => m.phase === 5).map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.title}
                     </option>
@@ -402,7 +405,8 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
 
           {/* Player Container */}
           {(() => {
-            const currentItem = MLB_VISUAL_MEDIA_ITEMS.find((m) => m.id === selectedGifId) || MLB_VISUAL_MEDIA_ITEMS[0];
+            const currentItem = mediaItems.find((m) => m.id === selectedGifId) || mediaItems[0];
+            if (!currentItem) return null;
             return (
               <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-6 space-y-4 shadow-xl">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">

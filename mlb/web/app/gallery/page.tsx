@@ -1,12 +1,18 @@
 import { VisualMediaGalleryClient } from '@/components/VisualMediaGalleryClient';
+import { getVisualMediaIndex } from '@/lib/data';
+import { toVisualMediaItems } from '@/lib/visualMedia';
 import { HowToRead } from '@/components/HowToRead';
 
-export const metadata = {
-  title: { absolute: 'Visual Media Gallery & Year-End Race Animations | MLB Analytics' },
-  description: '20 automated animated races, division trajectory plots, October postseason brackets, and sabermetric scatters.',
-};
+export function generateMetadata() {
+  const count = toVisualMediaItems(getVisualMediaIndex()).length;
+  return {
+    title: { absolute: 'Visual Media Gallery & Year-End Race Animations | MLB Analytics' },
+    description: `${count} automated animated races, division trajectory plots, October postseason brackets, and sabermetric scatters.`,
+  };
+}
 
 export default function GalleryPage() {
+  const mediaItems = toVisualMediaItems(getVisualMediaIndex());
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       <div className="relative pb-6">
@@ -15,7 +21,7 @@ export default function GalleryPage() {
             <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-3">
               <span><span className="text-sky-400">MLB</span> Visual Media Gallery</span>
               <span className="text-sm font-semibold px-2.5 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">
-                20 Animated Suites
+                {mediaItems.length} Animated Suites
               </span>
             </h1>
             <p className="text-slate-400 text-sm mt-1">
@@ -33,7 +39,7 @@ export default function GalleryPage() {
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-sky-400 via-sky-500/40 to-transparent" />
       </div>
 
-      <VisualMediaGalleryClient />
+      <VisualMediaGalleryClient mediaItems={mediaItems} />
     </div>
   );
 }

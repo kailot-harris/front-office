@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Metadata } from 'next';
-import { getTeamsData, getMetadata } from '@/lib/data';
+import { getTeamsData, getMetadata, getVisualMediaIndex } from '@/lib/data';
+import { toVisualMediaItems } from '@/lib/visualMedia';
 import { StandingsClient } from '@/components/StandingsClient';
 import { TeamLogo } from '@/components/TeamLogo';
 import { HowToRead } from '@/components/HowToRead';
@@ -15,6 +16,7 @@ export const metadata: Metadata = {
 export default function HomePage() {
   const teams = getTeamsData();
   const metadata = getMetadata();
+  const mediaItems = toVisualMediaItems(getVisualMediaIndex());
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -96,7 +98,7 @@ export default function HomePage() {
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-sky-400 via-sky-500/40 to-transparent" />
       </div>
 
-      <StandingsClient teams={teams} metadata={metadata} initialTab="visualizer" />
+      <StandingsClient teams={teams} metadata={metadata} mediaItems={mediaItems} initialTab="visualizer" />
     </div>
   );
 }

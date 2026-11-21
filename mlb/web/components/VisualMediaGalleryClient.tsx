@@ -3,38 +3,42 @@
 import React, { useState, useMemo } from 'react';
 import { Play, Pause, Download, Filter, Sparkles, Trophy, Flame, BarChart2, Compass } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
-import { VisualMediaItem, MLB_VISUAL_MEDIA_ITEMS } from '@/lib/visualMedia';
+import type { VisualMediaItem } from '@/lib/visualMedia';
 
 interface VisualMediaGalleryClientProps {
+  /** GIF items from visual_media_index.json (loaded by the server page). */
+  mediaItems: VisualMediaItem[];
   initialCategory?: string;
   initialSelectedId?: string;
 }
 
 export const VisualMediaGalleryClient: React.FC<VisualMediaGalleryClientProps> = ({
+  mediaItems,
   initialCategory = 'all',
   initialSelectedId,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedItem, setSelectedItem] = useState<VisualMediaItem>(
-    MLB_VISUAL_MEDIA_ITEMS.find((m) => m.id === initialSelectedId) || MLB_VISUAL_MEDIA_ITEMS[0]
+    mediaItems.find((m) => m.id === initialSelectedId) || mediaItems[0]
   );
   // Start paused (poster shown, no GIF fetched) so first load doesn't pull
   // down every animation's multi-MB payload. The showcase GIF only loads
   // once the visitor explicitly hits "Resume GIF" or picks a card.
   const [isPaused, setIsPaused] = useState(true);
 
+  const countOf = (cat: string) => mediaItems.filter((m) => m.category === cat).length;
   const categories = [
-    { id: 'all', label: 'All 20 Animations', count: 20 },
-    { id: 'standings', label: 'Standings & Parity', count: 5, icon: Trophy },
-    { id: 'postseason', label: 'October Postseason', count: 4, icon: Flame },
-    { id: 'trends', label: 'Season Trends', count: 4, icon: BarChart2 },
-    { id: 'sabermetrics', label: 'Sabermetric Scatters', count: 4, icon: Compass },
-    { id: 'meta', label: 'Synthesis & Finale', count: 3, icon: Sparkles },
+    { id: 'all', label: `All ${mediaItems.length} Animations`, count: mediaItems.length },
+    { id: 'standings', label: 'Standings & Parity', count: countOf('standings'), icon: Trophy },
+    { id: 'postseason', label: 'October Postseason', count: countOf('postseason'), icon: Flame },
+    { id: 'trends', label: 'Season Trends', count: countOf('trends'), icon: BarChart2 },
+    { id: 'sabermetrics', label: 'Sabermetric Scatters', count: countOf('sabermetrics'), icon: Compass },
+    { id: 'meta', label: 'Synthesis & Finale', count: countOf('meta'), icon: Sparkles },
   ];
 
   const filteredItems = useMemo(() => {
-    return MLB_VISUAL_MEDIA_ITEMS.filter((item) => {
+    return mediaItems.filter((item) => {
       if (selectedCategory !== 'all' && item.category !== selectedCategory) {
         return false;
       }
@@ -44,7 +48,9 @@ export const VisualMediaGalleryClient: React.FC<VisualMediaGalleryClientProps> =
       }
       return true;
     });
-  }, [selectedCategory, searchQuery]);
+  }, [mediaItems, selectedCategory, searchQuery]);
+
+  if (!selectedItem) return null;
 
   return (
     <div className="space-y-8">

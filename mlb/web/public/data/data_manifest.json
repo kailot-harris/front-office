@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "sport": "mlb",
-  "generated_at": "2026-11-20T17:52:08Z",
+  "generated_at": "2026-11-21T01:57:19Z",
   "schedule_through_date": "2026-10-24",
   "datasets": [
     {
@@ -168,6 +168,18 @@
       "through_date": null,
       "through_date_source": "not_game_dated",
       "coverage_note": "season-aggregate Statcast spatial metrics; no game dates in content",
+      "static": false,
+      "static_reason": null,
+      "builder": "tools/write_data_manifest.R"
+    },
+    {
+      "file": "visual_media_index.json",
+      "generated_at": "2026-11-21T01:57:19Z",
+      "stamp_source": "manifest:content_hash",
+      "content_sha256": "0d295e401d4037c88e19516e4e5f7262ac5142041108e6216dcfbea9c4b0fe39",
+      "through_date": null,
+      "through_date_source": "not_game_dated",
+      "coverage_note": "media inventory (per-item build stamps); content carries no game date",
       "static": false,
       "static_reason": null,
       "builder": "tools/write_data_manifest.R"
