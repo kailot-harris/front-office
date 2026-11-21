@@ -136,9 +136,9 @@ export interface ModelMetadata {
   home_court_advantage: number;
   total_schedule_games: number;
   /** Regular-season games already played and locked into every simulated season. */
-  completed_games: number;
+  completed_games?: number;
   /** REAL_SCHEDULE, or SYNTHETIC_BALANCED when the real schedule cache is missing. */
-  schedule_source: 'REAL_SCHEDULE' | 'SYNTHETIC_BALANCED';
+  schedule_source?: 'REAL_SCHEDULE' | 'SYNTHETIC_BALANCED';
   teams_count: number;
   players_count: number;
   models: {
