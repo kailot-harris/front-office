@@ -17,13 +17,16 @@ REM   This daily script runs the offline end-to-end DAG regression test suite
 REM   (tools/offseason/test_dag_end_to_end.R), executes build_offseason_monitor.R,
 REM   and publishes web artifacts via tools/publish_web.R --publish --mode=offseason.
 REM
-REM Winter DST Direct Workflow Dispatch:
-REM   sync-sports.yml runs at cron: '30 13 * * *' (13:30 UTC). Under Eastern
-REM   Standard Time (EST), 07:00 local is 12:00 UTC (90 min before the cron);
-REM   under EDT, 07:00 local is 11:00 UTC (2.5h before). To ensure the published
-REM   edition deploys immediately rather than waiting for the scheduled cron,
-REM   this script directly dispatches:
-REM     gh workflow run "Sync sport subtrees and deploy" --repo kailot-harris/front-office -f sports="mlb" -f deploy=true
+REM Direct Workflow Dispatch (Step 4):
+REM   sync-sports.yml's cron ('30 13 * * *') is only a backstop: GitHub has been
+REM   starting it hours late (21:21-22:57 UTC observed in November 2026), so a
+REM   07:00 publish could sit unpublished most of the day. After a publish that
+REM   exited 0 AND actually pushed a new commit (refs/remotes/origin/main moved
+REM   during Step 3), this script dispatches:
+REM     gh workflow run "Sync sport subtrees and deploy" --repo kailot-harris/front-office -f sports="mlb nfl nba wnba" -f deploy=true
+REM   All four sports, not just MLB: see the comment at Step 4. Nothing pushed
+REM   means no dispatch. A failed dispatch (gh missing, not signed in, network)
+REM   is a [WARN] line and never changes this script's exit code.
 REM ==============================================================================
 
 set PROJECT_DIR=%~dp0
@@ -275,6 +278,11 @@ if %ERRORLEVEL% neq 0 (
 )
 
 REM Step 3: Publish web artifacts and promote staged baseline
+REM ORIGIN_BEFORE is the Step 4 gate's "before" value: publish_web.R pushes with
+REM `git push origin HEAD`, which also moves refs/remotes/origin/main, so a
+REM different value after Step 3 means this run pushed a new commit.
+set "ORIGIN_BEFORE="
+for /f "delims=" %%S in ('git rev-parse --verify --quiet refs/remotes/origin/main 2^>nul') do set "ORIGIN_BEFORE=%%S"
 echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 3: Running tools/publish_web.R --publish --mode=offseason --run-start=!RUN_START!... >> "%RUN_LOG%"
 "%RSCRIPT%" --vanilla tools/publish_web.R --publish --mode=offseason "--run-start=!RUN_START!" >> "%RUN_LOG%" 2>&1
 if %ERRORLEVEL% neq 0 (
@@ -286,17 +294,48 @@ if %ERRORLEVEL% neq 0 (
     exit /b %ERRORLEVEL%
 )
 
-REM Step 4: Direct aggregator workflow dispatch to overcome Winter DST inversion
-echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 4: Dispatching aggregator sync-sports workflow... >> "%RUN_LOG%"
-where gh >nul 2>&1
-if errorlevel 1 (
-    if exist "C:\Program Files\GitHub CLI\gh.exe" set "PATH=%PATH%;C:\Program Files\GitHub CLI"
-)
-gh workflow run "Sync sport subtrees and deploy" --repo kailot-harris/front-office -f sports="mlb" -f deploy=true >> "%RUN_LOG%" 2>&1
-if errorlevel 1 (
-    echo [%DATE% %TIME%] [WARN] [schedule_weekly_offseason.bat] Workflow dispatch returned non-zero exit code. >> "%RUN_LOG%"
+REM Step 4: Dispatch the aggregator's sync-sports workflow, only when Step 3
+REM pushed a new commit (refs/remotes/origin/main moved; Step 3 already exited
+REM non-zero above if publish_web.R failed).
+REM
+REM Why all four sports, not just MLB: sync-sports.yml uses
+REM `concurrency: group: sync-sports, cancel-in-progress: false`, and GitHub
+REM keeps only ONE pending run per concurrency group, replacing an older
+REM pending run with a newer one. A sport-specific request (sports="mlb") can
+REM therefore be silently dropped when another sport dispatches while a sync
+REM is running. A sync that always pulls all four makes any surviving run
+REM correct for every sport.
+REM
+REM A failed dispatch (gh missing, not signed in, network) is a [WARN] line and
+REM never changes this script's exit code: the publish already succeeded and
+REM the sync-sports.yml cron is the backstop.
+set "ORIGIN_AFTER="
+for /f "delims=" %%S in ('git rev-parse --verify --quiet refs/remotes/origin/main 2^>nul') do set "ORIGIN_AFTER=%%S"
+set "SYNC_DISPATCH=0"
+if not defined ORIGIN_AFTER (
+    echo [%DATE% %TIME%] [WARN] [schedule_weekly_offseason.bat] Step 4: could not read refs/remotes/origin/main after the publish, so whether a new commit was pushed is unknown. Not dispatching; the sync-sports.yml cron will pick up any push. >> "%RUN_LOG%"
+) else if "!ORIGIN_AFTER!"=="!ORIGIN_BEFORE!" (
+    echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 4: nothing new was pushed ^(origin/main still !ORIGIN_AFTER!^). Skipping the sync-sports dispatch. >> "%RUN_LOG%"
 ) else (
-    echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Workflow dispatch successfully triggered. >> "%RUN_LOG%"
+    set "SYNC_DISPATCH=1"
+    echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 4: publish pushed origin/main !ORIGIN_BEFORE! -^> !ORIGIN_AFTER!. Dispatching aggregator sync-sports workflow for mlb nfl nba wnba... >> "%RUN_LOG%"
+)
+if "!SYNC_DISPATCH!"=="1" (
+    set "GH_EXE="
+    where gh >nul 2>&1
+    if not errorlevel 1 set "GH_EXE=gh"
+    if not defined GH_EXE if exist "%ProgramFiles%\GitHub CLI\gh.exe" set "GH_EXE=%ProgramFiles%\GitHub CLI\gh.exe"
+    if not defined GH_EXE (
+        echo [%DATE% %TIME%] [WARN] [schedule_weekly_offseason.bat] Step 4: gh not found on PATH or in %%ProgramFiles%%\GitHub CLI. Sync-sports dispatch NOT sent; the publish stands and the sync-sports.yml cron is the backstop. >> "%RUN_LOG%"
+    ) else (
+        REM `call` so control returns here even if gh resolves to a .cmd/.bat shim.
+        call "!GH_EXE!" workflow run "Sync sport subtrees and deploy" --repo kailot-harris/front-office -f sports="mlb nfl nba wnba" -f deploy=true >> "%RUN_LOG%" 2>&1
+        if errorlevel 1 (
+            echo [%DATE% %TIME%] [WARN] [schedule_weekly_offseason.bat] Step 4: sync-sports dispatch failed ^(gh exited non-zero: not signed in, network, or workflow not found^). The publish stands; the sync-sports.yml cron is the backstop. >> "%RUN_LOG%"
+        ) else (
+            echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 4: sync-sports dispatch sent for mlb nfl nba wnba. >> "%RUN_LOG%"
+        )
+    )
 )
 
 REM ==============================================================================
