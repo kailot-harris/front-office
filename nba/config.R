@@ -25,6 +25,12 @@ if (!dir.exists(CACHE_DIR)) dir.create(CACHE_DIR, recursive = TRUE)
 WEB_DATA_DIR <- file.path(PROJECT_DIR, "web", "public", "data")
 if (!dir.exists(WEB_DATA_DIR)) dir.create(WEB_DATA_DIR, recursive = TRUE)
 
+# GIF_RERENDER_DAYS (front-office weekly GIF re-render, 2026-11-21 design): render_weekly_gifs.R
+# re-runs tools/gif_*.R in season once the last successful render (cache/gif_render_status.json)
+# is this many days old. 6, not 7, so a weekly re-render lands before the landing slideshow's
+# 7-day window drops the previous set. Override for manual runs with FO_FORCE_GIF_RENDER=1.
+GIF_RERENDER_DAYS <- 6
+
 # Data Horizons
 HISTORICAL_SEASONS <- 2019:2025
 TEST_SEASON        <- 2026

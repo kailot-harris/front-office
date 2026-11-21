@@ -255,6 +255,17 @@ run_stage("tools/plot_today_predictions.R", "Render Daily Predictions Image (or 
           output = c(file.path(CACHE_DIR, "nba_predictions_today.png"),
                      file.path(CACHE_DIR, "nba_predictions_today.gif")))
 
+# 9.55. Weekly GIF re-render (front-office weekly GIF design, 2026-11-21). Runs the scheduled
+# tools/gif_*.R scripts (each in its own R process, 10-min timeout, process tree killed on
+# timeout) when in season and the last successful render is GIF_RERENDER_DAYS+ days old
+# (FO_FORCE_GIF_RENDER=1 forces it). Must run immediately before the index stage below. Its
+# status file is rewritten on every run except a total failure, so strict_output reports
+# "every script failed" as FAIL (exit code unchanged, never stop()).
+if (!run_stage("render_weekly_gifs.R", "Re-render Weekly GIFs (tools/gif_*.R, in season, every 6+ days)",
+               call_fn = "run_render_weekly_gifs",
+               output = file.path(CACHE_DIR, "gif_render_status.json"),
+               strict_output = TRUE)) strict_failures <- c(strict_failures, "render_weekly_gifs.R")
+
 # 9.6. Visual media index (front-office#210). Scans web/public/media (the GIFs and PNGs
 # rendered above and by the tools/gif_*.R scripts) and writes
 # web/public/data/visual_media_index.json: per-file mtime as generated_at, GIF loop

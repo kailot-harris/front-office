@@ -8,6 +8,7 @@ ok <- function(label, cond) {
   else { cat(sprintf("[FAIL] %s\n", label)); failures <<- failures + 1L }
 }
 source("R/gif_duration.R")
+source("R/media_generated_at.R")
 source("export_visual_media_index.R")
 
 dir <- tempfile("media_"); dir.create(dir)
@@ -59,6 +60,26 @@ ok("NA duration serialises to JSON null, never \"NA\"",
    grepl('"duration_ms": null', txt, fixed = TRUE) && !grepl('"NA"', txt, fixed = TRUE))
 ok("empty/missing dir -> empty list",
    length(build_media_index(file.path(dir, "nope"), metadata)) == 0L)
+
+# Tracked + unchanged -> last commit time (a copy/clone's fresh mtime must not make it look new);
+# re-rendered (modified) -> its mtime.
+if (nzchar(Sys.which("git"))) {
+  repo <- tempfile("vmi_repo_"); dir.create(repo); pub <- file.path(repo, "media"); dir.create(pub)
+  g <- function(...) suppressWarnings(system2("git", c("-C", shQuote(repo), "-c", "user.name=t",
+                                                       "-c", "user.email=t@example.com", ...), stdout = TRUE, stderr = TRUE))
+  g("init", "-q"); file.copy(gif, file.path(pub, "a.gif"))
+  g("add", "--", "media/a.gif")
+  Sys.setenv(GIT_COMMITTER_DATE = "2026-11-17T20:11:09Z", GIT_AUTHOR_DATE = "2026-11-17T20:11:09Z")
+  g("commit", "-q", "-m", "x"); Sys.unsetenv(c("GIT_COMMITTER_DATE", "GIT_AUTHOR_DATE"))
+  Sys.setFileTime(file.path(pub, "a.gif"), Sys.time())
+  same <- build_media_index(pub, metadata, repo = repo)
+  ok("unchanged tracked GIF -> commit time, not its fresh mtime",
+     identical(same[[1]]$generated_at, "2026-11-17T20:11:09Z"))
+  con <- file(file.path(pub, "a.gif"), "ab"); writeBin(as.raw(0), con); close(con)
+  Sys.setFileTime(file.path(pub, "a.gif"), as.POSIXct("2026-11-21 10:00:00", tz = "UTC"))
+  rer <- build_media_index(pub, metadata, repo = repo)
+  ok("re-rendered tracked GIF -> its mtime", identical(rer[[1]]$generated_at, "2026-11-21T10:00:00Z"))
+}
 
 if (failures > 0L) { cat(sprintf("%d failure(s)\n", failures)); quit(status = 1L) }
 cat("All visual_media_index tests passed\n")
