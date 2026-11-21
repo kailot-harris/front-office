@@ -85,3 +85,13 @@ test('mediaUrl uses animations/ for NFL only', () => {
   assert.equal(G.mediaUrl('nfl', 'a.gif'), 'nfl/animations/a.gif');
   assert.equal(G.mediaUrl('mlb', 'a.gif'), 'mlb/media/a.gif');
 });
+
+test('formatDate uses Eastern time, not UTC', () => {
+  assert.equal(G.formatDate('2026-11-21T02:00:00Z'), 'Nov 20');
+  assert.equal(G.formatDate('2026-11-21T06:00:00Z'), 'Nov 21');
+  assert.equal(G.formatDate('not a date'), '');
+});
+
+test('caption is sport · title · Eastern date', () => {
+  assert.equal(G.caption({ sport: 'wnba', title: 'Bump', date: '2026-11-21T01:10:55Z' }), 'WNBA · Bump · Nov 20');
+});

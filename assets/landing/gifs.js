@@ -81,7 +81,7 @@
   function formatDate(iso) {
     var d = new Date(iso);
     if (isNaN(d)) return '';
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' });
   }
 
   function caption(slide) {
@@ -90,7 +90,8 @@
 
   var api = {
     SPORTS: SPORTS, isActive: isActive, isFresh: isFresh, mediaUrl: mediaUrl,
-    selectSlides: selectSlides, shuffle: shuffle, slideDelay: slideDelay, caption: caption
+    selectSlides: selectSlides, shuffle: shuffle, slideDelay: slideDelay, caption: caption,
+    formatDate: formatDate, DEFAULT_DELAY: DEFAULT_DELAY
   };
   root.FOGifs = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
@@ -148,13 +149,19 @@
       section.hidden = true;
     }
 
-    function schedule() {
+    // Single timer: always clear first so timers never stack. Started when the slide is
+    // actually showing (img onload, or immediately for a card/still).
+    function schedule(delay) {
       clearTimeout(state.timer);
-      if (state.playing && slides.length > 1) state.timer = setTimeout(function () { go(1, false); }, slideDelay(slides[state.i]));
+      state.timer = null;
+      state.pending = delay;
+      if (state.playing && !document.hidden && slides.length > 1) {
+        state.timer = setTimeout(function () { go(1, false); }, delay);
+      }
     }
 
     function preloadNext() {
-      if (!state.playing || slides.length < 2) return;
+      if (!state.playing || document.hidden || slides.length < 2) return;
       new Image().src = abs(slides[(state.i + 1) % slides.length].src);
     }
 
@@ -165,27 +172,46 @@
       cap.textContent = caption(s);
       frame.textContent = '';
       var src = state.playing ? s.src : s.still;
+      clearTimeout(state.timer);
+      state.timer = null;
       if (src) {
-        var img = el('img', { className: 'gf-img', alt: s.title, src: abs(src), decoding: 'async' });
-        img.onerror = function () {
-          if (slides[state.i] !== s) return;
-          if (src === s.still) { s.still = null; render(); return; }
-          slides.splice(state.i, 1);
-          if (!slides.length) return hide();
-          state.i = state.i % slides.length;
-          render();
+        var img = el('img', { className: 'gf-img', alt: s.title, decoding: 'async' });
+        img.onload = function () {
+          if (slides[state.i] !== s || img !== frame.firstChild) return;
+          schedule(state.playing ? slideDelay(s) : DEFAULT_DELAY);
+          preloadNext();
         };
+        img.onerror = function () {
+          if (slides[state.i] !== s || img !== frame.firstChild) return;
+          if (src === s.still) { s.still = null; render(); return; }
+          // Broken GIF: show its title card, advance after the fallback delay, then drop it.
+          s.failed = true;
+          frame.textContent = '';
+          frame.appendChild(el('p', { className: 'gf-card', text: caption(s) }));
+          if (slides.length === 1) return hide();
+          schedule(DEFAULT_DELAY);
+        };
+        img.src = abs(src);
         frame.appendChild(img);
       } else {
         frame.appendChild(el('p', { className: 'gf-card', text: caption(s) }));
+        schedule(DEFAULT_DELAY);
       }
       nextBtn.disabled = slides.length < 2;
-      schedule();
-      preloadNext();
     }
 
     function go(step, announce) {
-      state.i = (state.i + step) % slides.length;
+      var cur = slides[state.i];
+      var kept = slides.filter(function (x) { return !x.failed; });
+      if (!kept.length) return hide();
+      var at = kept.indexOf(cur);
+      if (at === -1) {
+        // Current slide was dropped: the next slide now sits at the count of kept slides before it.
+        at = slides.slice(0, state.i).filter(function (x) { return !x.failed; }).length % kept.length;
+        step = 0;
+      }
+      slides = kept;
+      state.i = (at + step) % slides.length;
       render();
       live.textContent = announce ? 'Slide ' + (state.i + 1) + ' of ' + slides.length + ': ' + caption(slides[state.i]) : '';
     }
@@ -196,6 +222,12 @@
       pauseBtn.setAttribute('aria-label', p ? 'Pause slideshow' : 'Play slideshow');
       render();
     }
+
+    document.addEventListener('visibilitychange', function () {
+      if (section.hidden) return;
+      if (document.hidden) { clearTimeout(state.timer); state.timer = null; return; }
+      if (state.playing && state.pending != null) { schedule(state.pending); preloadNext(); }
+    });
 
     pauseBtn.addEventListener('click', function () { setPlaying(!state.playing); });
     nextBtn.addEventListener('click', function () { go(1, true); });
