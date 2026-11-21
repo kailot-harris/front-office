@@ -30,6 +30,8 @@ suppressPackageStartupMessages({
 
 source("config.R")
 source("web_media_filter.R")
+source("R/gif_duration.R")
+source("web_media_index.R")
 
 # log_warn()/log_info() live in logging_utils.R. run_full_pipeline.R already source()s it
 # before any stage runs, so this guard only fires when the exporter is invoked directly
@@ -47,9 +49,13 @@ run_export_web_datasets <- function() {
 ")
 
   # Helper to safely serialize JSON with pretty formatting
-  write_json_clean <- function(data, filename) {
+  write_json_clean <- function(data, filename, na = NULL) {
     target_file <- file.path(WEB_DATA_DIR, filename)
-    json_text <- jsonlite::toJSON(data, pretty = TRUE, auto_unbox = TRUE, null = "null", digits = 4)
+    # `na` is only forwarded when given (the media index needs NA -> null); every other
+    # export keeps jsonlite's per-type default.
+    json_args <- list(data, pretty = TRUE, auto_unbox = TRUE, null = "null", digits = 4)
+    if (!is.null(na)) json_args$na <- na
+    json_text <- do.call(jsonlite::toJSON, json_args)
     writeLines(json_text, target_file, useBytes = TRUE)
     cat(sprintf("  OK Exported: %s (%.1f KB)
 ", filename, file.size(target_file) / 1024))
@@ -115,35 +121,36 @@ run_export_web_datasets <- function() {
     "gif_turnover_margin_race.gif"    = list(title = "Turnover Margin Trajectory", category = "epa", desc = "Cumulative turnover differential across weeks."),
     "gif_upset_timeline.gif"          = list(title = "Upset Timeline & Leverage", category = "standings", desc = "Timeline of the biggest upsets measured against the model's pre-game win probability."),
     "elo_scatter_animation.gif"       = list(title = "Elo Rating Distribution", category = "elo", desc = "Scatter animation of current team Elo ratings."),
+    "elo_current_rating.png"          = list(title = "Current Elo Ratings by Conference", category = "elo", desc = "Bar chart of every team's current Elo rating, ranked within the AFC and NFC and colored by division, with a dashed line at the 1500 league average."),
+    "elo_avg_opponent.png"            = list(title = "Average Opponent Elo by Conference", category = "elo", desc = "Bar chart of the average pre-game Elo of each team's opponents so far, ranked within the AFC and NFC and colored by division, with a dashed line at 1500."),
+    "elo_sos_scatter.png"             = list(title = "Elo vs Strength of Schedule", category = "elo", desc = "Scatter of each team's current Elo rating against the average pre-game Elo of its opponents, with dashed lines at 1500 splitting teams into four quadrants."),
+    "elo_trajectory.png"              = list(title = "Elo Rating Trajectories by Division", category = "elo", desc = "Week-by-week pre-game Elo rating for every team, one panel per division, with the last point being the current rating and a dashed line at 1500."),
     "gif_elo_heatmap.png"             = list(title = "Elo Rating Matrix Heatmap", category = "heatmaps", desc = "Full-season matrix heatmap of weekly Elo ratings across all franchises."),
     "gif_playoff_odds_heatmap.png"    = list(title = "Playoff Odds Heatmap", category = "heatmaps", desc = "Weekly probability heatmap of playoff qualification.")
   )
 
-  for (gf in gif_files) {
-    bname <- basename(gf)
-    dest <- file.path(WEB_ANIM_DIR, bname)
-    file.copy(gf, dest, overwrite = TRUE)
-  
-    meta <- media_metadata[[bname]]
-    if (is.null(meta)) {
-      meta <- list(
-        title = gsub("[_\\.]", " ", gsub("\\.(gif|png)$", "", bname)),
+  # Per-week projection charts (week<N>_projections.png) get a caption derived from N.
+  for (wf in basename(gif_files)) {
+    wk_m <- regmatches(wf, regexec("^week([0-9]+)_projections\\.png$", wf))[[1]]
+    if (length(wk_m) == 2L) {
+      media_metadata[[wf]] <- list(
+        title = sprintf("Week %s Model Projections", wk_m[2]),
         category = "general",
-        desc = "Pipeline generated visual artifact."
-      )
+        desc = sprintf("One row per Week %s matchup (away @ home): the home team's win probability as a dot either side of the 50%% line, with the favored team and predicted margin beside it.", wk_m[2]))
     }
-  
-    media_index[[length(media_index) + 1]] <- list(
-      generated_at = generated_at_utc,
-      filename    = bname,
-      title       = meta$title,
-      category    = meta$category,
-      description = meta$desc,
-      type        = if (grepl("\\.gif$", bname)) "gif" else "image",
-      size_bytes  = file.size(dest)
-    )
   }
-  write_json_clean(media_index, "visual_media_index.json")
+
+  # Files with no metadata entry are logged and left out (never a placeholder item).
+  media_index <- withCallingHandlers(
+    build_media_index(gif_files, media_metadata),
+    warning = function(w) {
+      log_warn(conditionMessage(w))
+      invokeRestart("muffleWarning")
+    })
+  for (m in media_index) {
+    file.copy(file.path(CACHE_DIR, m$filename), file.path(WEB_ANIM_DIR, m$filename), overwrite = TRUE)
+  }
+  write_json_clean(media_index, "visual_media_index.json", na = "null")
 
   # ------------------------------------------------------------------------------
   # 2. Season Standings & Projections (standings_projections.json)
@@ -565,7 +572,7 @@ run_export_web_datasets <- function() {
       if (file.exists(stale_dest)) unlink(stale_dest)
     }
     media_index <- media_index[media_sel$keep]
-    write_json_clean(media_index, "visual_media_index.json")
+    write_json_clean(media_index, "visual_media_index.json", na = "null")
   }
 
   all_matchups_list <- list()
