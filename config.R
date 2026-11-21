@@ -104,6 +104,12 @@ WNBA_MIN_ROOKIE <- 0.270       # $270,000 0-2 Year Minimum
 WNBA_ROTATION_SIZE <- 8
 
 # ------------------------------------------------------------------------------------------
+# GIF_RERENDER_DAYS (front-office weekly GIF re-render, 2026-11-21 design): render_weekly_gifs.R
+# re-runs tools/gif_*.R in season once the last successful render (cache/gif_render_status.json)
+# is this many days old. 6, not 7, so a weekly re-render lands before the landing slideshow's
+# 7-day window drops the previous set. Override for manual runs with FO_FORCE_GIF_RENDER=1.
+GIF_RERENDER_DAYS <- 6
+
 # Data Horizons
 # ------------------------------------------------------------------------------------------
 # These were validated empirically (not assumed) against wehoop::load_wnba_team_box()/

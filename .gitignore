@@ -188,3 +188,6 @@ finals_closeout.log
 # Test artifacts (root and web test suites) so test runs never trigger git stash push -u
 /test-results/
 /web/test-results/
+
+# Weekly GIF render state (render_weekly_gifs.R): machine-local, must survive the checkout guard stash
+cache/gif_render_status.json
