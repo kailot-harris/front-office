@@ -19,7 +19,11 @@ REM   sync-sports.yml runs at cron: '30 13 * * *' (13:30 UTC). Under Eastern
 REM   Standard Time (EST), 09:00 local is 14:00 UTC, so the aggregator pull fires
 REM   30 minutes BEFORE the local pipeline starts, causing a 24h deploy lag.
 REM   To solve this across DST boundaries, this script directly dispatches:
-REM     gh workflow run "Sync sport subtrees and deploy" --repo kailot-harris/front-office -f sports="wnba" -f deploy=true
+REM     gh workflow run "Sync sport subtrees and deploy" --repo kailot-harris/front-office -f sports="mlb nfl nba wnba" -f deploy=true
+REM   but only after a publish that pushed a new commit (publish_web.R exit 0 and
+REM   HEAD moved). It asks for all four sports because GitHub keeps only one
+REM   pending sync-sports run and drops the older request (see Step 3). A failed
+REM   dispatch is a [WARN] line and never changes the exit code.
 REM ==============================================================================
 
 set PROJECT_DIR=%~dp0
@@ -219,6 +223,10 @@ if %ERRORLEVEL% neq 0 (
 
 REM Step 2: Publish web artifacts and promote staged baseline
 echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 2: Running tools/publish_web.R --publish --mode=offseason... >> "%LOG_FILE%"
+REM PUB_HEAD_BEFORE feeds the Step 3 new-commit check. It is captured here, not
+REM between Rscript and the `if` below, so that `if` still sees Rscript's exit code.
+set PUB_HEAD_BEFORE=
+for /f "delims=" %%S in ('git rev-parse HEAD 2^>nul') do set PUB_HEAD_BEFORE=%%S
 "%RSCRIPT%" --vanilla tools/publish_web.R --publish --mode=offseason >> "%LOG_FILE%" 2>&1
 if %ERRORLEVEL% neq 0 (
     echo [%DATE% %TIME%] [ERROR] [schedule_weekly_offseason.bat] tools/publish_web.R failed with exit code %ERRORLEVEL%. >> "%LOG_FILE%"
@@ -229,29 +237,44 @@ if %ERRORLEVEL% neq 0 (
 )
 
 REM Step 3: Direct aggregator workflow dispatch to overcome Winter DST inversion
-echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 3: Dispatching aggregator sync-sports workflow... >> "%LOG_FILE%"
+REM
+REM New-commit signal: publish_web.R exited 0 (the block above exits otherwise)
+REM AND HEAD moved. publish_web.R commits and pushes only when every fatal
+REM assertion passed; a failed commit or push stops it with exit 1. A gate with
+REM nothing to publish leaves HEAD where it was, so there is nothing to sync.
+REM
+REM All four sports, not just wnba: sync-sports.yml runs in concurrency group
+REM sync-sports with cancel-in-progress false, and GitHub keeps only ONE pending
+REM run per group, replacing an older pending run with the newer one. If WNBA
+REM asked for sports=wnba and another sport asked for its own sport a minute
+REM later while a sync was running, WNBA's request would be dropped. A sync that
+REM always pulls all four makes any surviving run correct.
+REM
+REM A failed dispatch (gh missing, not signed in, network) is a [WARN] line and
+REM never changes this script's exit code: the publish already succeeded and the
+REM cron is the backstop. gh is found on PATH or under %ProgramFiles%\GitHub CLI,
+REM and run with `call` so a gh.cmd/gh.bat shim returns here. GH_BIN is stored
+REM WITHOUT embedded quotes (set "VAR=value") and quoted at each use; embedded
+REM quotes made `if not "%GH_BIN%"==""` parse as `""C:\...""` and cmd aborted
+REM with "not was unexpected at this time".
+set PUB_HEAD_AFTER=
+for /f "delims=" %%S in ('git rev-parse HEAD 2^>nul') do set PUB_HEAD_AFTER=%%S
+set SYNC_DISPATCH=0
+if defined PUB_HEAD_BEFORE if defined PUB_HEAD_AFTER if not "%PUB_HEAD_AFTER%"=="%PUB_HEAD_BEFORE%" set SYNC_DISPATCH=1
+if not "%SYNC_DISPATCH%"=="1" echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 3: aggregator sync not dispatched: no new commit was pushed ^(HEAD %PUB_HEAD_BEFORE% -^> %PUB_HEAD_AFTER%^). >> "%LOG_FILE%"
 set GH_BIN=
-where gh >nul 2>&1
-if %ERRORLEVEL% equ 0 (
-    set "GH_BIN=gh"
-) else (
-    if exist "C:\Program Files\GitHub CLI\gh.exe" (
-        set "GH_BIN=C:\Program Files\GitHub CLI\gh.exe"
-    )
-)
-
-REM GH_BIN is stored WITHOUT embedded quotes (set "VAR=value") and quoted at
-REM each use; embedded quotes made `if not "%GH_BIN%"==""` parse as
-REM `""C:\...""` and cmd aborted with "not was unexpected at this time".
-if defined GH_BIN (
-    "!GH_BIN!" workflow run "Sync sport subtrees and deploy" --repo kailot-harris/front-office -f sports="wnba" -f deploy=true >> "%LOG_FILE%" 2>&1
-    if !ERRORLEVEL! equ 0 (
-        echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Workflow dispatch successfully triggered. >> "%LOG_FILE%"
+if "%SYNC_DISPATCH%"=="1" where gh >nul 2>&1
+if "%SYNC_DISPATCH%"=="1" if not errorlevel 1 set "GH_BIN=gh"
+if "%SYNC_DISPATCH%"=="1" if not defined GH_BIN if exist "%ProgramFiles%\GitHub CLI\gh.exe" set "GH_BIN=%ProgramFiles%\GitHub CLI\gh.exe"
+if "%SYNC_DISPATCH%"=="1" if not defined GH_BIN echo [%DATE% %TIME%] [WARN] [schedule_weekly_offseason.bat] Step 3: GitHub CLI ^(gh^) not found on PATH or in "%ProgramFiles%\GitHub CLI"; aggregator sync NOT dispatched. The sync-sports.yml cron will pick this publish up later. >> "%LOG_FILE%"
+if "%SYNC_DISPATCH%"=="1" if defined GH_BIN (
+    echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Step 3: Dispatching aggregator sync-sports workflow: HEAD %PUB_HEAD_BEFORE% -^> %PUB_HEAD_AFTER%, sports="mlb nfl nba wnba". >> "%LOG_FILE%"
+    call "!GH_BIN!" workflow run "Sync sport subtrees and deploy" --repo kailot-harris/front-office -f sports="mlb nfl nba wnba" -f deploy=true >> "%LOG_FILE%" 2>&1
+    if errorlevel 1 (
+        echo [%DATE% %TIME%] [WARN] [schedule_weekly_offseason.bat] Workflow dispatch FAILED with exit code !ERRORLEVEL!. Publish is unaffected; the sync-sports.yml cron will pick it up later. >> "%LOG_FILE%"
     ) else (
-        echo [%DATE% %TIME%] [WARN] [schedule_weekly_offseason.bat] Workflow dispatch returned exit code !ERRORLEVEL!. >> "%LOG_FILE%"
+        echo [%DATE% %TIME%] [INFO] [schedule_weekly_offseason.bat] Workflow dispatch successfully triggered. >> "%LOG_FILE%"
     )
-) else (
-    echo [%DATE% %TIME%] [WARN] [schedule_weekly_offseason.bat] GitHub CLI (gh) not found; skipping direct workflow dispatch. >> "%LOG_FILE%"
 )
 
 REM ------------------------------------------------------------------------------
