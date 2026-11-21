@@ -62,6 +62,8 @@ DM_SPEC <- list(
   "landing_digest.json"              = list(builder = "build_landing_digest.R", max_lag_days = 2L,
     coverage_note = "No final game in the digest's yesterday list (off day or off-season)."),
   "matchups_slates.json"             = list(builder = "build_matchups_dataset.R",   max_lag_days = 2L),
+  "visual_media_index.json"          = list(builder = "export_visual_media_index.R", max_lag_days = 2L,
+    coverage_note = "Media inventory (per-item build stamps); content carries no game date."),
   "player_dna_profiles.json"         = list(builder = "build_player_dna_dataset.R", max_lag_days = 2L),
   "playoff_series_matchups.json"     = list(builder = "playoff_simulator.R",        max_lag_days = 2L,
     coverage_note = "Series simulation catalog; content carries no game date."),
