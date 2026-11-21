@@ -24,6 +24,14 @@
 # F -- which reads the generated_at stamp INSIDE each payload rather than its
 # mtime -- is what catches that, and it is the reason this wrapper calls a gate
 # instead of calling git.
+#
+# Sync dispatch (2026-11-21). In the publish modes, after a publish gate that
+# exited 0 AND pushed a new commit (refs/remotes/origin/main moved), this
+# wrapper dispatches the aggregator's workflow so the site deploys now instead
+# of whenever the late-running sync-sports.yml cron starts:
+#   gh workflow run "Sync sport subtrees and deploy" --repo kailot-harris/front-office -f sports="mlb nfl nba wnba" -f deploy=true
+# All four sports, for the reason given at Invoke-SyncSportsDispatch. A failed
+# dispatch is a [WARN] line and never changes this script's exit code.
 # ==============================================================================
 
 [CmdletBinding()]
@@ -331,6 +339,80 @@ function Invoke-AccumulatedBackup {
 }
 
 # ------------------------------------------------------------------------------
+# Dispatch the aggregator's "Sync sport subtrees and deploy" workflow after a
+# live publish that pushed a new commit (same as schedule_weekly_offseason.bat
+# Step 4). sync-sports.yml's cron is only a backstop: GitHub has been starting
+# it hours late (21:21-22:57 UTC observed in November 2026), so an 08:00
+# publish could sit unpublished most of the day without this.
+#
+# Gate: publish_web.R exited 0 AND refs/remotes/origin/main moved during the
+# gate (publish_web.R's `git push origin HEAD` moves it). Nothing pushed means
+# no dispatch.
+#
+# Why all four sports, not just MLB: sync-sports.yml uses
+# `concurrency: group: sync-sports, cancel-in-progress: false`, and GitHub
+# keeps only ONE pending run per concurrency group, replacing an older pending
+# run with a newer one. A sport-specific request can therefore be silently
+# dropped when another sport dispatches while a sync is running. A sync that
+# always pulls all four makes any surviving run correct for every sport.
+#
+# A failed dispatch (gh missing, not signed in, network) is a [WARN] line and
+# never changes this script's exit code: the publish already succeeded and the
+# cron is the backstop. gh is found the way schedule_weekly_offseason.bat finds
+# it: PATH first, then $env:ProgramFiles\GitHub CLI\gh.exe.
+# ------------------------------------------------------------------------------
+function Get-OriginMainSha {
+    # Returns the SHA, or '' when the ref cannot be read.
+    $sha = & git rev-parse --verify --quiet refs/remotes/origin/main
+    if ($LASTEXITCODE -ne 0 -or $null -eq $sha) { return '' }
+    return ($sha | Out-String).Trim()
+}
+
+function Invoke-SyncSportsDispatch([int]$PublishExit, [string]$OriginBefore, [string]$OriginAfter) {
+    if ($PublishExit -ne 0) {
+        Write-Log "[Sync Dispatch] Publish gate exited $PublishExit, so nothing was published. Skipping the sync-sports dispatch."
+        return
+    }
+    if (-not $OriginAfter) {
+        Write-Log "[WARN] [Sync Dispatch] Could not read refs/remotes/origin/main after the publish, so whether a new commit was pushed is unknown. Not dispatching; the sync-sports.yml cron will pick up any push."
+        return
+    }
+    if ($OriginAfter -eq $OriginBefore) {
+        Write-Log "[Sync Dispatch] Nothing new was pushed (origin/main still $OriginAfter). Skipping the sync-sports dispatch."
+        return
+    }
+    Write-Log "[Sync Dispatch] Publish pushed origin/main $OriginBefore -> $OriginAfter. Dispatching aggregator sync-sports workflow for mlb nfl nba wnba."
+
+    $ghExe = $null
+    $ghCmd = Get-Command gh -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($null -ne $ghCmd) {
+        $ghExe = $ghCmd.Source
+    } elseif ($env:ProgramFiles -and (Test-Path (Join-Path $env:ProgramFiles 'GitHub CLI\gh.exe'))) {
+        $ghExe = Join-Path $env:ProgramFiles 'GitHub CLI\gh.exe'
+    }
+    if ($null -eq $ghExe) {
+        Write-Log "[WARN] [Sync Dispatch] gh not found on PATH or in `$env:ProgramFiles\GitHub CLI. Sync-sports dispatch NOT sent; the publish stands and the sync-sports.yml cron is the backstop."
+        return
+    }
+
+    # stdout is captured into the log; gh's stderr is not redirected (see the
+    # PowerShell 5.1 note on native stderr), so the exit code is the verdict.
+    $ghExit = -1
+    try {
+        $ghOutput = & $ghExe workflow run 'Sync sport subtrees and deploy' --repo kailot-harris/front-office -f 'sports=mlb nfl nba wnba' -f 'deploy=true'
+        $ghExit = if ($null -eq $LASTEXITCODE) { -1 } else { $LASTEXITCODE }
+        Add-NativeOutputToLog $ghOutput
+    } catch {
+        Write-Log "[WARN] [Sync Dispatch] Running gh failed: $($_.Exception.Message)"
+    }
+    if ($ghExit -eq 0) {
+        Write-Log "[Sync Dispatch] Sync-sports dispatch sent for mlb nfl nba wnba."
+    } else {
+        Write-Log "[WARN] [Sync Dispatch] Sync-sports dispatch failed (gh exit $($ghExit): not signed in, network, or workflow not found). The publish stands; the sync-sports.yml cron is the backstop."
+    }
+}
+
+# ------------------------------------------------------------------------------
 # 1. The pipeline.
 # ------------------------------------------------------------------------------
 Write-Log "[Step 1/2] Starting MLB Analytics pipeline (run_full_pipeline.R)"
@@ -398,6 +480,12 @@ if (-not (Test-Path $PublishScript)) {
     exit $PipelineExit
 }
 
+# The sync-dispatch gate's "before" value (see Invoke-SyncSportsDispatch below):
+# publish_web.R pushes with `git push origin HEAD`, which also moves
+# refs/remotes/origin/main, so a different value after the gate means this run
+# pushed a new commit.
+$OriginBefore = Get-OriginMainSha
+
 $PublishOutput = & $Rscript $PublishScript @PublishArgs 2>&1
 $PublishExit = if ($null -eq $LASTEXITCODE) { -1 } else { $LASTEXITCODE }
 Add-NativeOutputToLog $PublishOutput
@@ -424,6 +512,10 @@ if ($PublishExit -eq 0) {
     Write-Log "[ERROR] Read the '-- Assertions --' block in logs\mlb_pipeline.log: every"
     Write-Log "[ERROR] failing assertion is on a '[FAIL]' line with its id, name, summary"
     Write-Log "[ERROR] and the offending file or value in its detail lines."
+}
+
+if ($Mode -eq 'publish' -or $Mode -eq 'publish-strict') {
+    Invoke-SyncSportsDispatch -PublishExit $PublishExit -OriginBefore $OriginBefore -OriginAfter (Get-OriginMainSha)
 }
 
 Invoke-AccumulatedBackup
