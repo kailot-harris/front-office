@@ -184,12 +184,9 @@
         img.onerror = function () {
           if (slides[state.i] !== s || img !== frame.firstChild) return;
           if (src === s.still) { s.still = null; render(); return; }
-          // Broken GIF: show its title card, advance after the fallback delay, then drop it.
+          // Broken GIF: drop it from rotation and advance now (go() hides when none remain).
           s.failed = true;
-          frame.textContent = '';
-          frame.appendChild(el('p', { className: 'gf-card', text: caption(s) }));
-          if (slides.length === 1) return hide();
-          schedule(DEFAULT_DELAY);
+          go(1, false);
         };
         img.src = abs(src);
         frame.appendChild(img);
