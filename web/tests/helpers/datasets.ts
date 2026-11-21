@@ -74,6 +74,8 @@ export const EXPECTED_DATA_FILES = [
   'matchups_index.json',
   'world_series.json',
   'landing_digest.json',
+  // Read by the Gallery pages at build time and the landing slideshow (front-office#210).
+  'visual_media_index.json',
 ] as const;
 
 /** Optional Statcast spatial artifacts written when Statcast caches are present, and offseason monitor. */

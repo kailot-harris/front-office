@@ -38,10 +38,17 @@ source("config.R")
 #' @param output Vector of expected output file paths
 #' @param start POSIXct timestamp when the stage began
 #' @param require_fresh Logical; if TRUE, warns if output was not updated during stage run
-.check_stage_output <- function(script_name, description, output, start, require_fresh = FALSE) {
+#' @param strict Logical; if TRUE (front-office#210), a missing or not-rewritten output is a
+#'   stage FAILURE (">>> [FAIL]", run_stage() returns FALSE) instead of a WARN. Never stops the pipeline.
+.check_stage_output <- function(script_name, description, output, start, require_fresh = FALSE,
+                                strict = FALSE) {
   if (is.null(output) || length(output) == 0) return(invisible(NULL))
   for (path in output) {
     if (!file.exists(path)) {
+      if (isTRUE(strict)) {
+        stop(sprintf(">>> [FAIL] %s: declared output %s does not exist after the stage ran.",
+                     script_name, path), call. = FALSE)
+      }
       message(sprintf(">>> [WARN] %s: declared output %s does not exist after stage ran.",
                       script_name, path))
       log_warn(sprintf("Declared stage output missing: %s", path),
@@ -51,8 +58,12 @@ source("config.R")
     }
     mt <- tryCatch(file.info(path)$mtime, error = function(e) NA)
     if (length(mt) != 1 || is.na(mt)) next
-    if (require_fresh && as.numeric(difftime(mt, start, units = "secs")) < -1) {
+    if ((require_fresh || isTRUE(strict)) && as.numeric(difftime(mt, start, units = "secs")) < -1) {
       age_h <- as.numeric(difftime(Sys.time(), mt, units = "hours"))
+      if (isTRUE(strict)) {
+        stop(sprintf(">>> [FAIL] %s: declared output %s was NOT rewritten (mtime %s, %.1f hours old).",
+                     script_name, path, format(mt, "%Y-%m-%d %H:%M:%S"), age_h), call. = FALSE)
+      }
       message(sprintf(
         ">>> [WARN] %s reported success but declared output %s was NOT rewritten (mtime %s, %.1f hours old). Possible silent no-op.",
         script_name, basename(path), format(mt, "%Y-%m-%d %H:%M:%S"), age_h))
@@ -77,9 +88,12 @@ source("config.R")
 #' @param call_fn Name of the function to invoke in .GlobalEnv after sourcing
 #' @param output Vector of declared output file paths to validate
 #' @param require_fresh If TRUE, requires outputs to be rewritten during this run
+#' @param strict_output If TRUE (front-office#210), a missing or not-rewritten declared output
+#'   makes the stage FAIL (">>> [FAIL]", returns FALSE); it still never stop()s the pipeline.
 #' @param ... Optional arguments passed to call_fn
 #' @return Logical TRUE if stage succeeded, FALSE if it failed
-run_stage <- function(script_name, description, call_fn = NULL, output = NULL, require_fresh = FALSE, ...) {
+run_stage <- function(script_name, description, call_fn = NULL, output = NULL, require_fresh = FALSE,
+                      strict_output = FALSE, ...) {
   message(sprintf("\n>>> [STAGE] %s (%s)...", description, script_name))
   
   if (!file.exists(script_name)) {
@@ -114,7 +128,8 @@ run_stage <- function(script_name, description, call_fn = NULL, output = NULL, r
       }
       
       # Validate declared outputs
-      .check_stage_output(script_name, description, output, start, require_fresh = require_fresh)
+      .check_stage_output(script_name, description, output, start, require_fresh = require_fresh,
+                          strict = strict_output)
       
       elapsed <- as.numeric(difftime(Sys.time(), start, units = "secs"))
       message(sprintf(">>> [COMPLETED] %s in %.2f seconds.", script_name, elapsed))
@@ -438,6 +453,22 @@ run_full_pipeline <- function(season = MLB_CURRENT_SEASON, force_refresh = FALSE
     require_fresh = force_refresh
   )
   
+  # ----------------------------------------------------------------------------
+  # Stage 19: Visual media index (front-office#210). Scans web/public/media (the GIFs and
+  # PNGs rendered by tools/gif_*.R) and writes web/public/data/visual_media_index.json:
+  # per-file mtime as generated_at, GIF loop duration_ms. The Gallery page reads it at build
+  # time and the landing slideshow in the browser. strict_output: a failed or no-op export is
+  # re-reported as ">>> [FAIL]" at the end (never stop(), exit code unchanged).
+  # ----------------------------------------------------------------------------
+  strict_failures <- character(0)
+  if (!run_stage(
+    script_name   = "export_visual_media_index.R",
+    description   = "Publish Visual Media Index (Gallery + Landing Slideshow)",
+    call_fn       = "run_export_visual_media_index",
+    output        = file.path(WEB_DATA_DIR, "visual_media_index.json"),
+    strict_output = TRUE
+  )) strict_failures <- c(strict_failures, "export_visual_media_index.R")
+
   pipeline_total_time <- as.numeric(difftime(Sys.time(), pipeline_start_time, units = "secs"))
   
   # Build execution summary
@@ -464,6 +495,12 @@ run_full_pipeline <- function(season = MLB_CURRENT_SEASON, force_refresh = FALSE
     stages_ok = sum(summary_df$status == "OK"),
     stages_total = nrow(summary_df)
   )
+
+  # Strict-stage failures must not change the exit code. Each is re-emitted in the
+  # ">>> [FAIL] <script>: ..." shape so the ops alert lists it.
+  for (.sf in strict_failures) {
+    message(sprintf(">>> [FAIL] %s: strict stage failed (missing or stale output); its file keeps the previous published copy. Other stages ran and the run exits 0.", .sf))
+  }
   
   invisible(summary_df)
 }

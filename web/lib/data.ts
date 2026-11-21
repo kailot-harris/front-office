@@ -184,3 +184,12 @@ export function getCbtPayrollOverview(): CbtLeagueOverview {
   return JSON.parse(fileContent) as CbtLeagueOverview;
 }
 
+
+import type { VisualMediaIndexEntry } from './visualMedia';
+
+/** Visual media index (export_visual_media_index.R): the single source for the Gallery pages. */
+export function getVisualMediaIndex(): VisualMediaIndexEntry[] {
+  const filePath = path.join(process.cwd(), 'public', 'data', 'visual_media_index.json');
+  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(fileContent) as VisualMediaIndexEntry[];
+}

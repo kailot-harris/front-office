@@ -101,7 +101,8 @@ DM_NOT_GAME_DATED <- c(
   "projections_season_players.json"  = "player projection table; no game dates in content",
   "projections_season_teams.json"    = "team projection table; no game dates in content",
   "spatial_index.json"               = "index of per-player spatial files; no game dates in content",
-  "statcast_spatial_analytics.json"  = "season-aggregate Statcast spatial metrics; no game dates in content"
+  "statcast_spatial_analytics.json"  = "season-aggregate Statcast spatial metrics; no game dates in content",
+  "visual_media_index.json"          = "media inventory (per-item build stamps); content carries no game date"
 )
 
 .dm_project_root <- function() {
