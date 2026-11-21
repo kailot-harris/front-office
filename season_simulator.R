@@ -125,8 +125,52 @@ schedule_df <- rbind(base_sched, extra_sched)
 stopifnot(nrow(schedule_df) == 1230)
 stopifnot(all(table(schedule_df$home) == 41))
 stopifnot(all(table(schedule_df$away) == 41))
+schedule_df$completed <- FALSE
+schedule_df$home_won  <- NA
+schedule_source <- "SYNTHETIC_BALANCED"
 
-cat(sprintf("      Generated %d games: exactly 41 home & 41 away games per team.\n", nrow(schedule_df)))
+# Real schedule and results. The balanced matrix above is only a fallback: with it,
+# every run re-simulated all 82 games from scratch and ignored games already played,
+# so projections only moved when ratings moved (they sat unchanged from Nov 13 to
+# Nov 21, 2026). With the real schedule, completed regular-season games count as
+# played and only the remaining games are simulated.
+real_sched_path <- if (exists("CACHE_MATCHUPS_SCHEDULE")) {
+  CACHE_MATCHUPS_SCHEDULE(CURR_SEASON)
+} else {
+  get_cache_file(sprintf("matchups_schedule_%d.rds", CURR_SEASON))
+}
+if (file.exists(real_sched_path)) {
+  rs <- readRDS(real_sched_path)
+  if ("season_type" %in% names(rs)) rs <- rs[rs$season_type == 2, , drop = FALSE]
+  rs <- rs[!duplicated(rs$game_id), , drop = FALSE]
+  h_abbr <- vapply(as.character(rs$home_abbreviation), normalize_abbr, character(1))
+  a_abbr <- vapply(as.character(rs$away_abbreviation), normalize_abbr, character(1))
+  real_df <- data.frame(
+    home = match(h_abbr, NBA_TEAMS$team),
+    away = match(a_abbr, NBA_TEAMS$team),
+    completed = as.logical(rs$status_type_completed) %in% TRUE,
+    home_score = suppressWarnings(as.numeric(rs$home_score)),
+    away_score = suppressWarnings(as.numeric(rs$away_score))
+  )
+  real_df <- real_df[!is.na(real_df$home) & !is.na(real_df$away), , drop = FALSE]
+  real_df$completed <- real_df$completed & !is.na(real_df$home_score) & !is.na(real_df$away_score)
+  real_df$home_won  <- ifelse(real_df$completed, real_df$home_score > real_df$away_score, NA)
+  # Accept only a full schedule (the NBA Cup can leave a team at 80-82 listed games).
+  per_team <- table(factor(c(real_df$home, real_df$away), levels = 1:n_teams))
+  if (nrow(real_df) >= 1200 && all(per_team >= 80)) {
+    schedule_df <- real_df[, c("home", "away", "completed", "home_won")]
+    schedule_source <- "REAL_SCHEDULE"
+  } else {
+    message(sprintf(">>> [WARN] Real schedule incomplete (%d games, min %d per team); using balanced fallback.",
+                    nrow(real_df), min(per_team)))
+  }
+} else {
+  message(sprintf(">>> [WARN] %s missing; using balanced fallback schedule.", real_sched_path))
+}
+
+cat(sprintf("      Schedule: %s, %d games (%d completed, %d to simulate).\n",
+            schedule_source, nrow(schedule_df), sum(schedule_df$completed),
+            sum(!schedule_df$completed)))
 
 # ------------------------------------------------------------------------------
 # 4. Load & Compute Model Ratings for 4 Variants
@@ -437,6 +481,9 @@ simulate_variant <- function(ratings, n_sims = 1000) {
   # Vectorized random simulation across all games and seasons
   u_matrix <- matrix(runif(nrow(schedule_df) * n_sims), nrow = nrow(schedule_df), ncol = n_sims)
   home_won <- (u_matrix < p_home_win)
+  # Games already played keep their real result in every simulated season.
+  done <- which(schedule_df$completed)
+  if (length(done)) home_won[done, ] <- schedule_df$home_won[done]
   
   # Team wins matrix (30 teams x n_sims)
   wins_matrix <- matrix(0L, nrow = n_teams, ncol = n_sims)
@@ -447,6 +494,14 @@ simulate_variant <- function(ratings, n_sims = 1000) {
     h_wins <- colSums(home_won[home_indices[[i]], , drop = FALSE])
     a_wins <- colSums(!home_won[away_indices[[i]], , drop = FALSE])
     wins_matrix[i, ] <- h_wins + a_wins
+    # Games not yet on the schedule (the NBA Cup leaves 2 per team unassigned until
+    # its group stage ends) are simulated as neutral-site games against an average
+    # opponent, so every team still finishes with 82.
+    n_missing <- 82L - length(home_indices[[i]]) - length(away_indices[[i]])
+    if (n_missing > 0) {
+      wins_matrix[i, ] <- wins_matrix[i, ] +
+        rbinom(n_sims, n_missing, pnorm(ratings[i] / MARGIN_SIGMA))
+    }
   }
   
   # Conference indices
@@ -523,10 +578,20 @@ cat(sprintf(paste0(
   max(rating_disagreement_sd),
   NBA_TEAMS$team[which.max(rating_disagreement_sd)]))
 
-ensemble_wins_matrix <- (ens_w_bu * sim_bottom_up$wins_matrix +
-                         ens_w_rap * sim_rapm$wins_matrix +
-                         ens_w_sf * sim_shot_fatigue$wins_matrix +
-                         ens_w_emb * sim_embeddings$wins_matrix)
+# Mixture, not average: each simulated season is taken whole from one variant,
+# chosen with the blend weights. Averaging the four win matrices season-by-season
+# cancelled most of the game-to-game randomness and left the win-total spread
+# about half its real size (SD under 2 wins with 60+ games left). The mixture keeps
+# the same expected wins and an honest spread.
+set.seed(SIM_SEED + 1L)
+ens_pick <- sample(1:4, N_SIMS, replace = TRUE, prob = c(ens_w_bu, ens_w_rap, ens_w_sf, ens_w_emb))
+variant_wins <- list(sim_bottom_up$wins_matrix, sim_rapm$wins_matrix,
+                     sim_shot_fatigue$wins_matrix, sim_embeddings$wins_matrix)
+ensemble_wins_matrix <- matrix(0, nrow = n_teams, ncol = N_SIMS)
+for (k in 1:4) {
+  cols <- which(ens_pick == k)
+  if (length(cols)) ensemble_wins_matrix[, cols] <- variant_wins[[k]][, cols]
+}
 
 ensemble_mean_wins   <- round(rowMeans(ensemble_wins_matrix), 1)
 ensemble_median_wins <- round(apply(ensemble_wins_matrix, 1, median), 1)
@@ -846,7 +911,9 @@ metadata_obj <- list(
   n_simulations        = N_SIMS,
   margin_sigma         = MARGIN_SIGMA,
   home_court_advantage = HCA_PTS,
-  total_schedule_games = nrow(schedule_df),
+  total_schedule_games = n_teams * 82L / 2L,
+  completed_games = sum(schedule_df$completed),
+  schedule_source = schedule_source,
   teams_count          = nrow(team_projections),
   players_count        = nrow(player_projections),
   models = list(

@@ -689,6 +689,24 @@ suppressMessages(capture.output(
 ok("load_shot_records() keeps shots cache when PBP game count equals shots game count",
    "s1" %in% tie_loaded$game_id && !("g1" %in% tie_loaded$game_id))
 
+# 6c-2: Same tie, but the shots cache has no game dates -> PBP wins so through_date is set
+tie_nodate_dir <- file.path(pbp_sb_root, "tie_games_no_dates")
+dir.create(tie_nodate_dir, recursive = TRUE)
+tie_nodate_shots <- tie_shots
+tie_nodate_shots$game_date <- NULL
+saveRDS(tie_nodate_shots, file.path(tie_nodate_dir, "nba_shots_2027.rds"))
+saveRDS(tie_pbp,          file.path(tie_nodate_dir, "nba_pbp_2027.rds"))
+tie_nodate_loaded <- NULL
+suppressMessages(capture.output(
+  tie_nodate_loaded <- env_default$load_shot_records(
+    shots_cache_path = file.path(tie_nodate_dir, "nba_shots_2027.rds"),
+    pbp_cache_path   = NULL,
+    season           = 2027L
+  )
+))
+ok("load_shot_records() uses PBP on a game-count tie when the shots cache has no game dates",
+   "g1" %in% tie_nodate_loaded$game_id && !("s1" %in% tie_nodate_loaded$game_id))
+
 # 6d: Row-count fallback when game_id is absent (non-shooting PBP rows do not inflate score)
 nogid_dir <- file.path(pbp_sb_root, "no_game_id")
 dir.create(nogid_dir, recursive = TRUE)

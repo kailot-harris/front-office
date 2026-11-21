@@ -145,6 +145,8 @@ export const ModelMetadataSchema = z
     margin_sigma: num.positive(),
     home_court_advantage: num,
     total_schedule_games: z.literal(1230),
+    completed_games: z.number().int().min(0).max(1230),
+    schedule_source: z.enum(['REAL_SCHEDULE', 'SYNTHETIC_BALANCED']),
     teams_count: z.literal(30),
     players_count: z.number().int().positive(),
     models: z

@@ -209,6 +209,12 @@ is_pbp_richer_than_shots <- function(pbp_df, shots_df) {
     pbp_g <- distinct_non_na_games(pbp_df)
     sh_g  <- distinct_non_na_games(shots_df)
     if (length(pbp_g) > 0L || length(sh_g) > 0L) {
+      # A tie keeps the shots cache unless it has no game dates (hoopR's shots
+      # release carries none) while PBP does; through_date would otherwise be null.
+      if (length(pbp_g) == length(sh_g)) {
+        has_dates <- function(d) "game_date" %in% names(d) && any(!is.na(d$game_date))
+        return(!has_dates(shots_df) && has_dates(pbp_df))
+      }
       return(length(pbp_g) > length(sh_g))
     }
   }
