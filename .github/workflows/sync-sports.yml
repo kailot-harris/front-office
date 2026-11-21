@@ -89,6 +89,12 @@ jobs:
           # (run 40247192528). Both remotes are given explicit credentials
           # below instead.
           persist-credentials: false
+          # Check out the branch tip when the job STARTS, not the commit pinned
+          # when it was dispatched. Syncs queue behind each other (concurrency
+          # group above); a queued run that starts from its dispatch-time commit
+          # is behind whatever the previous sync pushed, and its push is
+          # rejected as non-fast-forward (runs 44955984495, 44957230933).
+          ref: ${{ github.ref_name }}
 
       - name: Sync requested sport subtrees
         id: sync
