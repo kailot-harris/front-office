@@ -537,6 +537,51 @@
     @media (prefers-reduced-motion: reduce) {
       .trophy-stage video { display: none; }
     }
+
+    .site-footer {
+      width: 100%;
+      max-width: 1080px;
+      padding: 1.25rem 1rem 2rem;
+      box-sizing: border-box;
+      border-top: 1px solid #1c3333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.55rem;
+      text-align: center;
+      color: #94a3b8;
+      font-size: 0.78rem;
+      line-height: 1.5;
+    }
+    .footer-context {
+      margin: 0;
+      font-size: 0.8rem;
+      color: #cbd5e1;
+    }
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem 1.15rem;
+    }
+    .footer-links a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+      padding: 0.15rem 0.25rem;
+      border-radius: 0.25rem;
+    }
+    .footer-links a:hover { text-decoration: underline; }
+    .footer-links a:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .footer-cadence {
+      margin: 0;
+      font-size: 0.72rem;
+      color: #94a3b8;
+    }
   </style>
 </head>
 <body>
@@ -764,6 +809,15 @@
     <p class="gf-live fo-sr-only" aria-live="polite"></p>
   </section>
   </main>
+  <footer class="site-footer" aria-label="About this site">
+    <p class="footer-context">Front Office &middot; Data and forecasts for the NFL, NBA, WNBA and MLB</p>
+    <div class="footer-links">
+      <a href="https://github.com/kailot-harris/front-office/blob/main/docs/WALKTHROUGH.md" target="_blank" rel="noopener noreferrer">Start here</a>
+      <a href="https://github.com/kailot-harris/front-office/blob/main/docs/HOW_IT_WORKS.md" target="_blank" rel="noopener noreferrer">How the models work</a>
+      <a href="https://github.com/kailot-harris/front-office" target="_blank" rel="noopener noreferrer">Source code</a>
+    </div>
+    <p class="footer-cadence">Built from public sports data. In-season leagues update daily; offseason leagues update weekly.</p>
+  </footer>
   <script src="assets/landing/digest.js" defer></script>
   <script src="assets/landing/gifs.js" defer></script>
   <script>
