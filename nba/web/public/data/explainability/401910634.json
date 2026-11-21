@@ -1,12 +1,12 @@
 {
   "schema_version": "1.0",
   "game_id": "401910634",
-  "generated_at": "2026-11-21T14:02:53Z",
+  "generated_at": "2026-11-21T22:24:59Z",
   "data": {
     "projection_basis": "primary_ensemble",
-    "predicted_margin": 2.42,
-    "predicted_home_win_prob": 0.576,
-    "sigma_game": 12.6247,
+    "predicted_margin": 2.39,
+    "predicted_home_win_prob": 0.5751,
+    "sigma_game": 12.6174,
     "margin_waterfall": [
       {
         "key": "bottom_up",
@@ -23,8 +23,8 @@
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
-        "points": 0.78,
-        "detail": "20% Shot/Fatigue blend (NOP -5.72 vs UTA -9.64)"
+        "points": 0.76,
+        "detail": "20% Shot/Fatigue blend (NOP -5.59 vs UTA -9.38)"
       },
       {
         "key": "embeddings",
@@ -43,12 +43,6 @@
         "label": "Schedule & travel",
         "points": 0.05,
         "detail": "UTA fatigue 0.92 minus NOP fatigue 0.87"
-      },
-      {
-        "key": "rounding",
-        "label": "Component rounding",
-        "points": 0.01,
-        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,

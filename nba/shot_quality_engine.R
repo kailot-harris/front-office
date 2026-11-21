@@ -102,7 +102,27 @@ load_real_shots <- function(seasons) {
   for (sn in seasons) {
     season_cache <- file.path(.cache_dir, sprintf("nba_shots_%d.rds", sn))
     got <- NULL
-    if (file.exists(season_cache)) {
+    # The current season grows every game day, so its cache is refreshed from hoopR on
+    # every run; a frozen copy once left the 2026-27 shots stuck at 3 games. Completed
+    # seasons are fixed and keep reading from cache. If the fetch fails or returns fewer
+    # rows than the cache already holds, the cache is used instead.
+    if (sn == max(seasons)) {
+      fresh <- tryCatch(hoopR::load_nba_shots(seasons = sn), error = function(e) {
+        message(sprintf(">>> [WARN] hoopR refresh failed for current season %d: %s", sn, conditionMessage(e)))
+        NULL
+      })
+      cached_n <- if (file.exists(season_cache)) {
+        tryCatch(nrow(readRDS(season_cache)), error = function(e) 0L)
+      } else 0L
+      if (!is.null(fresh) && nrow(fresh) > 0 && nrow(fresh) >= cached_n) {
+        saveRDS(fresh, season_cache)
+        got <- fresh
+        used <- c(used, sprintf("hoopR season %d", sn))
+        message(sprintf(">>> [SHOT QUALITY] Refreshed current season %d via hoopR (%s records).",
+                        sn, format(nrow(fresh), big.mark = ",")))
+      }
+    }
+    if (is.null(got) && file.exists(season_cache)) {
       got <- tryCatch(readRDS(season_cache), error = function(e) NULL)
       if (!is.null(got) && nrow(got) > 0) {
         message(sprintf(">>> [SHOT QUALITY] Loaded season %d from cache (%s records).",

@@ -1,12 +1,12 @@
 {
   "schema_version": "1.0",
   "game_id": "401910479",
-  "generated_at": "2026-11-21T14:02:53Z",
+  "generated_at": "2026-11-21T22:24:59Z",
   "data": {
     "projection_basis": "primary_ensemble",
-    "predicted_margin": -1.44,
-    "predicted_home_win_prob": 0.4519,
-    "sigma_game": 11.907,
+    "predicted_margin": -1.74,
+    "predicted_home_win_prob": 0.4417,
+    "sigma_game": 11.8655,
     "margin_waterfall": [
       {
         "key": "bottom_up",
@@ -23,8 +23,8 @@
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
-        "points": -1.12,
-        "detail": "20% Shot/Fatigue blend (DEN +1.85 vs OKC +7.47)"
+        "points": -1.43,
+        "detail": "20% Shot/Fatigue blend (DEN +2.33 vs OKC +9.48)"
       },
       {
         "key": "embeddings",
@@ -43,6 +43,12 @@
         "label": "Schedule & travel",
         "points": 1.55,
         "detail": "OKC fatigue 1.55 minus DEN fatigue 0.00"
+      },
+      {
+        "key": "rounding",
+        "label": "Component rounding",
+        "points": 0.01,
+        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,
