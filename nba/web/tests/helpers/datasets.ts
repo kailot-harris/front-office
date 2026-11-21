@@ -112,6 +112,8 @@ export const EXPECTED_DATA_FILES = [
   'shots_metadata.json',
   // Consumed by the front-office landing page (front-office#200), not a route here.
   'landing_digest.json',
+  // Read by the Gallery page at build time and the landing slideshow (front-office#210).
+  'visual_media_index.json',
 ] as const;
 export type DataFileName = (typeof EXPECTED_DATA_FILES)[number];
 

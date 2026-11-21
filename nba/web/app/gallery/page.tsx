@@ -1,4 +1,6 @@
 import GalleryClient from '@/components/GalleryClient';
+import { getVisualMediaIndex } from '@/lib/data';
+import { toGalleryItems } from '@/lib/visualMedia';
 
 export const metadata = {
   title: 'Visual Media Gallery & Race Animations | NBA Analytics',
@@ -6,9 +8,10 @@ export const metadata = {
 };
 
 export default function GalleryPage() {
+  const mediaItems = toGalleryItems(getVisualMediaIndex());
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <GalleryClient />
+      <GalleryClient mediaItems={mediaItems} />
     </div>
   );
 }

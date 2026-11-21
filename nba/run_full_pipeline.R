@@ -255,6 +255,17 @@ run_stage("tools/plot_today_predictions.R", "Render Daily Predictions Image (or 
           output = c(file.path(CACHE_DIR, "nba_predictions_today.png"),
                      file.path(CACHE_DIR, "nba_predictions_today.gif")))
 
+# 9.6. Visual media index (front-office#210). Scans web/public/media (the GIFs and PNGs
+# rendered above and by the tools/gif_*.R scripts) and writes
+# web/public/data/visual_media_index.json: per-file mtime as generated_at, GIF loop
+# duration_ms. The Gallery page reads it at build time and the landing slideshow in the
+# browser. strict_output: a failed or no-op export is re-reported as ">>> [FAIL]" at the
+# bottom (exit code unchanged, never stop()) and the board keeps its previous index.
+if (!run_stage("export_visual_media_index.R", "Publish Visual Media Index (Gallery + Landing Slideshow)",
+               call_fn = "run_export_visual_media_index",
+               output = file.path("web", "public", "data", "visual_media_index.json"),
+               strict_output = TRUE)) strict_failures <- c(strict_failures, "export_visual_media_index.R")
+
 # 10. Front-Office Operations Alert Dispatcher (Issue #18)
 run_stage("notify_pipeline_ops.R", "Dispatch Front-Office Operations & Calibration Telemetry",
           call_fn = "run_notify_pipeline_ops")
