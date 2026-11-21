@@ -1,0 +1,34 @@
+/* Landing-page "This week's visuals" slideshow (front-office#210). Uses only the shared --fo-* tokens. */
+.gifs {
+  width: min(1100px, calc(100% - 2rem));
+  margin: 0 auto var(--fo-space-8);
+  font-family: var(--fo-font-sans);
+  color: var(--fo-text);
+}
+.gifs[hidden] { display: none; }
+.gifs h2 { font-size: var(--fo-text-xl); font-weight: var(--fo-weight-medium); margin: 0 0 var(--fo-space-3); }
+.gf-figure {
+  margin: 0; background: var(--fo-surface-raised); border: 1px solid var(--fo-border);
+  border-radius: var(--fo-radius-lg); padding: var(--fo-space-3);
+}
+.gf-link { display: block; border-left: 4px solid var(--fo-accent); border-radius: var(--fo-radius); color: var(--fo-text); }
+.gf-link[data-sport="nfl"] { border-left-color: var(--fo-nfl-accent); }
+.gf-link[data-sport="nba"] { border-left-color: var(--fo-nba-accent); }
+.gf-link[data-sport="wnba"] { border-left-color: var(--fo-wnba-accent); }
+.gf-link[data-sport="mlb"] { border-left-color: var(--fo-mlb-accent); }
+.gf-link:focus-visible { outline: var(--fo-focus-width) solid var(--fo-accent); outline-offset: 2px; }
+.gf-frame {
+  aspect-ratio: 16 / 9; display: flex; align-items: center; justify-content: center;
+  background: var(--fo-surface); border-radius: var(--fo-radius); overflow: hidden;
+}
+.gf-img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+.gf-card { margin: 0; padding: var(--fo-space-4); font-size: var(--fo-text-lg); text-align: center; }
+.gf-caption { font-size: var(--fo-text-sm); color: var(--fo-text-muted); margin-top: var(--fo-space-2); }
+.gf-controls { display: flex; gap: var(--fo-space-2); margin-top: var(--fo-space-2); }
+.gf-controls button {
+  font: inherit; font-size: var(--fo-text-sm); cursor: pointer; min-height: 32px; min-width: 64px;
+  padding: var(--fo-space-1) var(--fo-space-3); border-radius: var(--fo-radius);
+  border: 1px solid var(--fo-border); background: var(--fo-surface-raised); color: var(--fo-text);
+}
+.gf-controls button:disabled { cursor: default; color: var(--fo-text-muted); }
+.gf-controls button:focus-visible { outline: var(--fo-focus-width) solid var(--fo-accent); outline-offset: 2px; }
