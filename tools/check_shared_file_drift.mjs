@@ -52,6 +52,11 @@ const SHARED_FILES = [
   'web/lib/exportSvgAsPng.ts',
   'web/lib/exportToCsv.ts',
   'web/lib/basePath.ts',
+  // Weekly GIF render (2026-11-21 plan, Task 5): shared R helpers, byte-identical in all four.
+  'R/gif_duration.R',
+  'tests/test_gif_duration.R',
+  'R/media_generated_at.R',
+  'tests/test_media_generated_at.R',
 ];
 
 // Replaces every casing of each sport's name with a single placeholder, so
