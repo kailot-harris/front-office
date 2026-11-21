@@ -8,6 +8,7 @@ ok <- function(label, cond) {
 }
 source("config.R")
 source("R/gif_duration.R")
+source("R/media_generated_at.R")
 source("web_media_index.R")
 
 dir <- tempfile("media_"); dir.create(dir)
@@ -65,6 +66,25 @@ idx3 <- withCallingHandlers(
 ok("nonexistent file is omitted with a warning (no NA generated_at)",
    length(idx3) == 0L && any(grepl("gone.png", warned_gone, fixed = TRUE)))
 ok("empty input -> empty list", length(build_media_index(character(0), metadata)) == 0L)
+
+# published_dir: identical tracked copy -> its commit time; re-rendered (different bytes) -> mtime.
+if (nzchar(Sys.which("git"))) {
+  repo <- tempfile("vmi_repo_"); dir.create(repo); pub <- file.path(repo, "anim"); dir.create(pub)
+  g <- function(...) suppressWarnings(system2("git", c("-C", shQuote(repo), "-c", "user.name=t",
+                                                       "-c", "user.email=t@example.com", ...), stdout = TRUE, stderr = TRUE))
+  g("init", "-q"); file.copy(gif, file.path(pub, "a.gif"))
+  g("add", "--", "anim/a.gif")
+  Sys.setenv(GIT_COMMITTER_DATE = "2026-11-17T20:11:09Z", GIT_AUTHOR_DATE = "2026-11-17T20:11:09Z")
+  g("commit", "-q", "-m", "x"); Sys.unsetenv(c("GIT_COMMITTER_DATE", "GIT_AUTHOR_DATE"))
+  src <- file.path(dir, "src"); dir.create(src); s1 <- file.path(src, "a.gif"); file.copy(gif, s1)
+  Sys.setFileTime(s1, Sys.time())
+  same <- build_media_index(s1, metadata, published_dir = pub, repo = repo)
+  ok("unchanged published copy -> commit time", identical(same[[1]]$generated_at, "2026-11-17T20:11:09Z"))
+  con <- file(s1, "ab"); writeBin(as.raw(0), con); close(con)
+  Sys.setFileTime(s1, as.POSIXct("2026-11-21 10:00:00", tz = "UTC"))
+  rer <- build_media_index(s1, metadata, published_dir = pub, repo = repo)
+  ok("re-rendered file (differs from published) -> its mtime", identical(rer[[1]]$generated_at, "2026-11-21T10:00:00Z"))
+}
 
 if (failures > 0L) { cat(sprintf("%d failure(s)\n", failures)); quit(status = 1L) }
 cat("All visual_media_index tests passed\n")

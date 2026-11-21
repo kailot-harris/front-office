@@ -44,3 +44,27 @@ select_publishable_media <- function(filenames, mtimes, active_week, now, max_gi
   }
   data.frame(filename = filenames, keep = keep, reason = reason, stringsAsFactors = FALSE)
 }
+
+#' Should cache/<filename> be copied into the published media dir?
+#' Uses cache/gif_render_outcome.json written by render_weekly_gifs.R every run. A file whose
+#' tools/<stem>.R script FAILED this run is never copied (its cache file is a leftover from an
+#' older render); one whose script exited 0 must have been written at/after the run start
+#' (2 s slack). With no outcome file, or a stage that skipped (empty lists), every file is
+#' eligible; the exporter's copy.date = TRUE still keeps the real render time.
+#' @return list(copy = logical, reason = character)
+gif_cache_copy_ok <- function(filename, cache_file, outcome_path) {
+  if (!file.exists(outcome_path)) return(list(copy = TRUE, reason = ""))
+  oc <- tryCatch(jsonlite::fromJSON(outcome_path), error = function(e) NULL)
+  if (is.null(oc)) return(list(copy = TRUE, reason = ""))
+  script <- paste0(tools::file_path_sans_ext(filename), ".R")
+  if (script %in% oc$failed) {
+    return(list(copy = FALSE, reason = sprintf("%s failed this run; cache copy is a stale render", script)))
+  }
+  if (script %in% oc$rendered) {
+    run_at <- as.POSIXct(oc$run_at, format = "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+    if (!is.na(run_at) && file.exists(cache_file) && file.mtime(cache_file) < run_at - 2) {
+      return(list(copy = FALSE, reason = sprintf("%s exited 0 but did not rewrite %s", script, filename)))
+    }
+  }
+  list(copy = TRUE, reason = "")
+}
