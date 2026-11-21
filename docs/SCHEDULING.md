@@ -169,6 +169,39 @@ log, copy it out**, or two rotations will discard it.
 Rotation is owned by the 05:15 task only, so the 09:00 publish can never rotate away a
 log the pipeline just wrote. Both the live log and the `.old` generation are gitignored.
 
+### Weekly GIF stage and its history caches
+
+`render_weekly_gifs.R` (stage "Re-render Weekly GIFs") re-renders every `tools/gif_*.R`
+chart in season once the last successful render is 6+ days old (`FO_FORCE_GIF_RENDER=1`
+forces it). Before the GIFs it now refreshes **both history caches** the GIFs read, each
+as a history builder (`GIF_HISTORY_BUILDERS`):
+
+| Builder | Cache | Feeds | Timeout |
+|---|---|---|---|
+| `tools/turnover_margin_history.R` | `CACHE_TURNOVER_HISTORY` | `gif_turnover_margin_race.R` | 600 s |
+| `tools/playoff_odds_history_backfill.R` | `CACHE_PLAYOFF_ODDS_HISTORY` | `gif_playoff_odds_heatmap.R`, `gif_playoff_prob_bump.R` | `PLAYOFF_ODDS_HISTORY_TIMEOUT_SEC` (3600 s) |
+
+The stage runs inside the 05:15 pipeline (`NFL_analytics_task_01`), immediately before the
+export stage that copies the GIFs into `web/public/animations`.
+
+The playoff-odds backfill only simulates completed weeks not yet in the cache, at
+`N_SEASON_SIMULATIONS` = 1000 (measured 2026-11-21 on the scheduler laptop):
+
+- **Incremental week** (the normal weekly run): about 114 s.
+- **Full rebuild**: about 1166 s for weeks 1-10; about 35 min late in the season (18 weeks).
+  Capped at `PLAYOFF_ODDS_HISTORY_TIMEOUT_SEC` (3600 s); on timeout the builder fails and
+  its two GIFs are marked failed.
+- A full rebuild happens on the **first run after this change is deployed** (no sidecar
+  yet), on a **season change**, or whenever `cache/playoff_odds_history_meta.json`
+  (gitignored) is missing or names another season.
+
+Worst case the whole GIF stage takes about 35-60+ min on a full-rebuild run (normally a few
+minutes plus the GIF renders, ~1453 s measured on a forced run with a full rebuild), which
+still finishes well before the 09:00 publish. The log shows `>>> [OK] builder <script>` per builder; a
+failed builder logs `>>> [FAIL] <script> ... skipping dependents: ...`, and those GIFs are
+recorded as failed in `cache/gif_render_outcome.json`, so their old files are not published
+with a new date. No GIF script is excluded from the schedule any more.
+
 ---
 
 ## Timing: live by about 09:04

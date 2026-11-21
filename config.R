@@ -739,6 +739,10 @@ CACHE_PLAYOFF_ODDS <- file.path(CACHE_DIR, "playoff_odds.rds")
 # division_win_prob, playoff_prob, bye_prob. Same per-team fields CACHE_PLAYOFF_ODDS already
 # produces for "now", snapshotted across every historical week instead of just the latest.
 CACHE_PLAYOFF_ODDS_HISTORY <- file.path(CACHE_DIR, "playoff_odds_history.rds")
+# CACHE_PLAYOFF_ODDS_HISTORY_META: gitignored sidecar JSON ({season, max_week, built_at}) naming
+# the season CACHE_PLAYOFF_ODDS_HISTORY was built for (#194). Missing or a different season
+# than CURRENT_SEASON -> tools/playoff_odds_history_backfill.R rebuilds every week.
+CACHE_PLAYOFF_ODDS_HISTORY_META <- file.path(CACHE_DIR, "playoff_odds_history_meta.json")
 # CACHE_TURNOVER_HISTORY: one row per (week, team) - columns week, team, takeaways,
 # giveaways, turnover_margin, cumulative_margin. No turnover data existed anywhere in this
 # repo's caches before this phase (issue #19).
@@ -788,6 +792,14 @@ WEB_ANIM_DIR     <- file.path(WEB_PUBLIC_DIR, "animations")
 # 6, not 7, so a weekly re-render lands before the landing slideshow's 7-day window drops the
 # previous set. Override for manual runs with FO_FORCE_GIF_RENDER=1.
 GIF_RERENDER_DAYS <- 6
+# PLAYOFF_ODDS_HISTORY_TIMEOUT_SEC (#194): timeout for tools/playoff_odds_history_backfill.R when
+# render_weekly_gifs.R runs it as a history builder (other builders and GIF scripts keep the
+# stage's 600 s). Measured 2026-11-21 on the scheduler laptop, N_SEASON_SIMULATIONS = 1000:
+# one incremental week (week 10, weeks 1-9 cached) took 114 s end to end; a full rebuild from an
+# empty cache (new season or missing sidecar; weeks 1-10) took 1166 s, 105-149 s per week.
+# A full 18-week regular season would take about 18 x 117 s = ~35 min, over the 600 s stage
+# timeout, so this builder gets 3600 s rather than fewer trials.
+PLAYOFF_ODDS_HISTORY_TIMEOUT_SEC <- 3600
 
 # MEDIA_GIF_MAX_AGE_DAYS: the web gallery only shows a GIF whose cache/ file was
 # modified within this many days (rule in web_media_filter.R, applied by

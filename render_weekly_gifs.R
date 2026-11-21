@@ -33,13 +33,24 @@ GIF_RENDER_TIMEOUT_SEC <- 600
 
 # Audit 2026-11-21 (all 17 tools/gif_*.R). No script hard-codes a path (all resolve the
 # root via NFL_PROJECT_DIR / --file= / cwd with config.R); none plots random draws (the
-# set.seed/slice_sample in gif_elo_heatmap.R picks console spot-check rows only). The
-# exclusions below read history caches that no pipeline stage refreshes, so a weekly
-# re-render would stamp weeks-old numbers with a fresh date.
-GIF_RENDER_EXCLUDED <- c(
-  "gif_playoff_odds_heatmap.R" = "reads CACHE_PLAYOFF_ODDS_HISTORY, built only by hand (tools/playoff_odds_history_backfill.R; weeks 1-6 as of 2026-11-21)",
-  "gif_playoff_prob_bump.R"    = "reads CACHE_PLAYOFF_ODDS_HISTORY, built only by hand (tools/playoff_odds_history_backfill.R; weeks 1-6 as of 2026-11-21)",
-  "gif_turnover_margin_race.R" = "reads CACHE_TURNOVER_HISTORY, built only by hand (tools/turnover_margin_history.R; weeks 1-5 as of 2026-11-21)"
+# set.seed/slice_sample in gif_elo_heatmap.R picks console spot-check rows only). A script
+# whose input no stage refreshes belongs here (name = basename, value = reason), else a weekly
+# re-render would stamp old numbers with a fresh date. Empty since #194: the three
+# history-reading GIFs now get their caches from GIF_HISTORY_BUILDERS below.
+GIF_RENDER_EXCLUDED <- setNames(character(0), character(0))
+
+# History prerequisites: builder script -> the GIF scripts (basenames) that read its output.
+# On a due (or forced) run each builder runs first, in its own process through the same
+# runner (timeout, tree kill). If a builder fails, its dependents are recorded as failed for
+# the run and not run, so gif_cache_copy_ok() refuses their old cache files and an old
+# history is never published with a new date.
+GIF_HISTORY_BUILDERS <- list(
+  "tools/turnover_margin_history.R" = c("gif_turnover_margin_race.R"),
+  "tools/playoff_odds_history_backfill.R" = c("gif_playoff_odds_heatmap.R", "gif_playoff_prob_bump.R")
+)
+# Per-builder timeouts (config.R constants); a builder not listed uses the stage timeout.
+GIF_HISTORY_BUILDER_TIMEOUTS <- c(
+  "tools/playoff_odds_history_backfill.R" = PLAYOFF_ODDS_HISTORY_TIMEOUT_SEC
 )
 
 
@@ -109,7 +120,9 @@ run_render_weekly_gifs <- function(media_dir = WEB_ANIM_DIR, scripts = list_gif_
                                    in_season = nfl_gif_in_season(now), now = Sys.time(),
                                    status_path = file.path(CACHE_DIR, "gif_render_status.json"),
                                    outcome_path = file.path(dirname(status_path), "gif_render_outcome.json"),
-                                   timeout_sec = GIF_RENDER_TIMEOUT_SEC) {
+                                   timeout_sec = GIF_RENDER_TIMEOUT_SEC,
+                                   builders = GIF_HISTORY_BUILDERS,
+                                   builder_timeouts = GIF_HISTORY_BUILDER_TIMEOUTS) {
   force <- identical(Sys.getenv("FO_FORCE_GIF_RENDER"), "1")
   result <- list(rendered = character(0), failed = character(0), skipped_reason = NULL)
   fmt <- "%Y-%m-%dT%H:%M:%SZ"
@@ -142,7 +155,29 @@ run_render_weekly_gifs <- function(media_dir = WEB_ANIM_DIR, scripts = list_gif_
     return(result)
   }
 
+  # History builders first; a failed builder blocks its dependent GIF scripts for this run.
+  blocked <- character(0)
+  for (b in names(builders)) {
+    log_file <- tempfile(paste0(tools::file_path_sans_ext(basename(b)), "_"), fileext = ".log")
+    t0 <- Sys.time()
+    b_timeout <- if (b %in% names(builder_timeouts)) builder_timeouts[[b]] else timeout_sec
+    st <- tryCatch(run_gif_script(b, log_file, b_timeout), error = function(e) -1L)
+    secs <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
+    if (identical(as.integer(st), 0L)) {
+      message(sprintf(">>> [OK] builder %s (%.0f s)", basename(b), secs))
+    } else {
+      blocked <- union(blocked, builders[[b]])
+      tail_txt <- if (file.exists(log_file)) paste(utils::tail(readLines(log_file, warn = FALSE), 5), collapse = " | ") else ""
+      .gif_log("warn", sprintf(">>> [FAIL] %s (exit %s, %.0f s) %s; skipping dependents: %s",
+                               basename(b), st, secs, tail_txt, paste(builders[[b]], collapse = ", ")))
+    }
+  }
+  # Dependents of a failed builder count as failed even when they are not in `scripts`
+  # (so the exporter refuses their stale cache files).
+  result$failed <- c(result$failed, blocked)
+
   for (s in scripts) {
+    if (basename(s) %in% blocked) next
     log_file <- tempfile(paste0(tools::file_path_sans_ext(basename(s)), "_"), fileext = ".log")
     t0 <- Sys.time()
     st <- tryCatch(run_gif_script(s, log_file, timeout_sec), error = function(e) -1L)
