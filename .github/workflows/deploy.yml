@@ -162,9 +162,8 @@ jobs:
       # slot refresh committed NBA's scores but not its re-graded digest, and
       # the landing page showed nine finished games as "Not final"). Runs on
       # the assembled output, before the Pages upload, so a failure here
-      # leaves the previously deployed site live. NFL is warn-only for now
-      # (held by the owner pending NFL work); NBA, WNBA and MLB block. See
-      # tools/check_landing_freshness.mjs.
+      # leaves the previously deployed site live. All four sports block
+      # (WARN_ONLY is empty). See tools/check_landing_freshness.mjs.
       - name: Check landing digests agree with scores files
         run: node tools/check_landing_freshness.mjs site
 

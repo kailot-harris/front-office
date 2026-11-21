@@ -39,8 +39,8 @@ t('missing site root is a usage error', r.status === 2);
 // so the real stale NBA fixture is checked with NBA marked warn-only instead
 // of making up an NFL record.
 const { checkSite, WARN_ONLY } = await import('./check_landing_freshness.mjs');
-t('nfl is warn-only, and nba, wnba and mlb are not',
-  WARN_ONLY.has('nfl') && !WARN_ONLY.has('nba') && !WARN_ONLY.has('wnba') && !WARN_ONLY.has('mlb'));
+t('no sport is warn-only: mlb, nba, nfl and wnba all block',
+  WARN_ONLY.size === 0);
 let res = checkSite(join(fx, 'stale'), { warnOnly: new Map([['nba', 'test reason']]) });
 t('a warn-only sport mismatch does not fail', res.failures.length === 0 && res.warnings.length === 1);
 t('a warn-only sport mismatch prints >>> [WARN]',
