@@ -17,6 +17,7 @@
 #   png         tools/viz_common.R
 #   ggimage     tools/gif_net_rating_quadrant.R
 #
+#   processx    render_weekly_gifs.R (runs each GIF script, kills its process tree on timeout)
 #   xgboost     xgboost_shap_engine.R (#124), which tests/test_xgboost_shap_engine.R
 #               sources; it trains the secondary TreeSHAP diagnostic
 #   slider      xgboost_shap_engine.R's rolling-window features
@@ -36,3 +37,4 @@ png
 ggimage
 xgboost
 slider
+processx
