@@ -22,10 +22,10 @@
  * A sport with no digest or no comparable scores file is skipped with a
  * `>>> [SKIP]` line; nothing is inferred or filled in.
  *
- * NFL IS WARN-ONLY. The owner is holding NFL's slot refresh change for other
- * NFL work, so slots B/C still do not commit NFL's re-graded digest and an NFL
- * mismatch is expected after a slot run. NFL mismatches print `>>> [WARN]`
- * and do not fail the deploy; NBA, WNBA and MLB still block. See WARN_ONLY.
+ * WARN-ONLY SPORTS. A sport listed in WARN_ONLY prints `>>> [WARN]` for its
+ * mismatches and does not fail the deploy. The list is empty: every sport
+ * blocks. NFL was warn-only until the slot refresh started committing its
+ * re-graded digest; keep the mechanism for a future, owner-approved hold.
  *
  * Usage:
  *   node tools/check_landing_freshness.mjs <site-root>
@@ -42,11 +42,10 @@ import { fileURLToPath } from 'node:url';
 const SPORTS = ['mlb', 'nba', 'nfl', 'wnba'];
 
 // Sports whose mismatches are reported as `>>> [WARN]` and never fail the
-// deploy, with the reason. Remove a sport once its slot refresh commits its
-// digest (tools/refresh_paths_allowlist.json holds the matching exception).
-export const WARN_ONLY = new Map([
-  ['nfl', 'held by owner pending NFL work: the slot refresh does not commit NFL\'s landing digest yet'],
-]);
+// deploy, with the reason, e.g. ['nfl', 'why']. Empty: every sport blocks.
+// A sport added here is one whose slot refresh does not commit its digest, so
+// tools/refresh_paths_allowlist.json should hold the matching exception.
+export const WARN_ONLY = new Map([]);
 
 function readJson(p) {
   return JSON.parse(readFileSync(p, 'utf8'));

@@ -57,6 +57,6 @@ t('a stale exception fails', r.status === 1 && r.out.includes('STALE exception i
 
 r = run(null);
 t('the real slot script and subtree workflows agree', r.status === 0);
-t('the NFL hold is reported as a known exception', r.out.includes('>>> [SKIP] known exception -- nfl:') && r.out.includes('held by owner pending NFL work'));
+t('the real run has no known exceptions', !r.out.includes('[SKIP] known exception') && !r.out.includes('known exception(s)'));
 
 process.exit(failed ? 1 : 0);

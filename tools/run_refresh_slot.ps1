@@ -234,16 +234,16 @@ $MODEL_REFRESH = [ordered]@{
 # list landing_digest.json because their refresh re-grades the landing
 # digest's yesterday from the same patched rows (NBA#211); leaving it out
 # wrote the patched digest and never committed it, so the landing page showed
-# finished games as not final. MLB stages the whole data directory, which
-# already covers its digest. NFL's refresh-results.yml stages its digest too,
-# but adding it here is held by the owner pending NFL work: the gap is a
-# documented exception in tools/refresh_paths_allowlist.json.
+# finished games as not final. NFL lists it for the same reason: its refresh
+# patches the digest's yesterday from the re-graded rows, and its
+# refresh-results.yml stages the digest too. MLB stages the whole data
+# directory, which already covers its digest.
 # Args mirror what each workflow passes by default: NBA and WNBA get an
 # explicit 3-day lookback, as their workflows send. MLB and NFL default to
 # the current season inside the script, so nothing is passed.
 $SPORT_REFRESH = [ordered]@{
     mlb  = @{ Dir = 'MLB Analytics';  Args = @();    Paths = @('web/public/data') }
-    nfl  = @{ Dir = 'NFL Analytics';  Args = @();    Paths = @('web/public/data/matchups_current_week.json', 'web/public/data/model_diagnostics.json') }
+    nfl  = @{ Dir = 'NFL Analytics';  Args = @();    Paths = @('web/public/data/matchups_current_week.json', 'web/public/data/model_diagnostics.json', 'web/public/data/landing_digest.json') }
     nba  = @{ Dir = 'NBA Analytics';  Args = @('3'); Paths = @('web/public/data/matchups_slates.json', 'web/public/data/landing_digest.json') }
     wnba = @{ Dir = 'WNBA Analytics'; Args = @('3'); Paths = @('web/public/data/matchups_slates.json', 'web/public/data/landing_digest.json') }
 }
