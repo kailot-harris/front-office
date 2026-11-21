@@ -9,6 +9,9 @@ ok <- function(label, cond) {
 }
 source("config.R")
 source("render_weekly_gifs.R")
+# The real builder map is checked below; the fake-script tests run with no builders.
+REAL_BUILDERS <- GIF_HISTORY_BUILDERS
+GIF_HISTORY_BUILDERS <- list()
 
 now <- as.POSIXct("2026-11-21 12:00:00", tz = "UTC")
 ok("GIF_RERENDER_DAYS is 6", identical(GIF_RERENDER_DAYS, 6))
@@ -104,10 +107,78 @@ ok("hanging script times out as failed; next script still renders",
 ok("no process with the hanging script's command line survives (script did start)",
    file.exists(started) && length(procs_with(marker)) == 0L)
 
+# --- history builders (prerequisites) ---
+order_file <- file.path(tmp, "order.txt")
+append_line <- function(tag) sprintf('cat("%s\n", file = "%s", append = TRUE)', tag, gsub("\\\\", "/", order_file))
+b_ok <- file.path(tmp, "build_ok.R"); writeLines(append_line("builder"), b_ok)
+b_bad <- file.path(tmp, "build_bad.R"); writeLines("stop('CACHE_PBP not found')", b_bad)
+b_hang <- file.path(tmp, "build_hang.R"); writeLines("Sys.sleep(120)", b_hang)
+dep <- file.path(tmp, "gif_dep.R"); writeLines(append_line("dep"), dep)
+indep <- file.path(tmp, "gif_indep.R"); writeLines(append_line("indep"), indep)
+bmap <- function(b) setNames(list(basename(dep)), b)
+Sys.setenv(FO_FORCE_GIF_RENDER = "1")
+unlink(order_file)
+r1 <- run_render_weekly_gifs(media, scripts = c(dep, indep), in_season = TRUE, now = now,
+                             status_path = file.path(tmp, "sb1.json"), builders = bmap(b_ok))
+ok("builder runs before its dependent GIF",
+   identical(readLines(order_file), c("builder", "dep", "indep")) &&
+   identical(r1$rendered, basename(c(dep, indep))) && length(r1$failed) == 0L)
+unlink(order_file)
+oc <- file.path(tmp, "outcome_b.json")
+r2 <- run_render_weekly_gifs(media, scripts = c(dep, indep), in_season = TRUE, now = now,
+                             status_path = file.path(tmp, "sb2.json"), outcome_path = oc, builders = bmap(b_bad))
+ok("failing builder: dependent marked failed and not run, other GIF renders",
+   identical(r2$failed, basename(dep)) && identical(r2$rendered, basename(indep)) &&
+   identical(readLines(order_file), "indep"))
+ok("failing builder: dependent is in the outcome's failed list",
+   basename(dep) %in% jsonlite::fromJSON(oc)$failed)
+unlink(order_file)
+t0 <- Sys.time()
+r3 <- run_render_weekly_gifs(media, scripts = c(dep, indep), in_season = TRUE, now = now,
+                             status_path = file.path(tmp, "sb3.json"), builders = bmap(b_hang), timeout_sec = 5)
+el3 <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
+ok("hung builder is killed with exit 124 (timeout)", identical(run_gif_script(b_hang, tempfile(), 3), 124L))
+ok("hung builder: dependent failed, other GIF renders, run bounded",
+   identical(r3$failed, basename(dep)) && identical(r3$rendered, basename(indep)) && el3 < 60)
+Sys.unsetenv("FO_FORCE_GIF_RENDER")
+unlink(order_file)
+sk <- run_render_weekly_gifs(media, scripts = c(dep, indep), in_season = FALSE, now = now,
+                             status_path = file.path(tmp, "sb4.json"), builders = bmap(b_ok))
+ok("builders do not run when the stage skips (offseason)",
+   identical(sk$skipped_reason, "offseason") && !file.exists(order_file))
+writeLines('{"last_success_at":"2026-11-21T12:00:00Z"}', file.path(tmp, "sb5.json"))
+nd5 <- run_render_weekly_gifs(media, scripts = c(dep, indep), in_season = TRUE, now = now + 86400,
+                              status_path = file.path(tmp, "sb5.json"), builders = bmap(b_ok))
+ok("builders do not run when the stage skips (not due)",
+   identical(nd5$skipped_reason, "not_due") && !file.exists(order_file))
+ok("turnover history builder is a prerequisite of the race GIF",
+   "gif_turnover_margin_race.R" %in% REAL_BUILDERS[["tools/turnover_margin_history.R"]] &&
+   file.exists("tools/turnover_margin_history.R"))
+ok("race GIF is no longer excluded", !"gif_turnover_margin_race.R" %in% names(GIF_RENDER_EXCLUDED))
+po_gifs <- c("gif_playoff_odds_heatmap.R", "gif_playoff_prob_bump.R")
+ok("playoff-odds backfill is a prerequisite of both playoff GIFs",
+   setequal(REAL_BUILDERS[["tools/playoff_odds_history_backfill.R"]], po_gifs) &&
+   file.exists("tools/playoff_odds_history_backfill.R"))
+ok("playoff GIFs are no longer excluded", !any(po_gifs %in% names(GIF_RENDER_EXCLUDED)))
+ok("playoff-odds backfill uses its config.R timeout",
+   identical(GIF_HISTORY_BUILDER_TIMEOUTS[["tools/playoff_odds_history_backfill.R"]], PLAYOFF_ODDS_HISTORY_TIMEOUT_SEC))
+# A failed backfill marks BOTH dependents failed (outcome file) and runs neither.
+dep2 <- file.path(tmp, "gif_dep2.R"); writeLines(append_line("dep2"), dep2)
+Sys.setenv(FO_FORCE_GIF_RENDER = "1")
+unlink(order_file)
+oc6 <- file.path(tmp, "outcome_b6.json")
+r6 <- run_render_weekly_gifs(media, scripts = c(dep, dep2, indep), in_season = TRUE, now = now,
+                             status_path = file.path(tmp, "sb6.json"), outcome_path = oc6,
+                             builders = setNames(list(basename(c(dep, dep2))), b_bad))
+Sys.unsetenv("FO_FORCE_GIF_RENDER")
+ok("failed builder with two dependents: both failed in the outcome, neither ran",
+   setequal(jsonlite::fromJSON(oc6)$failed, basename(c(dep, dep2))) &&
+   identical(r6$rendered, basename(indep)) && identical(readLines(order_file), "indep"))
+
 sched <- list_gif_scripts()
 ok("schedule lists tools/gif_*.R scripts", length(sched) > 0L && all(grepl("^tools/gif_.*\\.R$", sched)))
 ok("excluded scripts are not scheduled", !any(basename(sched) %in% names(GIF_RENDER_EXCLUDED)))
-ok("every exclusion names a reason", all(nzchar(GIF_RENDER_EXCLUDED)))
+ok("every exclusion names a reason", length(GIF_RENDER_EXCLUDED) == 0L || all(nzchar(GIF_RENDER_EXCLUDED)))
 
 # --- exporter gap: a failed script's leftover cache GIF must not be re-dated by publishing ---
 source("web_media_filter.R")

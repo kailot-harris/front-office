@@ -5,8 +5,9 @@
 # Phase 9 / issue #19 (Wave 1, P9-C). Aggregates CACHE_PBP's play-level
 # interception/fumble_lost columns to one row per (week, team) and writes the
 # result to CACHE_TURNOVER_HISTORY, feeding the planned turnover-margin race
-# chart (P9-I / issue #33). Not part of run_full_pipeline.R's DAG - ad-hoc/
-# on-demand, same category as tools/weekly_accuracy_report.R.
+# chart (P9-I / issue #33). Runs as a history prerequisite of the weekly GIF
+# stage (render_weekly_gifs.R GIF_HISTORY_BUILDERS, NFL_analytics#193) before
+# gif_turnover_margin_race.R; can also be run by hand.
 #
 # Run with (absolute path required - a relative path to a user-level skill
 # script segfaults Rscript.exe on this machine; this is a repo-local tools/
@@ -127,6 +128,19 @@ build_turnover_margin_history <- function(season = CURRENT_SEASON) {
   pbp <- pbp |> filter(season == !!season)
   if (nrow(pbp) == 0) {
     stop("No CACHE_PBP rows found for season ", season, ".")
+  }
+
+  # Completed weeks only (every scheduled game of the week has a result in CACHE_SCHEDULES),
+  # so the race chart never labels a half-played week as finished.
+  if (!file.exists(CACHE_SCHEDULES)) {
+    stop("CACHE_SCHEDULES not found at ", CACHE_SCHEDULES, " - cannot tell which weeks are complete.")
+  }
+  sched <- readRDS(CACHE_SCHEDULES) |> filter(season == !!season, game_type == "REG")
+  week_done <- tapply(!is.na(sched$result), sched$week, all)
+  done_weeks <- as.integer(names(week_done)[week_done])
+  pbp <- pbp |> filter(week %in% done_weeks)
+  if (nrow(pbp) == 0) {
+    stop("No completed regular-season week in CACHE_PBP for season ", season, ".")
   }
 
   # Real plays only: posteam/defteam are blank on non-play rows (timeouts, end-of-quarter, etc.)

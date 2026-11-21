@@ -10,10 +10,14 @@
 # without seeing this file's code - the schema below is a load-bearing contract, not a
 # convenience choice.
 #
-# This is a tools/ one-off (per CLAUDE.md's folder-layout convention), not part of
-# run_full_pipeline.R's DAG - it is re-run manually/periodically (once per week, after that
-# week's games conclude), not every pipeline run, since it is strictly more expensive than the
-# single "now" snapshot (see cost note below).
+# This is a tools/ script (per CLAUDE.md's folder-layout convention), not a run_full_pipeline.R
+# stage of its own: the weekly GIF stage (render_weekly_gifs.R GIF_HISTORY_BUILDERS,
+# NFL_analytics#194) runs it as a history prerequisite of gif_playoff_odds_heatmap.R and
+# gif_playoff_prob_bump.R, about once a week, not every pipeline run. It can also be run by hand.
+#
+# SEASON GUARD (#194): the cache has no season column, so CACHE_PLAYOFF_ODDS_HISTORY_META
+# (a gitignored sidecar JSON) records the season it was built for. If it is missing or names
+# another season, the existing cache is ignored and every completed week is rebuilt.
 #
 # ------------------------------------------------------------------------------------------
 # WHY THIS REUSES .seed_conference() / build_tiebreak_data() RATHER THAN DUPLICATING THEM:
@@ -114,7 +118,7 @@ source("playoff_simulator.R")
 # hypothetical field, or NULL (logged) if a required cache is missing - mirrors
 # .simulate_one_season()'s non-stop()ping error contract.
 # ------------------------------------------------------------------------------------------
-.simulate_one_season_asof <- function(week_cutoff, team_ratings, sch) {
+.simulate_one_season_asof <- function(week_cutoff, team_ratings, sch, season = CURRENT_SEASON) {
   rating_lookup <- setNames(team_ratings$power_rating, team_ratings$team)
   league_mean_rating <- mean(team_ratings$power_rating, na.rm = TRUE)
   if (!is.finite(league_mean_rating)) league_mean_rating <- 0
@@ -124,7 +128,7 @@ source("playoff_simulator.R")
     if (is.null(r) || length(r) == 0 || is.na(r)) league_mean_rating else r
   }
 
-  reg_season <- sch |> dplyr::filter(season == CURRENT_SEASON, game_type == "REG")
+  reg_season <- sch[sch$season == season & sch$game_type == "REG", ]
 
   is_real_completed <- reg_season$week <= week_cutoff &
     !is.na(reg_season$home_score) & !is.na(reg_season$away_score)
@@ -176,8 +180,11 @@ source("playoff_simulator.R")
 # ------------------------------------------------------------------------------------------
 # run_playoff_odds_history_backfill()
 #
-# Sole exposed entry point (no sys.nframe()/interactive() auto-run guard, per this repo's
-# call_fn convention - see CLAUDE.md). No required args. For each week W in
+# Exposed entry point (the direct-run guard at the bottom only covers `Rscript <this file>`).
+# No required args. The arguments are test-only hooks (tests/test_playoff_odds_history_backfill.R):
+# history_path / meta_path redirect the cache and sidecar to temp files, season overrides
+# CURRENT_SEASON, sch / team_ratings replace the cache reads, and simulate_week swaps the Monte
+# Carlo week (.simulate_week_odds) for a stub. The pipeline always uses the defaults. For each week W in
 # 1:(latest fully-completed week in CURRENT_SEASON) NOT already present in an existing
 # CACHE_PLAYOFF_ODDS_HISTORY (see "INCREMENTAL BEHAVIOR" above), runs N_SEASON_SIMULATIONS
 # trials of .simulate_one_season_asof(W, ...), tallies each of the 32 real NFL_TEAMS
@@ -194,27 +201,76 @@ source("playoff_simulator.R")
 # the output file is NOT overwritten in this case, so a prior successful cache (full or partial)
 # is left intact rather than being clobbered by a failed re-run.
 # ------------------------------------------------------------------------------------------
-run_playoff_odds_history_backfill <- function() {
+# ------------------------------------------------------------------------------------------
+# .simulate_week_odds(): N_SEASON_SIMULATIONS trials as of week `w`; one row per team with
+# division_win_prob / playoff_prob / bye_prob. NULL if any trial fails (caller aborts).
+# ------------------------------------------------------------------------------------------
+.simulate_week_odds <- function(w, team_ratings, sch, season = CURRENT_SEASON) {
+  team_abbrs <- names(NFL_TEAMS)
+  playoff_counts   <- setNames(integer(length(team_abbrs)), team_abbrs)
+  division_counts  <- setNames(integer(length(team_abbrs)), team_abbrs)
+  bye_counts       <- setNames(integer(length(team_abbrs)), team_abbrs)
+
+  for (trial in seq_len(N_SEASON_SIMULATIONS)) {
+    field <- .simulate_one_season_asof(w, team_ratings, sch, season)
+    if (is.null(field)) {
+      log_error(sprintf(".simulate_one_season_asof() returned NULL on week %d trial %d of %d.",
+                         w, trial, N_SEASON_SIMULATIONS),
+                call = ".simulate_week_odds()")
+      return(NULL)
+    }
+    playoff_counts[field$team] <- playoff_counts[field$team] + 1L
+    div_teams <- field$team[field$role == "division_winner"]
+    division_counts[div_teams] <- division_counts[div_teams] + 1L
+    bye_teams <- field$team[field$seed == 1]
+    bye_counts[bye_teams] <- bye_counts[bye_teams] + 1L
+  }
+
+  data.frame(
+    week               = w,
+    team               = team_abbrs,
+    division_win_prob  = division_counts[team_abbrs] / N_SEASON_SIMULATIONS,
+    playoff_prob       = playoff_counts[team_abbrs] / N_SEASON_SIMULATIONS,
+    bye_prob           = bye_counts[team_abbrs] / N_SEASON_SIMULATIONS,
+    stringsAsFactors   = FALSE,
+    row.names          = NULL
+  )
+}
+
+# Season the history cache was built for (sidecar JSON, gitignored). NA when the sidecar is
+# missing or unreadable.
+.history_meta_season <- function(meta_path) {
+  if (!file.exists(meta_path)) return(NA_integer_)
+  m <- tryCatch(jsonlite::fromJSON(meta_path), error = function(e) NULL)
+  s <- suppressWarnings(as.integer(m$season))
+  if (length(s) == 1L) s else NA_integer_
+}
+
+run_playoff_odds_history_backfill <- function(history_path = CACHE_PLAYOFF_ODDS_HISTORY,
+                                              meta_path = CACHE_PLAYOFF_ODDS_HISTORY_META,
+                                              season = CURRENT_SEASON,
+                                              sch = NULL, team_ratings = NULL,
+                                              simulate_week = .simulate_week_odds) {
   log_info(sprintf("Starting NFL playoff odds history backfill (%d season simulations per week)...",
                     N_SEASON_SIMULATIONS),
             call = "run_playoff_odds_history_backfill()")
 
   result <- tryCatch({
-    if (!file.exists(CACHE_TEAM_RATINGS)) {
+    if (is.null(team_ratings) && !file.exists(CACHE_TEAM_RATINGS)) {
       log_error("CACHE_TEAM_RATINGS does not exist - run_team_ratings() must run before run_playoff_odds_history_backfill().",
                 call = "run_playoff_odds_history_backfill()")
       return(FALSE)
     }
-    if (!file.exists(CACHE_SCHEDULES)) {
+    if (is.null(sch) && !file.exists(CACHE_SCHEDULES)) {
       log_error("CACHE_SCHEDULES does not exist - ingestion must run before run_playoff_odds_history_backfill().",
                 call = "run_playoff_odds_history_backfill()")
       return(FALSE)
     }
 
-    team_ratings <- readRDS(CACHE_TEAM_RATINGS)
-    sch          <- readRDS(CACHE_SCHEDULES)
+    if (is.null(team_ratings)) team_ratings <- readRDS(CACHE_TEAM_RATINGS)
+    if (is.null(sch))          sch          <- readRDS(CACHE_SCHEDULES)
 
-    reg_season <- sch |> dplyr::filter(season == CURRENT_SEASON, game_type == "REG")
+    reg_season <- sch[sch$season == season & sch$game_type == "REG", ]
     by_week <- reg_season |>
       dplyr::group_by(week) |>
       dplyr::summarise(n = dplyr::n(),
@@ -239,9 +295,17 @@ run_playoff_odds_history_backfill <- function() {
     # not a reason to stop.
     expected_cols <- c("week", "team", "division_win_prob", "playoff_prob", "bye_prob")
     existing_history <- NULL
-    if (file.exists(CACHE_PLAYOFF_ODDS_HISTORY)) {
+    # Season guard: the cache has no season column, so the sidecar records which season it
+    # was built for. A missing sidecar or a different season means a full rebuild; otherwise
+    # last season's weeks would be taken as already computed.
+    meta_season <- .history_meta_season(meta_path)
+    if (file.exists(history_path) && !identical(meta_season, as.integer(season))) {
+      log_warn(sprintf("CACHE_PLAYOFF_ODDS_HISTORY season sidecar says %s, current season is %d - running a full rebuild.",
+                       if (is.na(meta_season)) "nothing (missing)" else meta_season, season),
+               call = "run_playoff_odds_history_backfill()")
+    } else if (file.exists(history_path)) {
       existing_history <- tryCatch({
-        cached <- readRDS(CACHE_PLAYOFF_ODDS_HISTORY)
+        cached <- readRDS(history_path)
         if (!is.data.frame(cached) || !all(expected_cols %in% names(cached))) {
           log_warn("Existing CACHE_PLAYOFF_ODDS_HISTORY has an unexpected schema - ignoring it and running a full backfill.",
                    call = "run_playoff_odds_history_backfill()")
@@ -275,55 +339,27 @@ run_playoff_odds_history_backfill <- function() {
       return(TRUE)
     }
 
-    log_info(sprintf("Latest fully-completed week in CURRENT_SEASON (%d): week %d. %d week(s) already cached; simulating week(s) %s.",
-                      CURRENT_SEASON, latest_completed_week, length(cached_weeks),
+    log_info(sprintf("Latest fully-completed week in season %d: week %d. %d week(s) already cached; simulating week(s) %s.",
+                      season, latest_completed_week, length(cached_weeks),
                       paste(weeks_to_run, collapse = ", ")),
              call = "run_playoff_odds_history_backfill()")
 
-    team_abbrs <- names(NFL_TEAMS)
     all_rows <- vector("list", length(weeks_to_run))
 
     for (i in seq_along(weeks_to_run)) {
       w <- weeks_to_run[i]
       week_start <- Sys.time()
-
-      playoff_counts   <- setNames(integer(length(team_abbrs)), team_abbrs)
-      division_counts  <- setNames(integer(length(team_abbrs)), team_abbrs)
-      bye_counts       <- setNames(integer(length(team_abbrs)), team_abbrs)
-
-      for (trial in seq_len(N_SEASON_SIMULATIONS)) {
-        field <- .simulate_one_season_asof(w, team_ratings, sch)
-
-        if (is.null(field)) {
-          log_error(sprintf(".simulate_one_season_asof() returned NULL on week %d trial %d of %d - aborting run_playoff_odds_history_backfill().",
-                             w, trial, N_SEASON_SIMULATIONS),
-                    call = "run_playoff_odds_history_backfill()")
-          return(FALSE)
-        }
-
-        playoff_counts[field$team] <- playoff_counts[field$team] + 1L
-
-        div_teams <- field$team[field$role == "division_winner"]
-        division_counts[div_teams] <- division_counts[div_teams] + 1L
-
-        bye_teams <- field$team[field$seed == 1]
-        bye_counts[bye_teams] <- bye_counts[bye_teams] + 1L
+      rows <- simulate_week(w, team_ratings, sch, season)
+      if (is.null(rows)) {
+        log_error(sprintf("Simulating week %d failed - aborting run_playoff_odds_history_backfill(); cache left unchanged.", w),
+                  call = "run_playoff_odds_history_backfill()")
+        return(FALSE)
       }
-
       week_elapsed <- as.numeric(Sys.time() - week_start, units = "secs")
       log_info(sprintf("Backfilled week %d (%d/%d new week(s) this run, %d season simulations) in %.1f sec.",
                         w, i, length(weeks_to_run), N_SEASON_SIMULATIONS, week_elapsed),
                call = "run_playoff_odds_history_backfill()")
-
-      all_rows[[i]] <- data.frame(
-        week               = w,
-        team               = team_abbrs,
-        division_win_prob  = division_counts[team_abbrs] / N_SEASON_SIMULATIONS,
-        playoff_prob       = playoff_counts[team_abbrs] / N_SEASON_SIMULATIONS,
-        bye_prob           = bye_counts[team_abbrs] / N_SEASON_SIMULATIONS,
-        stringsAsFactors   = FALSE,
-        row.names          = NULL
-      )
+      all_rows[[i]] <- rows
     }
 
     newly_simulated <- dplyr::bind_rows(all_rows)
@@ -339,10 +375,13 @@ run_playoff_odds_history_backfill <- function() {
     }
     playoff_odds_history <- playoff_odds_history |> dplyr::arrange(week, team)
 
-    saveRDS(playoff_odds_history, CACHE_PLAYOFF_ODDS_HISTORY)
+    saveRDS(playoff_odds_history, history_path)
+    jsonlite::write_json(list(season = as.integer(season), max_week = as.integer(latest_completed_week),
+                              built_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")),
+                         meta_path, auto_unbox = TRUE, pretty = TRUE)
     log_info(sprintf("Wrote playoff odds history (weeks 1:%d - %d newly simulated, %d reused from cache - %d season simulations/week) to CACHE_PLAYOFF_ODDS_HISTORY.",
                       latest_completed_week, length(weeks_to_run), length(cached_weeks), N_SEASON_SIMULATIONS),
-             call = "run_playoff_odds_history_backfill()", out_path = CACHE_PLAYOFF_ODDS_HISTORY)
+             call = "run_playoff_odds_history_backfill()", out_path = history_path)
 
     TRUE
   }, error = function(e) {
@@ -351,4 +390,11 @@ run_playoff_odds_history_backfill <- function() {
   })
 
   invisible(isTRUE(result))
+}
+
+# Direct run (the weekly GIF stage runs this file as a history builder, render_weekly_gifs.R
+# GIF_HISTORY_BUILDERS): exit non-zero on failure so the stage marks the dependent GIFs failed.
+# Not sourced by run_full_pipeline.R, so the frame-depth caution in CLAUDE.md does not apply.
+if (sys.nframe() == 0 && !interactive()) {
+  if (!isTRUE(run_playoff_odds_history_backfill())) quit(status = 1L, save = "no")
 }
