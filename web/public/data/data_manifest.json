@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "sport": "nba",
-  "generated_at": "2026-11-21T01:38:36Z",
+  "generated_at": "2026-11-21T05:04:25Z",
   "schedule_through_date": "2026-11-19",
   "datasets": {
     "cba_cap_sheet.json": {
-      "generated_at": "2026-11-20T14:02:05Z",
+      "generated_at": "2026-11-21T05:02:13Z",
       "through_date": null,
       "through_date_source": "not_game_dated",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "b043d07f9920dd4f42965048695c3b91073abcb2edab2021a1c87ec4f6580cba",
+      "content_sha256": "15b433c8edc74a1c084bac437dc9bd65f051e1db60d8f6b7caf4825f1de2a426",
       "coverage_note": "Cap/payroll snapshot; content carries no game date.",
       "source_season": "2026-27",
       "builder": "build_cba_cap_dataset.R",
@@ -18,11 +18,11 @@
       "static_reason": null
     },
     "clutch_leverage_metrics.json": {
-      "generated_at": "2026-11-20T14:02:13Z",
+      "generated_at": "2026-11-21T05:02:21Z",
       "through_date": "2026-11-19",
       "through_date_source": "payload:throughDate",
       "stamp_source": "payload:generatedAt",
-      "content_sha256": "ccb5bfc4866d46461a5215ce553262db55bc11771918d8ef9a7996c09092f4ad",
+      "content_sha256": "68bca9cc18f664e15292ee83a7a64a439b01dacfd3a08ddd5240b1661b2eb65e",
       "coverage_note": null,
       "source_season": "2026-27",
       "builder": "build_clutch_dataset.R",
@@ -31,11 +31,11 @@
       "static_reason": null
     },
     "coaching_metrics.json": {
-      "generated_at": "2026-11-20T14:01:48Z",
+      "generated_at": "2026-11-21T05:01:56Z",
       "through_date": null,
       "through_date_source": "not_game_dated",
       "stamp_source": "payload:[].provenance.generatedAt",
-      "content_sha256": "47e15ea31371ef187b7f514286e5efafb8fdaaad4778b06e521667f6433b9c20",
+      "content_sha256": "d4b045c4830c60230c7ff4d8bae0dd38eb8c4f88fc87579eb5d1dc07a1111bbe",
       "coverage_note": "Per-staff ratings; content carries no game date.",
       "source_season": "2026-27",
       "builder": "build_coaching_dataset.R",
@@ -44,11 +44,11 @@
       "static_reason": null
     },
     "defensive_metrics.json": {
-      "generated_at": "2026-11-20T14:02:06Z",
+      "generated_at": "2026-11-21T05:02:14Z",
       "through_date": "2026-11-19",
       "through_date_source": "payload:throughDate",
       "stamp_source": "payload:generatedAt",
-      "content_sha256": "f74b894698d8eb5cef875c9292b2a98b5c406566ccc114340e72ec8a57b0cb20",
+      "content_sha256": "2a83eaff78eac990e8845945a7163094c979c76a78a2990b407b82e779d78604",
       "coverage_note": null,
       "source_season": "2026-27",
       "builder": "build_defense_dataset.R",
@@ -57,12 +57,12 @@
       "static_reason": null
     },
     "landing_digest.json": {
-      "generated_at": "2026-11-20T17:31:31Z",
-      "through_date": "2026-11-19",
-      "through_date_source": "payload:yesterday[final].game_date",
+      "generated_at": "2026-11-21T05:03:21Z",
+      "through_date": null,
+      "through_date_source": "not_game_dated",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "10be41ebaac939f5754c7657da8e16638a38fda356258d06f5f04354cfc58cee",
-      "coverage_note": null,
+      "content_sha256": "620c066bc3341370d7c90a112dffcd36cc1ce3c1d9d84ce2e8f0a3840435def8",
+      "coverage_note": "extractor payload:yesterday[final].game_date found no game date in the payload",
       "source_season": "2026-27",
       "builder": "build_landing_digest.R",
       "max_lag_days": 2,
@@ -70,11 +70,11 @@
       "static_reason": null
     },
     "matchups_slates.json": {
-      "generated_at": "2026-11-20T14:03:15Z",
+      "generated_at": "2026-11-21T05:03:20Z",
       "through_date": "2026-11-19",
       "through_date_source": "payload:matchups[is_completed].game_date",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "460ee60277030eab451651f48459a5a79c432e2a9d61a142e3856a8fe5cf9a6f",
+      "content_sha256": "478e7eeb5d98b520a60b26eff788ab0c215c3461b84cdfe33b90f2d03718a53d",
       "coverage_note": null,
       "source_season": "2026-27",
       "builder": "build_matchups_dataset.R",
@@ -122,11 +122,11 @@
       "static_reason": "Hand-curated 2026 off-season transaction catalog; an input to build_offseason_dataset.R, not a per-run output."
     },
     "player_dna_profiles.json": {
-      "generated_at": "2026-11-20T14:02:08Z",
+      "generated_at": "2026-11-21T05:02:16Z",
       "through_date": "2026-11-19",
       "through_date_source": "payload:throughDate",
       "stamp_source": "payload:generatedAt",
-      "content_sha256": "bbeb443d776b42bdb7d62d8f829cda7dcc7f18dbe277f2cedf56c55396b3016f",
+      "content_sha256": "968bcd450952024e72ac1454e40aa52ecf994e1769e31abccc32433493532eb9",
       "coverage_note": null,
       "source_season": "2026-27",
       "builder": "build_player_dna_dataset.R",
@@ -135,11 +135,11 @@
       "static_reason": null
     },
     "playoff_series_matchups.json": {
-      "generated_at": "2026-11-20T14:02:20Z",
+      "generated_at": "2026-11-21T05:02:28Z",
       "through_date": null,
       "through_date_source": "not_game_dated",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "e95e2061dceb21804a7139d4ace7d72b120067ac0b7fea8f7f65f048b8aa1772",
+      "content_sha256": "5af53a6746f10c10132dbf5a774149835eb7634e5048314864b7ac787de42a13",
       "coverage_note": "Series simulation catalog; content carries no game date.",
       "source_season": "2026-27",
       "builder": "playoff_simulator.R",
@@ -148,11 +148,11 @@
       "static_reason": null
     },
     "projections_diagnostics.json": {
-      "generated_at": "2026-11-20T14:02:21Z",
+      "generated_at": "2026-11-21T05:02:29Z",
       "through_date": null,
       "through_date_source": "not_game_dated",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "8e347eb1d67912fb62140eef75e2563b662dd28bc11a134c674793675cbc2c75",
+      "content_sha256": "c7253e187d9e0fb7270a95bcdac0f789059fd7dec572fb2583ee1f1a19288424",
       "coverage_note": "Aggregate accuracy metrics (resolved-game counts, no per-game dates); exposing a coverage date needs a builder change.",
       "source_season": "2026-27",
       "builder": "accuracy_governance.R",
@@ -161,11 +161,11 @@
       "static_reason": null
     },
     "projections_models_metadata.json": {
-      "generated_at": "2026-11-20T14:01:47Z",
+      "generated_at": "2026-11-21T05:01:55Z",
       "through_date": null,
       "through_date_source": "not_game_dated",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "3e3fadc3ca62127edba78ec4d3a8f12664c6573ecfc073cfe8850d370b709509",
+      "content_sha256": "ada63ec904af044377ed26bdd9c2f784bf62fdc0c4cf424fdb259f7aa155a832",
       "coverage_note": "Model metadata catalog; content carries no game date.",
       "source_season": "2026-27",
       "builder": "season_simulator.R",
@@ -213,11 +213,11 @@
       "static_reason": null
     },
     "shots_metadata.json": {
-      "generated_at": "2026-11-20T14:02:15Z",
+      "generated_at": "2026-11-21T05:02:23Z",
       "through_date": "2026-11-19",
       "through_date_source": "payload:through_date",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "1508cde3ee51cfc033560728e843f3d3653d2b395603ad8cb55711de8a0685ad",
+      "content_sha256": "faf6e06d88c28b8212cded7564503caf92be5ffd55aa787021a6c3e5993b4600",
       "coverage_note": null,
       "source_season": "2026-27",
       "builder": "build_shot_chart_dataset.R",
@@ -226,11 +226,11 @@
       "static_reason": null
     },
     "visual_media_index.json": {
-      "generated_at": "2026-11-20T14:04:16Z",
+      "generated_at": "2026-11-21T05:03:26Z",
       "through_date": null,
       "through_date_source": "not_game_dated",
       "stamp_source": "payload:[].generated_at",
-      "content_sha256": "88175bb372105c0ba5d637645ac417b7c8166000e87f79ff5ba5338212bbd800",
+      "content_sha256": "e22afb50fd788362cb275540ae84defa32dddaf87e3bde91c2808d981844bd6b",
       "coverage_note": "Media inventory (per-item build stamps); content carries no game date.",
       "source_season": "2026-27",
       "builder": "export_visual_media_index.R",
