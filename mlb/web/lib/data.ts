@@ -131,13 +131,14 @@ export function getPlayoffSeriesCatalog(): PlayoffMatchupsCatalog {
 export function getPlayerDnaCatalog(): PlayerDnaCatalog {
   const filePath = path.join(process.cwd(), 'public', 'data', 'player_dna_profiles.json');
   if (!fs.existsSync(filePath)) {
+    const now = new Date().toISOString();
     return {
-      generated_at: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      eraBaseline: '1980-2026',
-      totalPlayers: 0,
-      batterArchetypes: [],
-      pitcherArchetypes: [],
+      generated_at: now,
+      season: null,
+      throughDate: null,
+      generatedAt: now,
+      dimensions: { Batter: [], Pitcher: [] },
+      categories: { Batter: [], Pitcher: [] },
       profiles: [],
     };
   }

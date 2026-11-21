@@ -426,59 +426,65 @@ export const ClutchCatalogSchema = z
 // ----------------------------------------------------------------------------
 // 8. player_dna_profiles.json -> PlayerDnaCatalog (lib/playerDnaTypes.ts)
 // ----------------------------------------------------------------------------
-export const PlayerDnaProfileSchema = z
+const dnaPct = pct.nullable();
+// null = FanGraphs reports no single club (2+ teams); "MLB" or any other made-up code fails.
+const dnaTeam = teamEnum.nullable();
+const DnaDimensionSchema = z
+  .object({ key: z.string().regex(/^[a-z0-9_]+$/), label: z.string().min(2), category: z.string().regex(/^[a-z_]+$/) })
+  .strict();
+const DnaCategorySchema = z.object({ key: z.string().regex(/^[a-z_]+$/), label: z.string().min(2) }).strict();
+
+export const PlayerDnaPeerCompSchema = z
   .object({
     playerId: z.string().min(1),
-    mlbamId: z.string().min(1),
+    compName: z.string().min(2),
+    team: dnaTeam,
+    position: z.string().min(1).nullable(),
+    archetype: z.string().min(2).nullable(),
+    similarityPct: pct,
+    keySharedTrait: z.string().regex(/^Shared (strength|weakness): .{2,}$/),
+  })
+  .strict();
+
+export const PlayerDnaProfileSchema = z
+  .object({
+    playerId: z.string().regex(/^[BP]_\S+$/),
+    mlbamId: z.string().min(1).nullable(),
     playerName: z.string().min(2),
-    team: playerTeamEnum,
+    team: dnaTeam,
     playerType: playerTypeEnum,
-    position: z.string().min(1),
-    age: num.min(16).max(55),
-    archetype: z.string().min(2),
+    position: z.string().min(1).nullable(),
+    age: num.min(16).max(55).nullable(),
+    archetype: z.string().min(2).nullable(),
     headlineStats: z
       .object({
         stat1Label: z.string().min(1),
-        stat1Val: z.union([z.string(), num]),
+        stat1Val: z.union([z.string(), num]).nullable(),
         stat2Label: z.string().min(1),
-        stat2Val: z.union([z.string(), num]),
+        stat2Val: z.union([z.string(), num]).nullable(),
         stat3Label: z.string().min(1),
-        stat3Val: z.union([z.string(), num]),
+        stat3Val: z.union([z.string(), num]).nullable(),
         countLabel: z.string().min(1),
-        countVal: z.union([z.string(), num]),
+        countVal: z.union([z.string(), num]).nullable(),
       })
       .strict(),
-    compositeZscore: num,
-    overallRating: pct,
-    manifoldX: num,
-    manifoldY: num,
-    skillVector: z.record(z.string(), pct),
-    categoryScores: z.record(z.string(), pct),
-    historicalTwins: z
-      .array(
-        z
-          .object({
-            compName: z.string().min(2),
-            era: z.string().min(4),
-            archetype: z.string().min(2),
-            position: z.string().min(1),
-            similarityPct: pct,
-            keySharedTrait: z.string().min(2),
-          })
-          .strict(),
-      )
-      .min(1),
+    overallRating: dnaPct,
+    manifoldX: num.nullable(),
+    manifoldY: num.nullable(),
+    skillVector: z.record(z.string(), dnaPct),
+    categoryScores: z.record(z.string(), dnaPct),
+    peerComps: z.array(PlayerDnaPeerCompSchema).max(5),
   })
   .strict();
 
 export const PlayerDnaCatalogSchema = z
   .object({
     generated_at: z.string().datetime(),
-    updatedAt: z.string().min(1),
-    eraBaseline: z.string().min(4),
-    totalPlayers: z.number().int().positive(),
-    batterArchetypes: z.array(z.string().min(1)).min(1),
-    pitcherArchetypes: z.array(z.string().min(1)).min(1),
+    season: z.number().int().min(2020).max(2035),
+    throughDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+    generatedAt: z.string().datetime(),
+    dimensions: z.object({ Batter: z.array(DnaDimensionSchema).min(1), Pitcher: z.array(DnaDimensionSchema).min(1) }).strict(),
+    categories: z.object({ Batter: z.array(DnaCategorySchema).min(1), Pitcher: z.array(DnaCategorySchema).min(1) }).strict(),
     profiles: z.array(PlayerDnaProfileSchema).min(1),
   })
   .strict();

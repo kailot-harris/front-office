@@ -108,7 +108,6 @@ const sampleBatterDna: PlayerDnaProfile = {
     countLabel: 'PA',
     countVal: 650,
   },
-  compositeZscore: 2.1,
   overallRating: 96,
   manifoldX: 22,
   manifoldY: 18,
@@ -122,10 +121,10 @@ const sampleBatterDna: PlayerDnaProfile = {
     strikeout_avoidance: 64,
     chase_discipline: 91,
     walk_rate: 96,
-    sweet_spot_pct: 84,
+    squared_up_pct: 84,
     pull_air_pct: 86,
     all_fields_spray: 70,
-    sprint_speed: 55,
+    speed_score: 55,
     baserunning_val: 58,
     fielding_range: 62,
     clutch_resilience: 82,
@@ -137,7 +136,7 @@ const sampleBatterDna: PlayerDnaProfile = {
     batted_ball: 85,
     athleticism: 60,
   },
-  historicalTwins: [],
+  peerComps: [],
 };
 
 const sampleClutchProfile: ClutchProfile = {
@@ -212,6 +211,14 @@ describe('MLB SVG and range-slider SSR accessibility', () => {
         selectedPlayer: sampleBatterDna,
         onSelectPlayer: () => {},
         playerType: 'Batter',
+        categories: [
+          { key: 'power', label: 'Power' },
+          { key: 'contact', label: 'Contact' },
+          { key: 'discipline', label: 'Plate discipline' },
+          { key: 'batted_ball', label: 'Batted-ball profile' },
+          { key: 'athleticism', label: 'Running, glove & clutch' },
+        ],
+        totalPlotted: 1,
       })
     );
     const svgs = findSvgTags(html, '0 0 500 280');

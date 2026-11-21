@@ -2,34 +2,36 @@
 
 import React, { useRef } from 'react';
 import { Download } from 'lucide-react';
-import { BatterCategoryScores, PitcherCategoryScores } from '@/lib/playerDnaTypes';
+import { BatterCategoryScores, PitcherCategoryScores, DnaCategory, DnaDimension } from '@/lib/playerDnaTypes';
 import { exportSvgAsPng } from '@/lib/exportSvgAsPng';
 
 interface SkillFingerprintPolygonProps {
   playerType: 'Batter' | 'Pitcher';
   categoryScores: BatterCategoryScores | PitcherCategoryScores;
+  // Published by the engine: one axis per category, labelled with its published label.
+  categories: DnaCategory[];
+  dimensions: DnaDimension[];
 }
 
 export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = ({
   playerType,
   categoryScores,
+  categories,
+  dimensions,
 }) => {
-  // 5 axes tailored per player type
-  const axes = playerType === 'Batter'
-    ? [
-        { label: 'Power & Exit Velo', value: (categoryScores as BatterCategoryScores).power || 50, angle: -90 },
-        { label: 'In-Zone Contact', value: (categoryScores as BatterCategoryScores).contact || 50, angle: -18 },
-        { label: 'Plate Discipline', value: (categoryScores as BatterCategoryScores).discipline || 50, angle: 54 },
-        { label: 'Batted Ball Loft', value: (categoryScores as BatterCategoryScores).batted_ball || 50, angle: 126 },
-        { label: 'Speed & Defense', value: (categoryScores as BatterCategoryScores).athleticism || 50, angle: 198 },
-      ]
-    : [
-        { label: 'Velo & Physics', value: (categoryScores as PitcherCategoryScores).velocity_physics || 50, angle: -90 },
-        { label: 'Stuff+ & Arsenal', value: (categoryScores as PitcherCategoryScores).arsenal_stuff || 50, angle: -18 },
-        { label: 'Command & K%', value: (categoryScores as PitcherCategoryScores).command_k || 50, angle: 54 },
-        { label: 'Contact Suppress', value: (categoryScores as PitcherCategoryScores).batted_ball || 50, angle: 126 },
-        { label: 'Leverage & Workload', value: (categoryScores as PitcherCategoryScores).workload_leverage || 50, angle: 198 },
-      ];
+  // One axis per published category, evenly spaced from the top. A null category (too
+  // few measured inputs) is left out of the polygon and labelled "—", never drawn as a
+  // filler value. Each axis tooltip lists the dimensions averaged into it.
+  const scores = categoryScores as unknown as Record<string, number | null>;
+  const axes: { key: string; label: string; members: string[]; value: number | null; angle: number }[] = categories.map(
+    (c, i) => ({
+      key: c.key,
+      label: c.label,
+      members: dimensions.filter((d) => d.category === c.key).map((d) => d.label),
+      value: scores[c.key] ?? null,
+      angle: -90 + (360 / Math.max(categories.length, 1)) * i,
+    }),
+  );
 
   const size = 280;
   const center = size / 2;
@@ -52,7 +54,8 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
     };
   };
 
-  const polygonPoints = axes
+  const plotted = axes.filter((axis): axis is (typeof axes)[number] & { value: number } => axis.value !== null);
+  const polygonPoints = plotted
     .map((axis) => {
       const coords = getCoordinates(axis.value, axis.angle);
       return `${coords.x},${coords.y}`;
@@ -79,8 +82,11 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
       >
         <Download className="w-3.5 h-3.5" />
       </button>
-      <div className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono mb-2">
-        16-D Skill Fingerprint ({playerType})
+      <div className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono">
+        Skill Fingerprint ({playerType})
+      </div>
+      <div className="text-[11px] text-slate-400 mb-2" data-testid="dna-radar-caption">
+        {categories.length} category averages of the {dimensions.length} {playerType.toLowerCase()} skill percentiles
       </div>
 
       <svg
@@ -137,7 +143,7 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
         />
 
         {/* Skill Vertices */}
-        {axes.map((axis, i) => {
+        {plotted.map((axis, i) => {
           const coords = getCoordinates(axis.value, axis.angle);
           return (
             <circle
@@ -160,7 +166,8 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
           const ly = center + labelDist * Math.sin(angleRad);
 
           return (
-            <g key={i}>
+            <g key={i} data-testid="dna-radar-axis">
+              <title>{`${axis.label}: average of ${axis.members.join(', ')}`}</title>
               <text
                 x={lx}
                 y={ly - 4}
@@ -179,7 +186,7 @@ export const SkillFingerprintPolygon: React.FC<SkillFingerprintPolygonProps> = (
                   playerType === 'Batter' ? 'fill-sky-400' : 'fill-amber-400'
                 }`}
               >
-                {axis.value}
+                {axis.value ?? '—'}
               </text>
             </g>
           );

@@ -1,26 +1,76 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { PlayerDnaProfile, PlayerDnaCatalog } from '@/lib/playerDnaTypes';
+import React, { useState, useMemo, useEffect } from 'react';
+import {
+  PlayerDnaProfile,
+  PlayerDnaCatalog,
+  PlayerDnaSummary,
+  DnaPlayerType,
+  MULTI_TEAM_LABEL,
+  summarizePlayerDna,
+} from '@/lib/playerDnaTypes';
 import { SkillFingerprintPolygon } from './SkillFingerprintPolygon';
-import { HistoricalTwinCard } from './HistoricalTwinCard';
+import { PeerCompCard } from './PeerCompCard';
 import { DnaManifoldScatter } from './DnaManifoldScatter';
-import { TeamLogo } from '@/components/TeamLogo';
+import { DnaTeamBadge } from './DnaTeamBadge';
 import { HowToRead } from '@/components/HowToRead';
+import { BASE_PATH } from '@/lib/basePath';
 import {
   Dna,
   Search,
   Sparkles,
   ChevronRight,
   Filter,
+  Loader2,
 } from 'lucide-react';
 
 interface PlayerDnaClientProps {
-  catalog: PlayerDnaCatalog;
+  // The static HTML embeds only the first screen of profiles; the envelope fields
+  // (season, throughDate, dimensions, categories) are complete.
+  initialCatalog: PlayerDnaCatalog;
+  // Whole-dataset counts and archetype lists, computed at build time from the full file.
+  summary: PlayerDnaSummary;
 }
 
-export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => {
-  const [playerType, setPlayerType] = useState<'Batter' | 'Pitcher'>('Batter');
+const formatDate = (iso: string | null): string | null => {
+  if (!iso) return null;
+  const d = new Date(`${iso.slice(0, 10)}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+};
+
+export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ initialCatalog, summary: initialSummary }) => {
+  // `catalog.profiles` starts as the embedded first screen and is swapped for the
+  // full dataset once it has been fetched (the WNBA /player-dna pattern).
+  const [catalog, setCatalog] = useState<PlayerDnaCatalog>(initialCatalog);
+  const [summary, setSummary] = useState<PlayerDnaSummary>(initialSummary);
+  const [isLoadingFull, setIsLoadingFull] = useState(
+    initialSummary.totalProfiles > initialCatalog.profiles.length,
+  );
+
+  useEffect(() => {
+    if (initialSummary.totalProfiles <= initialCatalog.profiles.length) return;
+    let cancelled = false;
+    fetch(`${BASE_PATH}/data/player_dna_profiles.json`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
+      .then((full: PlayerDnaCatalog) => {
+        if (!cancelled && full && Array.isArray(full.profiles) && full.profiles.length > 0) {
+          setCatalog(full);
+          setSummary(summarizePlayerDna(full.profiles));
+        }
+      })
+      .catch((err) => console.error('Failed to fetch full player DNA dataset:', err))
+      .finally(() => {
+        if (!cancelled) setIsLoadingFull(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Fetch once after hydration; the embedded first screen never changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [playerType, setPlayerType] = useState<DnaPlayerType>('Batter');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedArchetype, setSelectedArchetype] = useState<string>('ALL');
 
@@ -29,48 +79,65 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
     return catalog.profiles.filter((p) => p.playerType === playerType);
   }, [catalog.profiles, playerType]);
 
+  const batterCount = summary.counts.Batter;
+  const pitcherCount = summary.counts.Pitcher;
+  const seasonLabel = catalog.season !== null ? `${catalog.season} season` : 'Season unavailable';
+  const throughLabel = formatDate(catalog.throughDate);
+  const batterDims = catalog.dimensions.Batter.length;
+  const pitcherDims = catalog.dimensions.Pitcher.length;
+  const dimensionMeta = catalog.dimensions[playerType];
+  const categoryMeta = catalog.categories[playerType];
+
   // Selected player state
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerDnaProfile>(
     typeProfiles[0] || catalog.profiles[0]
   );
 
+  // Once the full dataset has loaded, keep the selected player's record in sync.
+  useEffect(() => {
+    const refreshed = catalog.profiles.find((p) => p.playerId === selectedPlayer.playerId);
+    if (refreshed && refreshed !== selectedPlayer) {
+      setSelectedPlayer(refreshed);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalog.profiles]);
+
   // When switching playerType, reset selected player to first in that pool
-  const handleTypeSwitch = (type: 'Batter' | 'Pitcher') => {
+  const handleTypeSwitch = (type: DnaPlayerType) => {
     setPlayerType(type);
     setSelectedArchetype('ALL');
     const firstInPool = catalog.profiles.find((p) => p.playerType === type);
     if (firstInPool) setSelectedPlayer(firstInPool);
   };
 
-  // Distinct archetypes in current pool
-  const availableArchetypes = useMemo(() => {
-    const archs = new Set<string>();
-    typeProfiles.forEach((p) => archs.add(p.archetype));
-    return ['ALL', ...Array.from(archs).sort()];
-  }, [typeProfiles]);
+  // Distinct archetypes in the whole pool of this type (known before the full fetch)
+  const availableArchetypes = useMemo(
+    () => ['ALL', ...summary.archetypes[playerType]],
+    [summary, playerType],
+  );
 
   // Filtered player directory
   const filteredPlayers = useMemo(() => {
     return typeProfiles.filter((p) => {
+      const q = searchQuery.toLowerCase();
       const matchesSearch =
-        p.playerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.team.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.archetype.toLowerCase().includes(searchQuery.toLowerCase());
+        p.playerName.toLowerCase().includes(q) ||
+        (p.team ?? MULTI_TEAM_LABEL).toLowerCase().includes(q) ||
+        (p.archetype ?? '').toLowerCase().includes(q);
       const matchesArch = selectedArchetype === 'ALL' || p.archetype === selectedArchetype;
       return matchesSearch && matchesArch;
     });
   }, [typeProfiles, searchQuery, selectedArchetype]);
 
-  // Format 16-D skill vector keys for readable display
+  // Skill rows in the published dimension order with the published labels;
+  // null = input missing for this player
   const skillEntries = useMemo(() => {
     if (!selectedPlayer?.skillVector) return [];
-    return Object.entries(selectedPlayer.skillVector).map(([key, val]) => {
-      const label = key
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, (c) => c.toUpperCase());
-      return { key, label, val: val as number };
-    });
-  }, [selectedPlayer]);
+    const vec = selectedPlayer.skillVector as unknown as Record<string, number | null>;
+    const meta = catalog.dimensions[selectedPlayer.playerType];
+    return meta.map((d) => ({ key: d.key, label: d.label, val: vec[d.key] ?? null }));
+  }, [selectedPlayer, catalog.dimensions]);
+  const dimCount = skillEntries.length;
 
   return (
     <div className="space-y-6">
@@ -82,24 +149,30 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
           <div>
             <div className="flex items-center gap-2 mb-1.5">
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20 flex items-center gap-1 font-mono">
-                <Dna className="w-3.5 h-3.5" /> High-Dimensional Player DNA
+                <Dna className="w-3.5 h-3.5" /> Player DNA
               </span>
-              <span className="text-xs text-slate-400 font-mono">16-D Statcast Skill Manifold</span>
+              <span className="text-xs text-slate-400 font-mono" data-testid="dna-season-label">
+                {seasonLabel}
+                {throughLabel ? ` · through ${throughLabel}` : ''}
+              </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-              Player DNA & Nearest Historical Twins (1980–2026)
+              Player DNA & Nearest Peer Comps
             </h1>
             <p className="text-sm text-slate-300 max-w-2xl mt-1">
-              High-dimensional vector embedding classifying MLB hitters and pitchers into modern tactical archetypes.
-              Identifies top nearest historical comparables using cosine similarity against peak seasons from 1980 to 2026.
+              Skill fingerprints for qualified MLB batters ({batterDims} skill percentiles each) and pitchers
+              ({pitcherDims} each), built from FanGraphs leaderboard data for the {seasonLabel}. Each player is
+              compared with the other qualified players of the same type in that same season.
             </p>
             <div className="max-w-xl mt-2">
               <HowToRead pageKey="player-dna">
-                Every player is reduced to a 16-dimension statistical fingerprint built from
-                Statcast data, then grouped into a tactical archetype. The &quot;Historical
-                Twins&quot; panel ranks past seasons by cosine similarity — how closely two
-                skill profiles point in the same direction, regardless of scale — so a 100%
-                match means an (almost) identical skill mix, not an identical outcome.
+                Every batter gets {batterDims} and every pitcher {pitcherDims} skill percentiles, each ranked within that season&apos;s
+                qualified batters or pitchers (a missing input is shown as &quot;—&quot;, never filled in). The radar
+                groups them into {categoryMeta.length} category averages. A player who played for more than one club
+                that season is shown as &quot;{MULTI_TEAM_LABEL}&quot;. The
+                &quot;Peer Comps&quot; panel lists the five players of the same type whose percentile profiles point
+                in the most similar direction (cosine similarity around the 50th percentile), so a 100% match means an
+                (almost) identical skill mix, not an identical outcome.
               </HowToRead>
             </div>
           </div>
@@ -109,24 +182,26 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
             <button
               type="button"
               onClick={() => handleTypeSwitch('Batter')}
+              data-testid="dna-type-batter"
               className={`px-4 py-2 rounded-lg font-bold transition-all ${
                 playerType === 'Batter'
                   ? 'bg-accent-600 text-fo-on-accent shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              Batters (160 Pool)
+              Batters ({batterCount})
             </button>
             <button
               type="button"
               onClick={() => handleTypeSwitch('Pitcher')}
+              data-testid="dna-type-pitcher"
               className={`px-4 py-2 rounded-lg font-bold transition-all ${
                 playerType === 'Pitcher'
                   ? 'bg-accent-600 text-fo-on-accent shadow-md shadow-accent-600/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              Pitchers (160 Pool)
+              Pitchers ({pitcherCount})
             </button>
           </div>
         </div>
@@ -158,10 +233,21 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
               >
                 {availableArchetypes.map((arch) => (
                   <option key={arch} value={arch}>
-                    {arch === 'ALL' ? `All Archetypes (${typeProfiles.length})` : arch}
+                    {arch === 'ALL' ? `All Archetypes (${summary.counts[playerType]})` : arch}
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div role="status" aria-live="polite" data-testid="dna-load-status" data-state={isLoadingFull ? 'loading' : 'complete'}>
+              {isLoadingFull && (
+                <div className="flex items-center gap-1.5 text-[11px] sm:text-[10px] text-slate-400 font-mono">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span>
+                    Loading all players ({catalog.profiles.length} of {summary.totalProfiles} shown)...
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Player Roster List */}
@@ -171,6 +257,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
                 return (
                   <div
                     key={p.playerId}
+                    data-testid="dna-roster-item"
                     onClick={() => setSelectedPlayer(p)}
                     className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition-all ${
                       isSelected
@@ -179,7 +266,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <TeamLogo team={p.team} size="sm" />
+                      <DnaTeamBadge team={p.team} size="sm" />
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-xs text-white truncate">{p.playerName}</span>
@@ -187,14 +274,13 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
                             {p.position}
                           </span>
                         </div>
-                        <p className="text-[10.5px] text-slate-400 font-mono truncate">{p.archetype}</p>
+                        <p className="text-[10.5px] text-slate-400 font-mono truncate">{p.archetype ?? 'Insufficient data'}</p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <div className="text-right font-mono">
-                        <span className="text-xs font-bold text-sky-400 block">{p.overallRating} OVR</span>
-                        <span className="text-[11px] sm:text-[10px] text-slate-400">z: {p.compositeZscore}</span>
+                        <span className="text-xs font-bold text-sky-400 block">{p.overallRating ?? '—'} OVR</span>
                       </div>
                       <ChevronRight className={`w-4 h-4 ${isSelected ? 'text-sky-400' : 'text-slate-600'}`} />
                     </div>
@@ -205,27 +291,27 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
           </div>
         </div>
 
-        {/* Middle Column: Player Focus Profile & 16-D Breakdown (4 cols) */}
+        {/* Middle Column: Player Focus Profile & Skill Vector Breakdown (4 cols) */}
         <div className="lg:col-span-4 space-y-4">
           {/* Headline Card */}
           <div className="p-5 rounded-2xl bg-surface-raised/90 border border-slate-800 shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
               <div className="flex items-center gap-3">
-                <TeamLogo team={selectedPlayer.team} size="lg" />
+                <DnaTeamBadge team={selectedPlayer.team} size="lg" />
                 <div>
-                  <h2 className="text-xl font-extrabold text-white">{selectedPlayer.playerName}</h2>
+                  <h2 className="text-xl font-extrabold text-white" data-testid="dna-selected-name">{selectedPlayer.playerName}</h2>
                   <div className="flex items-center gap-2 text-xs font-mono text-slate-400 mt-0.5">
-                    <span>{selectedPlayer.team}</span>
+                    <span data-testid="dna-team">{selectedPlayer.team ?? MULTI_TEAM_LABEL}</span>
                     <span>•</span>
-                    <span>{selectedPlayer.position}</span>
+                    <span>{selectedPlayer.position ?? '—'}</span>
                     <span>•</span>
-                    <span>Age {selectedPlayer.age}</span>
+                    <span>Age {selectedPlayer.age ?? '—'}</span>
                   </div>
                 </div>
               </div>
 
               <div className="text-right font-mono">
-                <span className="text-2xl font-black text-white">{selectedPlayer.overallRating}</span>
+                <span className="text-2xl font-black text-white">{selectedPlayer.overallRating ?? '—'}</span>
                 <span className="text-[11px] sm:text-[10px] text-sky-400 block font-bold">DNA SCORE</span>
               </div>
             </div>
@@ -234,7 +320,7 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
             <div className="p-3 bg-surface/80 rounded-xl border border-sky-500/30 flex items-center justify-between">
               <div>
                 <span className="text-[11px] sm:text-[10px] uppercase font-mono font-bold text-slate-400 block">Classified Archetype</span>
-                <span className="text-sm font-bold text-sky-300 font-mono">{selectedPlayer.archetype}</span>
+                <span className="text-sm font-bold text-sky-300 font-mono">{selectedPlayer.archetype ?? 'Insufficient data'}</span>
               </div>
               <Sparkles className="w-5 h-5 text-amber-400 flex-shrink-0" />
             </div>
@@ -243,19 +329,19 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
             <div className="grid grid-cols-4 gap-2 text-center font-mono text-xs">
               <div className="bg-surface p-2 rounded-lg border border-slate-800">
                 <span className="text-[11px] sm:text-[10px] text-slate-400 block">{selectedPlayer.headlineStats.stat1Label}</span>
-                <span className="font-bold text-white text-xs">{selectedPlayer.headlineStats.stat1Val}</span>
+                <span className="font-bold text-white text-xs">{selectedPlayer.headlineStats.stat1Val ?? '—'}</span>
               </div>
               <div className="bg-surface p-2 rounded-lg border border-slate-800">
                 <span className="text-[11px] sm:text-[10px] text-slate-400 block">{selectedPlayer.headlineStats.stat2Label}</span>
-                <span className="font-bold text-white text-xs">{selectedPlayer.headlineStats.stat2Val}</span>
+                <span className="font-bold text-white text-xs">{selectedPlayer.headlineStats.stat2Val ?? '—'}</span>
               </div>
               <div className="bg-surface p-2 rounded-lg border border-slate-800">
                 <span className="text-[11px] sm:text-[10px] text-slate-400 block">{selectedPlayer.headlineStats.stat3Label}</span>
-                <span className="font-bold text-white text-xs">{selectedPlayer.headlineStats.stat3Val}</span>
+                <span className="font-bold text-white text-xs">{selectedPlayer.headlineStats.stat3Val ?? '—'}</span>
               </div>
               <div className="bg-surface p-2 rounded-lg border border-slate-800">
                 <span className="text-[11px] sm:text-[10px] text-slate-400 block">{selectedPlayer.headlineStats.countLabel}</span>
-                <span className="font-bold text-amber-400 text-xs">{selectedPlayer.headlineStats.countVal}</span>
+                <span className="font-bold text-amber-400 text-xs">{selectedPlayer.headlineStats.countVal ?? '—'}</span>
               </div>
             </div>
 
@@ -263,24 +349,26 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
             <SkillFingerprintPolygon
               playerType={playerType}
               categoryScores={selectedPlayer.categoryScores}
+              categories={categoryMeta}
+              dimensions={dimensionMeta}
             />
 
-            {/* 16-D Individual Vector Progress Bars */}
+            {/* Individual Vector Progress Bars */}
             <div className="space-y-2 pt-2 border-t border-slate-800/80">
               <span className="text-[10.5px] uppercase font-mono font-bold text-slate-400 tracking-wider block">
-                16-Dimensional Skill Vector Breakdown
+                {dimCount}-Dimension Skill Percentiles ({seasonLabel})
               </span>
               <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                 {skillEntries.map((item) => (
-                  <div key={item.key} className="bg-surface/60 p-2 rounded-lg border border-slate-800/50 space-y-1">
+                  <div key={item.key} data-testid="dna-skill-row" className="bg-surface/60 p-2 rounded-lg border border-slate-800/50 space-y-1">
                     <div className="flex justify-between text-[10.5px]">
                       <span className="text-slate-400 truncate">{item.label}</span>
-                      <span className="font-bold text-white">{item.val}</span>
+                      <span className="font-bold text-white">{item.val ?? '—'}</span>
                     </div>
                     <div className="w-full bg-surface-raised h-1.5 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full ${playerType === 'Batter' ? 'bg-sky-500' : 'bg-amber-500'}`}
-                        style={{ width: `${item.val}%` }}
+                        style={{ width: `${item.val ?? 0}%` }}
                       />
                     </div>
                   </div>
@@ -290,16 +378,16 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
           </div>
         </div>
 
-        {/* Right Column: Historical Twins & 2D Manifold Scatter (4 cols) */}
+        {/* Right Column: Peer Comps & Style Map (4 cols) */}
         <div className="lg:col-span-4 space-y-6">
-          {/* Historical Twins List */}
+          {/* Peer Comps List */}
           <div className="p-5 rounded-2xl bg-surface-raised/90 border border-slate-800 shadow-xl space-y-3.5">
             <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
               <div>
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
-                  Top 5 Historical Twins
+                  Top 5 Peer Comps
                 </h3>
-                <p className="text-xs text-slate-400">Cosine Similarity (1980–2026 Era)</p>
+                <p className="text-xs text-slate-400">Same-type players, {seasonLabel}</p>
               </div>
               <span className="text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
                 Cosine Comps
@@ -307,18 +395,24 @@ export const PlayerDnaClient: React.FC<PlayerDnaClientProps> = ({ catalog }) => 
             </div>
 
             <div className="space-y-2.5">
-              {selectedPlayer.historicalTwins.map((twin, idx) => (
-                <HistoricalTwinCard key={idx} twin={twin} rank={idx + 1} />
-              ))}
+              {selectedPlayer.peerComps.length === 0 ? (
+                <p className="text-xs text-slate-400">Insufficient data: too few measured skill dimensions to compare.</p>
+              ) : (
+                selectedPlayer.peerComps.map((comp, idx) => (
+                  <PeerCompCard key={comp.playerId} comp={comp} rank={idx + 1} />
+                ))
+              )}
             </div>
           </div>
 
-          {/* 2D Stylistic Manifold Projection */}
+          {/* Style map: fixed blend of category scores */}
           <DnaManifoldScatter
             players={typeProfiles}
             selectedPlayer={selectedPlayer}
             onSelectPlayer={setSelectedPlayer}
             playerType={playerType}
+            categories={categoryMeta}
+            totalPlotted={summary.plotted[playerType]}
           />
         </div>
       </div>
