@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "game_id": "401910487",
-  "generated_at": "2026-11-20T14:02:56Z",
+  "generated_at": "2026-11-21T14:02:53Z",
   "data": {
     "projection_basis": "primary_ensemble",
     "predicted_margin": -9.53,
@@ -62,16 +62,16 @@
       "away_prior_games_n": 16,
       "home_prior_games_n": 14,
       "base_value_log_odds": 0.23286,
-      "total_log_odds": -0.39507,
-      "predicted_home_win_prob": 0.4025,
+      "total_log_odds": -0.37222,
+      "predicted_home_win_prob": 0.408,
       "factors": [
         {
           "feature": "diff_roll_tovp",
           "label": "18-Game Turnover Rate Diff",
           "feature_value": 0.0112,
           "z_score": 0.6139,
-          "shap_log_odds": -0.26473,
-          "shap_prob_approx": -0.0659
+          "shap_log_odds": -0.25717,
+          "shap_prob_approx": -0.064
         },
         {
           "feature": "diff_is_b2b",
@@ -86,16 +86,16 @@
           "label": "18-Game Defensive Rebound Diff",
           "feature_value": -1.9107,
           "z_score": -0.6261,
-          "shap_log_odds": -0.16592,
-          "shap_prob_approx": -0.0412
+          "shap_log_odds": -0.16628,
+          "shap_prob_approx": -0.0413
         },
         {
           "feature": "diff_roll_ts",
           "label": "18-Game True Shooting Diff",
           "feature_value": 0.0132,
           "z_score": 0.4194,
-          "shap_log_odds": 0.12936,
-          "shap_prob_approx": 0.0316
+          "shap_log_odds": 0.13175,
+          "shap_prob_approx": 0.0322
         },
         {
           "feature": "diff_roll_stl",
@@ -124,10 +124,10 @@
         {
           "feature": "diff_roll_blk",
           "label": "18-Game Blocks Diff",
-          "feature_value": -1.1786,
-          "z_score": -0.8245,
-          "shap_log_odds": -0.03422,
-          "shap_prob_approx": -0.0085
+          "feature_value": -1.1161,
+          "z_score": -0.7806,
+          "shap_log_odds": -0.02096,
+          "shap_prob_approx": -0.0052
         },
         {
           "feature": "style_similarity",
