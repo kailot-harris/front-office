@@ -35,6 +35,15 @@ REM starts in dry-run mode and the FIRST REAL RUNS ARE DRY RUNS BY DESIGN.
 REM
 REM   >>> DO NOT switch the registered task to `publish` until #42 is proven. <<<
 REM   See docs/SCHEDULING.md for the gate.
+REM
+REM AGGREGATOR SYNC DISPATCH (2026-11-21). The aggregator's sync-sports.yml cron
+REM has been starting hours late, so a morning publish reached the site only in
+REM the late afternoon. After a publish that pushed a new commit (publish_web.R
+REM exit 0 and HEAD moved), this script now runs
+REM   gh workflow run "Sync sport subtrees and deploy" -f sports="mlb nfl nba wnba" -f deploy=true
+REM so the run goes live within minutes. Same block as NBA_analytics#221 and
+REM WNBA_analytics#235. A failed dispatch is a [WARN] line and never changes the
+REM exit code; see the block after the publish gate report.
 REM ==============================================================================
 
 REM ------------------------------------------------------------------------------
@@ -327,8 +336,13 @@ REM ---- Run the gate ----------------------------------------------------------
 REM publish_web.R exits 0 only when nothing fatal failed, 1 on any fatal failure,
 REM "so a scheduled caller can branch on it". This is that caller. PUBLISH_RC is
 REM captured OUTSIDE any parenthesized block before being tested.
+REM PUB_HEAD_BEFORE/AFTER feed the aggregator sync dispatch below.
+set PUB_HEAD_BEFORE=
+for /f "delims=" %%S in ('git rev-parse HEAD 2^>nul') do set PUB_HEAD_BEFORE=%%S
 %RSCRIPT% "tools\publish_web.R" %PW_ARGS% >> "%LOG_FILE%" 2>&1
 set PUBLISH_RC=%ERRORLEVEL%
+set PUB_HEAD_AFTER=
+for /f "delims=" %%S in ('git rev-parse HEAD 2^>nul') do set PUB_HEAD_AFTER=%%S
 
 echo ------------------------------------------------------------------ >> "%LOG_FILE%"
 if not "%PUBLISH_RC%"=="0" (
@@ -348,7 +362,54 @@ if not "%PUBLISH_RC%"=="0" (
 echo ================================================================== >> "%LOG_FILE%"
 echo. >> "%LOG_FILE%"
 
-REM No success-dependent step runs after a non-zero exit: there is deliberately no
-REM post-publish action chained here at all. On failure we only log and propagate
-REM the code, so Task Scheduler's "Last Run Result" shows the failure too.
+REM ------------------------------------------------------------------
+REM Dispatch the aggregator sync right after a publish that pushed.
+REM Pushing NFL_analytics deploys nothing; the site changes only when the
+REM aggregator's sync-sports.yml runs, and its cron has been starting
+REM hours late. So this asks for a sync now:
+REM   gh workflow run "Sync sport subtrees and deploy" -f sports="mlb nfl nba wnba" -f deploy=true
+REM
+REM New-commit signal: publish_web.R exited 0 AND HEAD moved. publish_web.R
+REM commits and pushes only in a live mode with every fatal assertion
+REM passed; a failed commit or push stops it with exit 1. A dry run, or a
+REM blocked gate, leaves HEAD where it was. So "exit 0 and HEAD changed"
+REM means a new commit reached origin/main.
+REM
+REM All four sports, not just nfl: sync-sports.yml runs in concurrency
+REM group sync-sports with cancel-in-progress false, and GitHub keeps only
+REM ONE pending run per group, replacing an older pending run with the
+REM newer one. If NFL asked for sports=nfl and NBA asked for sports=nba
+REM a minute later while a sync was running, NFL's request would be
+REM dropped. A sync that always pulls all four makes any surviving run
+REM correct.
+REM
+REM A failed dispatch (gh missing, not signed in, network) is a [WARN]
+REM line and never changes this script's exit code: the publish already
+REM succeeded and the cron is the backstop. gh is found on PATH or under
+REM %ProgramFiles%\GitHub CLI, and run with `call` so a gh.cmd/gh.bat
+REM shim returns here instead of ending this script.
+REM ------------------------------------------------------------------
+set SYNC_DISPATCH=0
+if "%PUBLISH_RC%"=="0" if defined PUB_HEAD_BEFORE if defined PUB_HEAD_AFTER if not "%PUB_HEAD_AFTER%"=="%PUB_HEAD_BEFORE%" set SYNC_DISPATCH=1
+if not "%SYNC_DISPATCH%"=="1" echo [INFO] Aggregator sync not dispatched: no new commit was pushed ^(publish exit %PUBLISH_RC%, mode %MODE_LABEL%, HEAD %PUB_HEAD_BEFORE% -^> %PUB_HEAD_AFTER%^). >> "%LOG_FILE%"
+set GH_BIN=
+if "%SYNC_DISPATCH%"=="1" where gh >nul 2>&1
+if "%SYNC_DISPATCH%"=="1" if not errorlevel 1 set "GH_BIN=gh"
+if "%SYNC_DISPATCH%"=="1" if not defined GH_BIN if exist "%ProgramFiles%\GitHub CLI\gh.exe" set "GH_BIN=%ProgramFiles%\GitHub CLI\gh.exe"
+if "%SYNC_DISPATCH%"=="1" if not defined GH_BIN echo [WARN] Aggregator sync NOT dispatched: GitHub CLI ^(gh^) not found on PATH or in "%ProgramFiles%\GitHub CLI". The sync-sports.yml cron will pick this publish up later. >> "%LOG_FILE%"
+if "%SYNC_DISPATCH%"=="1" if defined GH_BIN (
+    echo [INFO] Dispatching aggregator sync: HEAD %PUB_HEAD_BEFORE% -^> %PUB_HEAD_AFTER%, sports="mlb nfl nba wnba". >> "%LOG_FILE%"
+    call "!GH_BIN!" workflow run "Sync sport subtrees and deploy" --repo kailot-harris/front-office -f sports="mlb nfl nba wnba" -f deploy=true >> "%LOG_FILE%" 2>&1
+    if errorlevel 1 (
+        echo [WARN] Aggregator sync dispatch FAILED with exit code !ERRORLEVEL!. Publish is unaffected; the sync-sports.yml cron will pick it up later. >> "%LOG_FILE%"
+    ) else (
+        echo [INFO] Aggregator sync dispatched. >> "%LOG_FILE%"
+    )
+)
+echo. >> "%LOG_FILE%"
+
+REM The only step chained after the publish is the sync dispatch above, and it
+REM runs only after a successful publish that pushed; it never changes the exit
+REM code. On failure we only log and propagate the code, so Task Scheduler's
+REM "Last Run Result" shows the failure too. This exit /b stays the last line.
 exit /b %PUBLISH_RC%
