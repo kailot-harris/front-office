@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import type { Metadata, Viewport } from 'next';
 import { GeistSans, GeistMono } from 'geist/font';
 import './globals.css';
@@ -47,6 +49,17 @@ export const viewport: Viewport = {
   colorScheme: 'light dark',
 };
 
+/** season_state from the published landing digest; undefined if absent (#221). */
+function readSeasonState(): string | undefined {
+  try {
+    const raw = fs.readFileSync(path.join(process.cwd(), 'public', 'data', 'landing_digest.json'), 'utf-8');
+    const state = (JSON.parse(raw) as { season_state?: unknown }).season_state;
+    return typeof state === 'string' ? state : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -64,7 +77,7 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        <Sidebar generatedAt={generated_at} />
+        <Sidebar generatedAt={generated_at} seasonState={readSeasonState()} />
         <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
           <SportSwitcher current="mlb" />
           <main id="main-content" className="flex-1 pb-10">{children}</main>
