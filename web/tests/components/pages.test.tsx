@@ -107,7 +107,9 @@ describe('Sidebar', () => {
     const { container } = render(<Sidebar />);
     const internal = Array.from(container.querySelectorAll('a'))
       .map((a) => a.getAttribute('href') ?? '')
-      .filter((h) => h.startsWith('/'));
+      .filter((h) => h.startsWith('/'))
+      // #220: the Front Office home link points outside this app on purpose.
+      .filter((h) => h !== '/front-office/');
     const unknown = internal.filter((h) => !ROUTES.includes(h));
     expect(unknown, 'sidebar links to a route with no page').toEqual([]);
   });

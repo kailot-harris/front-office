@@ -22,8 +22,10 @@ import {
   Target,
   Dna,
   Flame,
+  ArrowLeft,
 } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
+import { orderNavItems } from '@/lib/navOrder';
 
 /**
  * next.config.mjs sets `trailingSlash: true`, so usePathname() returns '/teams/'
@@ -36,14 +38,16 @@ const withoutTrailingSlash = (path: string) =>
 
 export interface SidebarProps {
   generatedAt?: string;
+  /** `season_state` from landing_digest.json; undefined = plain NAV_ORDER (#221). */
+  seasonState?: string;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonState }) => {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [showSigmaExplainer, setShowSigmaExplainer] = useState(false);
 
-  const navItems = [
+  const navItems = orderNavItems([
     {
       href: '/',
       label: 'Season Standings',
@@ -135,11 +139,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       icon: Film,
       desc: 'Animated races & simulation GIFs',
     },
-  ];
+  ], seasonState);
 
   const NavContent = () => (
     <div className="flex flex-col h-full justify-between p-4">
       <div className="space-y-6 flex-1 overflow-y-auto min-h-0">
+        {/* #220: link back to the Front Office landing page. A plain <a> (not Link,
+            not BASE_PATH) so the sport base path is not prepended. Kept outside
+            navItems so the aggregator's nav-sync check does not see it. */}
+        <div className="pb-3 border-b border-slate-800/80">
+          <a
+            href="/front-office/"
+            data-testid="front-office-home-link"
+            className="flex items-center gap-2 px-2 py-1 rounded-lg text-sm font-semibold text-accent-400 hover:text-accent-500 hover:underline transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+            <span>Front Office home</span>
+          </a>
+        </div>
+
         {/* Brand Header */}
         <div className="flex items-center gap-3 px-2 pt-1 pb-2 border-b border-slate-800/80">
           <div className="w-11 h-11 rounded-xl overflow-hidden border border-emerald-500/30 shadow-lg shadow-emerald-500/10 flex-shrink-0">
