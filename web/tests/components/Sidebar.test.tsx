@@ -42,7 +42,7 @@ describe('Sidebar active tab highlighting', () => {
   it('highlights /players nav link when usePathname returns /players/ with trailing slash', () => {
     mockPathname = '/players/';
     render(<Sidebar />);
-    const playersLink = screen.getByRole('link', { name: /Player Projections/i });
+    const playersLink = screen.getByRole('link', { name: /Player Ratings & Projections/i });
     expect(playersLink.className).toContain('bg-accent-600');
     expect(playersLink.className).toContain('text-white');
   });
@@ -55,17 +55,17 @@ describe('Sidebar active tab highlighting', () => {
     expect(homeLink.className).toContain('text-white');
   });
 
-  it('renders and highlights pinned /offseason-monitor tab', () => {
-    mockPathname = '/offseason-monitor/';
+  it('renders and highlights pinned /offseason tab', () => {
+    mockPathname = '/offseason/';
     render(<Sidebar />);
-    const monitorLink = screen.getByRole('link', { name: /2026-2027 Off-Season Monitor/i });
+    const monitorLink = screen.getByRole('link', { name: /Offseason Moves/i });
     expect(monitorLink.className).toContain('bg-accent-600');
     expect(monitorLink.className).toContain('text-white');
     expect(screen.getByText('Weekly Pulse')).toBeDefined();
   });
 
   it('renders 2026 Championship Archive expandable section', () => {
-    mockPathname = '/offseason-monitor';
+    mockPathname = '/offseason';
     render(<Sidebar />);
     const archiveBtn = screen.getByText(/2026 Championship Archive/i);
     expect(archiveBtn).toBeDefined();

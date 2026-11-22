@@ -1,85 +1,19 @@
-import React from 'react';
 import { Metadata } from 'next';
-import Link from 'next/link';
-import { ArrowRightLeft, ArrowLeft, ShieldAlert } from 'lucide-react';
-import { HowToRead } from '@/components/HowToRead';
-
-const ARCHIVED_OFFSEASON_SNAPSHOT_DATE = '2026-11-07';
+import { getOffseasonMonitorData } from '@/lib/data';
+import { OffseasonMonitorClient } from '@/components/OffseasonMonitorClient';
 
 export const metadata: Metadata = {
-  title: 'Offseason Moves & Expansion Hub (Archived)',
+  title: 'Offseason Moves: 2026-27 Monitor',
   description:
-    'The 2026 WNBA offseason moves and draft board are archived static snapshots (2026-11-07) pending integration with live transaction feeds.',
+    'Weekly state-diff intelligence engine tracking confirmed transactions, reported rumors, CBA hard cap metrics, and 2027 model baseline priors.',
 };
 
-export default function OffseasonPage() {
-  const snapshotDate = ARCHIVED_OFFSEASON_SNAPSHOT_DATE;
+export default function OffseasonMonitorPage() {
+  const dataset = getOffseasonMonitorData();
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center space-y-6">
-      <aside
-        role="note"
-        aria-label="Archived Static Snapshot"
-        data-testid="archived-static-snapshot-banner"
-        className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-left"
-      >
-        <div className="flex items-start gap-3">
-          <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-          <div className="space-y-1 text-sm">
-            <p className="font-bold text-amber-200 uppercase tracking-wide text-xs font-mono">
-              Archived Static Snapshot
-            </p>
-            <p className="text-slate-200 leading-relaxed">
-              The underlying{' '}
-              <code className="font-mono text-amber-300">offseason_draft.json</code>,{' '}
-              <code className="font-mono text-amber-300">offseason_teams.json</code>, and{' '}
-              <code className="font-mono text-amber-300">offseason_transactions.json</code> datasets
-              are frozen historical snapshots archived on{' '}
-              <time dateTime={snapshotDate} className="font-mono font-semibold text-white">
-                {snapshotDate}
-              </time>
-              . No scheduled pipeline stage updates these payloads (archived under issues #129, #141,
-              and #209).
-            </p>
-          </div>
-        </div>
-      </aside>
-
-      <div className="inline-flex items-center justify-center p-3 bg-amber-500/10 rounded-full border border-amber-500/20 text-amber-400">
-        <ArrowRightLeft className="w-8 h-8" />
-      </div>
-      <div className="space-y-2">
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
-          <ShieldAlert className="w-3.5 h-3.5" />
-          Page Archived Pending Live Data
-        </div>
-        <h1 className="text-3xl font-bold text-white tracking-tight">Offseason Moves Hub Archived</h1>
-        <p className="text-slate-400 max-w-xl mx-auto text-sm leading-relaxed">
-          This feature has been archived pending integration with official WNBA transaction wire feeds. For active weekly off-season transaction reconciliation, visit the 2026–2027 Off-Season Monitor (GitHub issues #129, #141).
-        </p>
-        <div className="flex justify-center">
-          <HowToRead pageKey="offseason-hub">
-            This hub was the old static moves/draft board — it has been replaced by the
-            Off-Season Monitor, which diffs confirmed transactions against reported rumors weekly
-            instead of showing a single stale snapshot.
-          </HowToRead>
-        </div>
-      </div>
-      <div className="pt-4 flex items-center justify-center gap-3">
-        <Link
-          href="/offseason-monitor"
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/30 transition-colors"
-        >
-          Off-Season Monitor &rarr;
-        </Link>
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Home
-        </Link>
-      </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <OffseasonMonitorClient initialDataset={dataset} />
     </div>
   );
 }
