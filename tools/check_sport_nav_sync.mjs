@@ -108,6 +108,13 @@ function extractAccordionNavItems(html, sport) {
   return items;
 }
 
+/** Parses the NAV_ORDER label list out of a sport's web/lib/navOrder.ts. */
+function extractNavOrder(src) {
+  const m = /NAV_ORDER[^=]*=\s*\[([\s\S]*?)\]/.exec(src);
+  if (!m) return null;
+  return [...m[1].matchAll(/(['"`])((?:(?!\1).)*)\1/g)].map((x) => x[2]);
+}
+
 function toMap(items) {
   const map = new Map();
   for (const item of items) map.set(item.href, item.label);
@@ -128,6 +135,7 @@ function main() {
   }
 
   const allFailures = [];
+  const navOrderSources = new Map();
 
   for (const sport of SPORTS) {
     const sidebarPath = join(REPO_ROOT, sport, 'web', 'components', 'Sidebar.tsx');
@@ -170,6 +178,39 @@ function main() {
     for (const lm of labelMismatches) {
       allFailures.push(`[${sport}] '${lm.href}' label mismatch: Sidebar says '${lm.sidebarLabel}', accordion says '${lm.accordionLabel}'`);
     }
+
+    // Order guard (front-office#221). Each sport's Sidebar sorts its items at
+    // render time with web/lib/navOrder.ts (byte-identical in all four
+    // repos), so the source array order is irrelevant. The landing accordion
+    // is static and cannot follow each league's season_state, so it uses the
+    // plain NAV_ORDER (no offseason pinning).
+    const navOrderPath = join(REPO_ROOT, sport, 'web', 'lib', 'navOrder.ts');
+    const navOrderSrc = readFileSafe(navOrderPath);
+    if (navOrderSrc === null) {
+      allFailures.push(`[${sport}] web/lib/navOrder.ts not found (front-office#221) -- run the subtree sync`);
+      continue;
+    }
+    navOrderSources.set(sport, navOrderSrc.replace(/\r\n/g, '\n'));
+    const navOrder = extractNavOrder(navOrderSrc);
+    if (navOrder === null) {
+      allFailures.push(`[${sport}] could not parse NAV_ORDER from web/lib/navOrder.ts`);
+      continue;
+    }
+    for (const item of accordionItems) {
+      if (!navOrder.includes(item.label)) {
+        allFailures.push(`[${sport}] accordion label '${item.label}' is not in NAV_ORDER`);
+      }
+    }
+    const actual = accordionItems.map((i) => i.label);
+    const expected = [...actual].sort((a, b) => navOrder.indexOf(a) - navOrder.indexOf(b));
+    if (actual.join('|') !== expected.join('|')) {
+      allFailures.push(`[${sport}] accordion order does not follow NAV_ORDER. Expected: ${expected.join(', ')}`);
+    }
+  }
+
+  const distinctNavOrders = new Set(navOrderSources.values());
+  if (distinctNavOrders.size > 1) {
+    allFailures.push(`web/lib/navOrder.ts differs between sports (${[...navOrderSources.keys()].join(', ')}); it must be byte-identical in all four repos (front-office#221)`);
   }
 
   if (allFailures.length > 0) {
