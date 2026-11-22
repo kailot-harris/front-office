@@ -5,7 +5,21 @@ import './globals.css';
 import { BASE_PATH } from '@/lib/basePath';
 import { Sidebar } from '@/components/Sidebar';
 import { SportSwitcher } from '@/components/SportSwitcher';
+import fs from 'fs';
+import path from 'path';
 import { getMetadata } from '@/lib/data';
+
+// #221: season_state from the published landing digest, read at build time.
+// Missing file or field -> undefined, which gives the plain NAV_ORDER.
+function getSeasonState(): string | undefined {
+  try {
+    const file = path.join(process.cwd(), 'public', 'data', 'landing_digest.json');
+    const value = JSON.parse(fs.readFileSync(file, 'utf-8'))?.season_state;
+    return typeof value === 'string' ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 // Link previews (Discord, X, iMessage) need absolute URLs. metadataBase supplies
 // the origin; BASE_PATH supplies /front-office/wnba, because Next's basePath does
@@ -64,6 +78,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const { generated_at } = getMetadata();
+  const seasonState = getSeasonState();
   return (
     <html lang="en" data-site="wnba" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body
@@ -78,7 +93,7 @@ export default function RootLayout({
         >
           Skip to main content
         </a>
-        <Sidebar generatedAt={generated_at} />
+        <Sidebar generatedAt={generated_at} seasonState={seasonState} />
         <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
           <SportSwitcher current="wnba" />
           <main id="main-content" tabIndex={-1} className="flex-1 pb-10">{children}</main>

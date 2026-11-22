@@ -24,10 +24,10 @@ import {
   Calculator,
   ShieldCheck,
   Sparkles,
-  ChevronDown,
-  Archive,
   Film,
+  ArrowLeft,
 } from 'lucide-react';
+import { orderNavItems } from '@/lib/navOrder';
 
 /**
  * next.config.mjs sets `trailingSlash: true`, so usePathname() returns '/matchups/'
@@ -40,9 +40,11 @@ const withoutTrailingSlash = (path: string) =>
 
 export interface SidebarProps {
   generatedAt?: string;
+  /** `season_state` from landing_digest.json, read at build time by the layout (#221). */
+  seasonState?: string;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonState }) => {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement | null>(null);
@@ -50,8 +52,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
   useFocusTrap(drawerRef, isOpen, closeDrawer);
   const [showSigmaExplainer, setShowSigmaExplainer] = useState(false);
 
-  // Active primary items (2026-2027 Off-Season focus)
-  const primaryNavItems = [
+  // Every nav item; the display order comes from orderNavItems (#221), never
+  // from the position in this array.
+  const navItems = [
     {
       href: '/offseason',
       label: 'Offseason Moves',
@@ -66,10 +69,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       icon: Sparkles,
       desc: '2026 Season recap & model audit',
     },
-  ];
-
-  // 2026 In-Season items grouped under expandable "2026 Championship Archive"
-  const inSeasonNavItems = [
     {
       href: '/',
       label: 'Season Standings',
@@ -163,15 +162,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
     },
   ];
 
-  // Auto-expand archive if user is viewing an in-season archive page
-  const currentPathClean = withoutTrailingSlash(pathname ?? '/');
-  const isVisitingArchive = inSeasonNavItems.some(
-    (item) =>
-      currentPathClean === withoutTrailingSlash(item.href) ||
-      (item.href === '/' && (currentPathClean === '' || currentPathClean === '/teams'))
-  );
-
-  const [isArchiveOpen, setIsArchiveOpen] = useState<boolean>(isVisitingArchive);
+  const orderedNavItems = orderNavItems(navItems, seasonState);
 
   const renderNavLink = (item: {
     href: string;
@@ -227,6 +218,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
   const NavContent = () => (
     <div className="flex flex-col h-full justify-between p-4">
       <div className="space-y-6 flex-1 overflow-y-auto min-h-0">
+        {/* #220: back to the Front Office landing. A plain anchor (not Next Link,
+            not BASE_PATH) so the sport base path is not prepended; kept outside
+            navItems so the aggregator's nav sync check ignores it. */}
+        <a
+          href="/front-office/"
+          className="flex items-center gap-2 px-2 pb-3 border-b border-slate-800/80 text-sm font-medium text-accent-400 hover:text-accent-300 hover:underline"
+        >
+          <ArrowLeft className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+          <span>Front Office home</span>
+        </a>
         <div className="flex items-center gap-3 px-2 pt-1 pb-2 border-b border-slate-800/80">
           <div className="w-11 h-11 rounded-xl overflow-hidden border border-indigo-500/30 shadow-lg shadow-indigo-500/20 flex-shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -244,40 +245,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
           </div>
         </div>
 
-        {/* 1. Primary Nav (Offseason Intelligence) */}
-        <div className="space-y-1">
-          <div className="px-2 text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 font-mono">
-            Off-Season Intelligence
-          </div>
-          {primaryNavItems.map(renderNavLink)}
-        </div>
-
-        {/* 2. Grouped In-Season Section: 2026 Championship Archive */}
-        <div className="space-y-1 pt-2 border-t border-slate-800/80">
-          <button
-            type="button"
-            onClick={() => setIsArchiveOpen(!isArchiveOpen)}
-            className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/40 transition-colors group"
-          >
-            <div className="flex items-center gap-2">
-              <Archive className="w-3.5 h-3.5 text-slate-400 group-hover:text-violet-400" />
-              <span className="text-[11px] sm:text-[10px] font-bold uppercase tracking-wider font-mono">
-                2026 Championship Archive
-              </span>
-            </div>
-            <ChevronDown
-              className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${
-                isArchiveOpen ? 'rotate-180 text-violet-400' : ''
-              }`}
-            />
-          </button>
-
-          {isArchiveOpen && (
-            <div className="space-y-1 pl-1 pt-1 border-l-2 border-slate-800/60 ml-2">
-              {inSeasonNavItems.map(renderNavLink)}
-            </div>
-          )}
-        </div>
+        {/* One flat list in orderNavItems order (#221); no season-mode grouping. */}
+        <div className="space-y-1">{orderedNavItems.map(renderNavLink)}</div>
 
         {/* Simulation Spec Footer Box */}
         <div className="space-y-2 pt-2 border-t border-slate-800/80">
