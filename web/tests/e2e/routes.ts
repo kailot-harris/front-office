@@ -37,8 +37,8 @@ export const ROUTES: RouteSpec[] = [
   },
   {
     path: '/players',
-    title: 'Player Projections',
-    heading: 'Player Projections & Outliers',
+    title: 'Player Ratings & Projections',
+    heading: 'Player Ratings & Projections',
     dataMarkers: ['Active Rotation Pool', 'Statistical Outliers'],
     expectsSearch: true,
   },
@@ -80,16 +80,16 @@ export const ROUTES: RouteSpec[] = [
   {
     path: '/matchups',
     title: 'Matchups: Weekly Slates',
-    heading: 'Matchup Slates',
+    heading: 'NBA Matchups',
     // Both markers are page-specific on purpose. The site nav renders every
-    // page's label on every page, so "Matchup Slates" alone would pass from any
+    // page's label on every page, so "Matchups" alone would pass from any
     // route and prove nothing; the ribbon's ratings_source string comes from
     // matchups_slates.json itself, so it only appears once the dataset renders.
     dataMarkers: ['Projection basis:', 'Primary 4-Model Ensemble Blend'],
     expectsSearch: true,
   },
   {
-    path: '/series',
+    path: '/playoffs',
     title: '7-Game Playoff Series',
     heading: '7-Game Playoff Series Matchup Simulator',
     dataMarkers: ['10,000-sim Monte Carlo engine', '8-man playoff rotation'],
