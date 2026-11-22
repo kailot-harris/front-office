@@ -1,7 +1,7 @@
 /**
- * One sidebar order shared by every sport (front-office #221).
- * This file is byte-identical across the four sport repos; do not add
- * sport-specific entries here.
+ * Shared sidebar order for every Front Office sport board (front-office #221).
+ * This file is byte-identical across the NFL, NBA, WNBA and MLB repos.
+ * Labels a sport does not have are simply absent from its sidebar.
  */
 export const NAV_ORDER: readonly string[] = [
   'Season Standings',
@@ -26,25 +26,26 @@ export const NAV_ORDER: readonly string[] = [
   'Visual Gallery',
 ];
 
-/** Pages that move to the top, in this order, while the league is in its offseason. */
+/** Pages pinned to the top, in this order, while season_state is 'offseason'. */
 export const OFFSEASON_FIRST: readonly string[] = ['Offseason Moves', 'Retrospective'];
 
+/**
+ * Sort nav items by NAV_ORDER. In the offseason, OFFSEASON_FIRST items lead.
+ * Throws on a label missing from NAV_ORDER so the build and tests catch it.
+ */
 export function orderNavItems<T extends { label: string }>(
   items: T[],
   seasonState: string | undefined,
 ): T[] {
   for (const item of items) {
     if (!NAV_ORDER.includes(item.label)) {
-      throw new Error(`Nav label "${item.label}" is not in NAV_ORDER (web/lib/navOrder.ts)`);
+      throw new Error(`orderNavItems: nav label "${item.label}" is not in NAV_ORDER`);
     }
   }
   const offseason = seasonState === 'offseason';
   const rank = (label: string): number => {
-    if (offseason) {
-      const first = OFFSEASON_FIRST.indexOf(label);
-      if (first !== -1) return first - OFFSEASON_FIRST.length;
-    }
-    return NAV_ORDER.indexOf(label);
+    const pinned = offseason ? OFFSEASON_FIRST.indexOf(label) : -1;
+    return pinned >= 0 ? pinned - OFFSEASON_FIRST.length : NAV_ORDER.indexOf(label);
   };
   return [...items].sort((a, b) => rank(a.label) - rank(b.label));
 }
