@@ -1,13 +1,20 @@
 {
   "version": "2026-2027.1.0",
-  "lastPublished": "2026-11-21T12:00:26Z",
-  "currentWeekNumber": 13,
-  "baselineAsOfDate": "2026-11-20T12:00:28Z",
+  "lastPublished": "2026-11-22T12:00:31Z",
+  "currentWeekNumber": 14,
+  "baselineAsOfDate": "2026-11-21T12:00:26Z",
   "elapsedDaysSinceLastPublish": 1,
   "leagueOperatingStatus": "NORMAL",
   "freezeDayCount": null,
   "activePhase": "Pre-Lockout Surge",
   "availableEditions": [
+    {
+      "weekNumber": 14,
+      "publishDate": "2026-11-22",
+      "isQuietWeek": true,
+      "isFrozenWeek": false,
+      "isArchived": false
+    },
     {
       "weekNumber": 13,
       "publishDate": "2026-11-21",
@@ -41,7 +48,7 @@
       "publishDate": "2026-11-10",
       "isQuietWeek": true,
       "isFrozenWeek": false,
-      "isArchived": false
+      "isArchived": true
     },
     {
       "weekNumber": 8,
@@ -101,6 +108,64 @@
     }
   ],
   "editions": [
+    {
+      "weekNumber": 14,
+      "publishDate": "2026-11-22",
+      "isQuietWeek": true,
+      "isFrozenWeek": false,
+      "freezeDayCount": null,
+      "freezeStartDate": null,
+      "stateOfPlay": "Quiet week: 0 confirmed state transitions recorded.",
+      "totalConfirmedCount": 0,
+      "confirmedChanges": [],
+      "reportedClaims": [],
+      "expiredClaims": [],
+      "laborEvents": [],
+      "upcomingMilestones": [
+        {
+          "date": "2026-11-02",
+          "event": "Deadline to exercise contract options and extend qualifying offers",
+          "status": "Confirmed"
+        },
+        {
+          "date": "2026-11-17",
+          "event": "Deadline to accept/reject qualifying offers (4:00 p.m. ET)",
+          "status": "Confirmed"
+        },
+        {
+          "date": "2026-11-17",
+          "event": "MLB Owners Meetings begin",
+          "status": "Confirmed"
+        },
+        {
+          "date": "2026-12-01",
+          "event": "Collective Bargaining Agreement expires (11:59 p.m. ET)",
+          "status": "Confirmed"
+        },
+        {
+          "date": "2026-12-07",
+          "event": "Winter Meetings, San Diego (conditional on CBA)",
+          "status": "Tentative"
+        }
+      ],
+      "modelPriorImpact": {
+        "hasChanges": false,
+        "summary": "No change to 2027 baseline Marcel priors."
+      },
+      "winterLeagueNotes": [
+        {
+          "playerName": "Jackson Chourio",
+          "mlbTeam": "MIL",
+          "league": "AFL",
+          "notes": "Participating in instructional development program."
+        }
+      ],
+      "sourcesVisited": [
+        "MLB Official Transaction Wire (statsapi.mlb.com)",
+        "30 Club Official Media Portals",
+        "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"
+      ]
+    },
     {
       "weekNumber": 13,
       "publishDate": "2026-11-21",
@@ -517,11 +582,7 @@
           "notes": "Participating in instructional development program."
         }
       ],
-      "sourcesVisited": [
-        "MLB Official Transaction Wire (statsapi.mlb.com)",
-        "30 Club Official Media Portals",
-        "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"
-      ]
+      "sourcesVisited": ["MLB Official Transaction Wire (statsapi.mlb.com)", "30 Club Official Media Portals", "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"]
     },
     {
       "weekNumber": 12,
@@ -916,65 +977,11 @@
         }
       ],
       "sourcesVisited": ["MLB Official Transaction Wire (statsapi.mlb.com)", "30 Club Official Media Portals", "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"]
-    },
-    {
-      "weekNumber": 9,
-      "publishDate": "2026-11-10",
-      "isQuietWeek": true,
-      "isFrozenWeek": false,
-      "freezeDayCount": null,
-      "freezeStartDate": null,
-      "stateOfPlay": "Quiet week: 0 confirmed state transitions recorded.",
-      "totalConfirmedCount": 0,
-      "confirmedChanges": [],
-      "reportedClaims": [],
-      "expiredClaims": [],
-      "laborEvents": [],
-      "upcomingMilestones": [
-        {
-          "date": "2026-11-02",
-          "event": "Deadline to exercise contract options and extend qualifying offers",
-          "status": "Confirmed"
-        },
-        {
-          "date": "2026-11-17",
-          "event": "Deadline to accept/reject qualifying offers (4:00 p.m. ET)",
-          "status": "Confirmed"
-        },
-        {
-          "date": "2026-11-17",
-          "event": "MLB Owners Meetings begin",
-          "status": "Confirmed"
-        },
-        {
-          "date": "2026-12-01",
-          "event": "Collective Bargaining Agreement expires (11:59 p.m. ET)",
-          "status": "Confirmed"
-        },
-        {
-          "date": "2026-12-07",
-          "event": "Winter Meetings, San Diego (conditional on CBA)",
-          "status": "Tentative"
-        }
-      ],
-      "modelPriorImpact": {
-        "hasChanges": false,
-        "summary": "No change to 2027 baseline Marcel priors."
-      },
-      "winterLeagueNotes": [
-        {
-          "playerName": "Jackson Chourio",
-          "mlbTeam": "MIL",
-          "league": "AFL",
-          "notes": "Participating in instructional development program."
-        }
-      ],
-      "sourcesVisited": ["MLB Official Transaction Wire (statsapi.mlb.com)", "30 Club Official Media Portals", "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"]
     }
   ],
   "currentStateSummary": {
-    "totalConfirmedTransactions": 33,
-    "totalConfirmedCount": 33,
+    "totalConfirmedTransactions": 0,
+    "totalConfirmedCount": 0,
     "pendingReportedRumors": 0,
     "expiredRumorCount": 0,
     "cbtPayrollLeader": "NYM"
