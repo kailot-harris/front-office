@@ -4,7 +4,7 @@ import { PlayersClient } from '@/components/PlayersClient';
 import { HowToRead } from '@/components/HowToRead';
 
 export const metadata: Metadata = {
-  title: 'Player Projections & Outliers',
+  title: 'Player Ratings & Projections',
   description:
     'Season-long per-game and total projections for every active WNBA roster player, with statistical outlier flags and uncertainty bands.',
 };
@@ -19,7 +19,7 @@ export default function PlayersPage() {
           <div>
             <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-3">
               <span>
-                <span className="text-accent-400">WNBA</span> Player Projections & Outliers
+                <span className="text-accent-400">WNBA</span> Player Ratings & Projections
               </span>
               <span className="text-sm font-semibold px-2.5 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">
                 {players.length} Active Roster Players

@@ -6,9 +6,9 @@ import { PlayerDnaProfile } from '@/lib/playerDnaTypes';
 import { PlayerDnaClient } from '@/components/PlayerDnaClient';
 
 export const metadata: Metadata = {
-  title: 'Player DNA & Historical Twins',
+  title: 'Player DNA & Peer Comps',
   description:
-    'High-dimensional 16-D player skill vectors, multivariate fingerprints, and cosine-similarity matching against all-time WNBA legends.',
+    'Twelve-dimension skill profiles for current WNBA players, with the three most similar current-season players for each.',
 };
 
 // Issue #134: serializing all ~220 player DNA profiles straight into page

@@ -53,8 +53,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
   // Active primary items (2026-2027 Off-Season focus)
   const primaryNavItems = [
     {
-      href: '/offseason-monitor',
-      label: '2026-2027 Off-Season Monitor',
+      href: '/offseason',
+      label: 'Offseason Moves',
       badge: 'Weekly Pulse',
       icon: Sparkles,
       desc: 'State-diff transactions & 2027 CBA intelligence',
@@ -93,14 +93,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
     },
     {
       href: '/players',
-      label: 'Player Projections',
+      label: 'Player Ratings & Projections',
       badge: 'Props',
       icon: Users,
       desc: 'Rate distributions & outliers',
     },
     {
       href: '/player-dna',
-      label: 'Player DNA & Twins',
+      label: 'Player DNA & Peer Comps',
       badge: '16-D',
       icon: Dna,
       desc: 'Fingerprints & historical comps',
@@ -121,7 +121,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
     },
     {
       href: '/defense',
-      label: 'Defensive Matrix',
+      label: 'Defense',
       badge: 'Versatility',
       icon: Shield,
       desc: 'Entropy & rim suppression',
@@ -141,7 +141,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt }) => {
       desc: 'Prediction beside result, per round',
     },
     {
-      href: '/series',
+      href: '/playoffs',
       label: 'Playoff Simulator',
       badge: 'Bracket',
       icon: Swords,

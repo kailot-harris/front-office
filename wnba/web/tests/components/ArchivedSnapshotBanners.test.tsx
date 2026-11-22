@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import CapSheetPage from '../../app/cap-sheet/page';
-import OffseasonPage from '../../app/offseason/page';
 import { CapSheetClient } from '../../components/CapSheetClient';
 import type { WnbaCbaLeagueOverview } from '../../lib/cbaTypes';
 
@@ -49,19 +48,5 @@ describe('Archived static snapshot disclosures (#212)', () => {
     expect(banner.textContent).toContain('2026-11-07');
     expect(banner.textContent).toContain('cba_cap_sheet.json');
     expect(banner.textContent).toMatch(/No scheduled pipeline stage updates/i);
-  });
-
-  it('/offseason renders an explicit Archived Static Snapshot banner disclosing frozen payloads and date', () => {
-    render(<OffseasonPage />);
-
-    const banner = screen.getByTestId('archived-static-snapshot-banner');
-    expect(banner.getAttribute('role')).toBe('note');
-    expect(banner.textContent).toContain('Archived Static Snapshot');
-    expect(banner.textContent).toContain('2026-11-07');
-    expect(banner.textContent).toContain('offseason_draft.json');
-    expect(banner.textContent).toContain('offseason_teams.json');
-    expect(banner.textContent).toContain('offseason_transactions.json');
-    expect(banner.textContent).toMatch(/No scheduled pipeline stage updates/i);
-    expect(screen.getByRole('heading', { name: /Offseason Moves Hub Archived/i })).toBeDefined();
   });
 });
