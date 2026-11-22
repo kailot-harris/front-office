@@ -24,8 +24,10 @@ import {
   Flame,
   CalendarDays,
   Film,
+  ArrowLeft,
 } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
+import { orderNavItems } from '@/lib/navOrder';
 
 /**
  * next.config.mjs sets `trailingSlash: true`, so usePathname() returns '/offseason/'
@@ -45,16 +47,21 @@ export interface SidebarProps {
    * refresh (see tests/drift/content-drift.test.ts).
    */
   brierScore?: number;
+  /**
+   * season_state from landing_digest.json, read by the server layout. When it
+   * is 'offseason', offseason pages lead the sidebar (see lib/navOrder.ts).
+   */
+  seasonState?: string;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore, seasonState }) => {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
   useDialogFocus(drawerRef, isOpen, () => setIsOpen(false));
   const [showSigmaExplainer, setShowSigmaExplainer] = useState(false);
 
-  const navItems = [
+  const navItems = orderNavItems([
     {
       href: '/',
       label: 'Season Standings',
@@ -156,11 +163,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore }) => 
       icon: Film,
       desc: 'Animated races & simulation GIFs',
     },
-  ];
+  ], seasonState);
 
   const NavContent = () => (
     <div className="flex flex-col h-full justify-between p-4">
       <div className="space-y-6 flex-1 overflow-y-auto min-h-0">
+        {/* Front Office home (#220). A plain anchor, not next/link, so the sport
+            basePath is not prepended; kept out of navItems for the nav sync check. */}
+        <div className="px-2 pb-3 border-b border-slate-800/80">
+          <a
+            href="/front-office/"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-fo-accent hover:underline"
+          >
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+            <span>Front Office home</span>
+          </a>
+        </div>
+
         {/* Brand Header with Halloween Basketball Button Logo */}
         <div className="flex items-center gap-3 px-2 pt-1 pb-2 border-b border-slate-800/80">
           <div className="w-11 h-11 rounded-xl overflow-hidden border border-orange-500/30 shadow-lg shadow-orange-500/20 flex-shrink-0">
