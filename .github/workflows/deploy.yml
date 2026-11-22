@@ -86,6 +86,9 @@ jobs:
       - name: Check landing-page accordion matches each sport's Sidebar (issue #110)
         run: node tools/check_sport_nav_sync.mjs
 
+      - name: Check sport switcher table matches each sport's Sidebar (issue #212)
+        run: node tools/test_switcher_table.mjs
+
   build:
     needs: predeploy-gate
     strategy:
@@ -143,6 +146,7 @@ jobs:
         run: |
           mkdir -p site
           cp index.html site/
+          cp -r nav site/
           # Visitor guide pages (front-office#218): hand-written static HTML,
           # the only copy of this content. The landing footer and header link them.
           cp -r guide site/

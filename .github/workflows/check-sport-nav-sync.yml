@@ -28,3 +28,6 @@ jobs:
 
       - name: Check landing-page accordion matches each sport's Sidebar (issue #110)
         run: node tools/check_sport_nav_sync.mjs
+
+      - name: Check sport switcher table matches each sport's Sidebar (issue #212)
+        run: node tools/test_switcher_table.mjs
