@@ -30,13 +30,13 @@ Standings pages pair current records with a rating of underlying team quality an
 
 ## "Who's making the playoffs?"
 
-**Go to:** [NFL Playoff Machine](https://kailot-harris.github.io/front-office/nfl/playoffs/) · [NBA Playoff Simulator](https://kailot-harris.github.io/front-office/nba/series/) · [WNBA Playoff Simulator](https://kailot-harris.github.io/front-office/wnba/series/) · [MLB Playoff Simulator](https://kailot-harris.github.io/front-office/mlb/series/)
+**Go to:** [NFL Playoff Simulator](https://kailot-harris.github.io/front-office/nfl/playoffs/) · [NBA Playoff Simulator](https://kailot-harris.github.io/front-office/nba/playoffs/) · [WNBA Playoff Simulator](https://kailot-harris.github.io/front-office/wnba/playoffs/) · [MLB Playoff Simulator](https://kailot-harris.github.io/front-office/mlb/playoffs/)
 
 These pages play out the rest of the season and the postseason thousands of times. The percentages show how often each team reached each round.
 
 ## "Which players play like this one?"
 
-**Go to:** [NBA Player DNA](https://kailot-harris.github.io/front-office/nba/player-dna/) · [WNBA Player DNA](https://kailot-harris.github.io/front-office/wnba/player-dna/) · [MLB Player DNA](https://kailot-harris.github.io/front-office/mlb/player-dna/) · [NFL Player DNA](https://kailot-harris.github.io/front-office/nfl/dna/)
+**Go to:** [NBA Player DNA](https://kailot-harris.github.io/front-office/nba/player-dna/) · [WNBA Player DNA](https://kailot-harris.github.io/front-office/wnba/player-dna/) · [MLB Player DNA](https://kailot-harris.github.io/front-office/mlb/player-dna/) · [NFL Player DNA](https://kailot-harris.github.io/front-office/nfl/player-dna/)
 
 Choose a player to see their skill profile as a radar chart, where they sit on a map of playing styles and the players most similar to them. MLB comparisons reach back through decades of history. The basketball leagues compare against current players.
 
@@ -54,13 +54,13 @@ Shot locations on the court, pass depth and direction for quarterbacks, and spra
 
 ## "How much room does my team have under the cap?"
 
-**Go to:** [NBA Cap & Aprons](https://kailot-harris.github.io/front-office/nba/cap-sheet/) · [MLB Payroll & Luxury Tax](https://kailot-harris.github.io/front-office/mlb/cap-sheet/) · [NFL Salary Cap](https://kailot-harris.github.io/front-office/nfl/salary-cap/)
+**Go to:** [NBA Payroll & Cap](https://kailot-harris.github.io/front-office/nba/cap-sheet/) · [MLB Payroll & Cap](https://kailot-harris.github.io/front-office/mlb/cap-sheet/) · [NFL Payroll & Cap](https://kailot-harris.github.io/front-office/nfl/cap-sheet/)
 
 See each team's payroll against its league's limits: the NBA's tax line and the two "aprons" that restrict trades and signings, MLB's luxury-tax tiers, and NFL cap space. The MLB page includes a calculator that weighs a contract's cost against the wins a player is expected to add.
 
 ## "What happened this offseason?"
 
-**Go to:** [MLB Offseason Monitor](https://kailot-harris.github.io/front-office/mlb/offseason-monitor/) · [WNBA Offseason Monitor](https://kailot-harris.github.io/front-office/wnba/offseason-monitor/) · [NBA Offseason Moves](https://kailot-harris.github.io/front-office/nba/offseason/)
+**Go to:** [MLB Offseason Moves](https://kailot-harris.github.io/front-office/mlb/offseason/) · [WNBA Offseason Moves](https://kailot-harris.github.io/front-office/wnba/offseason/) · [NBA Offseason Moves](https://kailot-harris.github.io/front-office/nba/offseason/)
 
 A weekly report that separates confirmed transactions from rumors, with a short summary of the week. The WNBA version also tracks the tone of coverage across six beat-writer feeds. Use the edition picker to read past weeks.
 
