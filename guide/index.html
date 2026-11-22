@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Walkthrough: Finding Your Way Around Front Office · Front Office</title>
+  <meta name="description" content="How to use Front Office: find a team, read a forecast, compare players and check how accurate the models have been." />
+  <link rel="canonical" href="https://kailot-harris.github.io/front-office/guide/" />
+  <link rel="icon" href="../nfl/icon.png" type="image/png" />
+  <link rel="stylesheet" href="../assets/fonts/fonts.css" />
+  <link rel="stylesheet" href="../assets/design-tokens.css" />
+  <link rel="stylesheet" href="../assets/site-header.css" />
+  <style>
+    body { margin: 0; background: var(--fo-surface); color: var(--fo-text); font-family: var(--fo-font-sans); line-height: var(--fo-leading); }
+    main, footer { max-width: 46rem; margin: 0 auto; padding: 0 1.25rem; box-sizing: border-box; }
+    main { padding-bottom: 3rem; }
+    h1 { font-size: 2rem; line-height: 1.2; margin: 1.5rem 0 1rem; }
+    h2 { font-size: 1.35rem; margin: 2.25rem 0 0.75rem; scroll-margin-top: 1rem; }
+    h3 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; }
+    main a { color: var(--fo-link, var(--fo-nba-accent)); text-underline-offset: 2px; }
+    main a:focus-visible { outline: var(--fo-focus-width) solid currentColor; outline-offset: 2px; }
+    hr { border: 0; border-top: 1px solid var(--fo-border); margin: 2rem 0; }
+    code { font-family: var(--fo-font-mono); font-size: 0.9em; padding: 0.1em 0.35em; border: 1px solid var(--fo-border); border-radius: var(--fo-radius-sm); }
+    li { margin: 0.3rem 0; }
+    .table-wrap { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; font-size: var(--fo-text-sm); }
+    th, td { text-align: left; vertical-align: top; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--fo-border); }
+    .math { overflow-x: auto; }
+    .muted, footer { color: var(--fo-text-muted); }
+    footer { border-top: 1px solid var(--fo-border); padding-top: 1rem; padding-bottom: 2rem; font-size: var(--fo-text-sm); }
+  </style>
+</head>
+<body>
+  <a class="fo-skip-link" href="#main">Skip to content</a>
+  <!-- Shared site header (front-office#218). Identical copies in index.html, guide/index.html and
+       how-it-works/index.html, apart from aria-current; tools/check_site_header_drift.mjs enforces it. -->
+  <div class="site-header" data-site-header>
+    <a class="site-header__name" href="/front-office/">Front Office</a>
+    <button type="button" class="site-header__toggle" aria-expanded="false" aria-controls="site-nav-list" hidden>Menu</button>
+    <nav aria-label="Site">
+      <ul class="site-header__list" id="site-nav-list">
+        <li><a href="/front-office/">Home</a></li>
+        <li><a href="/front-office/guide/" aria-current="page">Start here</a></li>
+        <li><a href="/front-office/how-it-works/">How the models work</a></li>
+        <li><a href="/front-office/nfl/">NFL</a></li>
+        <li><a href="/front-office/nba/">NBA</a></li>
+        <li><a href="/front-office/wnba/">WNBA</a></li>
+        <li><a href="/front-office/mlb/">MLB</a></li>
+      </ul>
+    </nav>
+  </div>
+  <main id="main">
+<h1 id="walkthrough-finding-your-way-around-front-office">Walkthrough: Finding Your Way Around Front Office</h1>
+<p>Front Office has 56 pages across four leagues. Rather than touring them one by one, this guide starts from the questions people usually bring to the site and points to the pages that answer them.</p>
+<p><strong>Live site:</strong> https://kailot-harris.github.io/front-office/</p>
+<hr />
+<h2 id="getting-around">Getting around</h2>
+<ul><li><strong>Search everything.</strong> On the home page, press <code>/</code> and type a word such as <code>clutch</code>, <code>cap</code>, <code>shots</code> or <code>playoff</code>. Matching pages from all four leagues appear instantly. Press <code>Enter</code> to jump to the first result, or <code>Esc</code> to clear.</li><li><strong>In season or offseason?</strong> Each league card on the home page shows its status. In-season leagues (currently NFL and NBA) update daily, with score updates in the evening and overnight. Offseason leagues (currently WNBA and MLB) keep their full season available as an archive and add a weekly offseason report.</li><li><strong>Same layout everywhere.</strong> Each league has a sidebar with the same core pages in roughly the same order.</li><li><strong>&quot;How to read this page.&quot;</strong> Most pages open with a short, collapsible explanation of the charts and columns. Underlined terms show a definition when you hover over them.</li><li><strong>Take the data with you.</strong> Tables can be downloaded as CSV and charts as PNG.</li></ul>
+<hr />
+<h2 id="whos-going-to-win-tonight-and-why">&quot;Who's going to win tonight, and why?&quot;</h2>
+<p><strong>Go to:</strong> <a href="https://kailot-harris.github.io/front-office/nba/matchups/">NBA Matchups</a> · <a href="https://kailot-harris.github.io/front-office/nfl/matchups/">NFL Matchups</a></p>
+<p>Pick a day or week from the ribbon at the top, then click any game. The detail panel shows each team's win probability and a chart breaking that probability into its ingredients: overall team strength, home court or field, rest, travel and injuries. Past slates show the forecast next to the final score, so you can see what the model got right and wrong.</p>
+<h2 id="how-good-is-my-team-really">&quot;How good is my team, really?&quot;</h2>
+<p><strong>Go to:</strong> each league's <strong>Standings</strong> page (<a href="https://kailot-harris.github.io/front-office/nfl/">NFL</a> · <a href="https://kailot-harris.github.io/front-office/nba/">NBA</a> · <a href="https://kailot-harris.github.io/front-office/wnba/">WNBA</a> · <a href="https://kailot-harris.github.io/front-office/mlb/">MLB</a>) and <a href="https://kailot-harris.github.io/front-office/nfl/teams/">NFL Team Ratings</a></p>
+<p>Standings pages pair current records with a rating of underlying team quality and a projected final record. A team that's winning more than its play suggests, or less, will show up here.</p>
+<h2 id="whos-making-the-playoffs">&quot;Who's making the playoffs?&quot;</h2>
+<p><strong>Go to:</strong> <a href="https://kailot-harris.github.io/front-office/nfl/playoffs/">NFL Playoff Simulator</a> · <a href="https://kailot-harris.github.io/front-office/nba/playoffs/">NBA Playoff Simulator</a> · <a href="https://kailot-harris.github.io/front-office/wnba/playoffs/">WNBA Playoff Simulator</a> · <a href="https://kailot-harris.github.io/front-office/mlb/playoffs/">MLB Playoff Simulator</a></p>
+<p>These pages play out the rest of the season and the postseason thousands of times. The percentages show how often each team reached each round.</p>
+<h2 id="which-players-play-like-this-one">&quot;Which players play like this one?&quot;</h2>
+<p><strong>Go to:</strong> <a href="https://kailot-harris.github.io/front-office/nba/player-dna/">NBA Player DNA</a> · <a href="https://kailot-harris.github.io/front-office/wnba/player-dna/">WNBA Player DNA</a> · <a href="https://kailot-harris.github.io/front-office/mlb/player-dna/">MLB Player DNA</a> · <a href="https://kailot-harris.github.io/front-office/nfl/player-dna/">NFL Player DNA</a></p>
+<p>Choose a player to see their skill profile as a radar chart, where they sit on a map of playing styles and the players most similar to them. MLB comparisons reach back through decades of history. The basketball leagues compare against current players.</p>
+<h2 id="who-delivers-when-the-game-is-on-the-line">&quot;Who delivers when the game is on the line?&quot;</h2>
+<p><strong>Go to:</strong> the <strong>Clutch</strong> page in any league (<a href="https://kailot-harris.github.io/front-office/nba/clutch/">NBA</a> · <a href="https://kailot-harris.github.io/front-office/wnba/clutch/">WNBA</a> · <a href="https://kailot-harris.github.io/front-office/nfl/clutch/">NFL</a> · <a href="https://kailot-harris.github.io/front-office/mlb/clutch/">MLB</a>)</p>
+<p>&quot;Clutch&quot; means something specific here: the final minutes of close games in basketball and football, and high-pressure situations in baseball. The pages show who creates their own shots, who holds up under pressure and which relievers strand inherited runners.</p>
+<h2 id="where-does-a-player-do-their-damage">&quot;Where does a player do their damage?&quot;</h2>
+<p><strong>Go to:</strong> <a href="https://kailot-harris.github.io/front-office/nba/shots/">NBA Shot Charts</a> · <a href="https://kailot-harris.github.io/front-office/wnba/shots/">WNBA Shot Charts</a> · <a href="https://kailot-harris.github.io/front-office/nfl/passing/">NFL Passing Charts</a> · <a href="https://kailot-harris.github.io/front-office/mlb/spatial/">MLB Spatial Analytics</a></p>
+<p>Shot locations on the court, pass depth and direction for quarterbacks, and spray charts and pitch movement for more than 1,200 MLB players.</p>
+<h2 id="how-much-room-does-my-team-have-under-the-cap">&quot;How much room does my team have under the cap?&quot;</h2>
+<p><strong>Go to:</strong> <a href="https://kailot-harris.github.io/front-office/nba/cap-sheet/">NBA Payroll &amp; Cap</a> · <a href="https://kailot-harris.github.io/front-office/mlb/cap-sheet/">MLB Payroll &amp; Cap</a> · <a href="https://kailot-harris.github.io/front-office/nfl/cap-sheet/">NFL Payroll &amp; Cap</a></p>
+<p>See each team's payroll against its league's limits: the NBA's tax line and the two &quot;aprons&quot; that restrict trades and signings, MLB's luxury-tax tiers, and NFL cap space. The MLB page includes a calculator that weighs a contract's cost against the wins a player is expected to add.</p>
+<h2 id="what-happened-this-offseason">&quot;What happened this offseason?&quot;</h2>
+<p><strong>Go to:</strong> <a href="https://kailot-harris.github.io/front-office/mlb/offseason/">MLB Offseason Moves</a> · <a href="https://kailot-harris.github.io/front-office/wnba/offseason/">WNBA Offseason Moves</a> · <a href="https://kailot-harris.github.io/front-office/nba/offseason/">NBA Offseason Moves</a></p>
+<p>A weekly report that separates confirmed transactions from rumors, with a short summary of the week. The WNBA version also tracks the tone of coverage across six beat-writer feeds. Use the edition picker to read past weeks.</p>
+<h2 id="can-i-trust-these-numbers">&quot;Can I trust these numbers?&quot;</h2>
+<p><strong>Go to:</strong> the <strong>Diagnostics</strong> page in any league (<a href="https://kailot-harris.github.io/front-office/nfl/diagnostics/">NFL</a> · <a href="https://kailot-harris.github.io/front-office/nba/diagnostics/">NBA</a> · <a href="https://kailot-harris.github.io/front-office/wnba/diagnostics/">WNBA</a> · <a href="https://kailot-harris.github.io/front-office/mlb/diagnostics/">MLB</a>) and <strong>Model Variants</strong> (<a href="https://kailot-harris.github.io/front-office/nfl/variants/">NFL</a> · <a href="https://kailot-harris.github.io/front-office/mlb/variants/">MLB</a>)</p>
+<p>Diagnostics grades past forecasts. Do teams given a 70% chance actually win about 70% of the time? Forecasts made before games were played are reported separately from forecasts reconstructed after the fact, so the accuracy shown isn't flattered by hindsight. Model Variants lets you compare several different modeling approaches side by side.</p>
+<hr />
+<h2 id="quick-glossary">Quick glossary</h2>
+<div class="table-wrap"><table><thead><tr><th scope="col">Term</th><th scope="col">What it means</th></tr></thead><tbody><tr><td><strong>Win probability</strong></td><td>How often a team would be expected to win this game if it were played many times.</td></tr><tr><td><strong>EPA (NFL)</strong></td><td>Expected points added: how much a play improved a team's scoring chances, given down, distance and field position.</td></tr><tr><td><strong>CPOE (NFL)</strong></td><td>Completion percentage over expected: how often a quarterback completes passes compared with what the difficulty of their throws would predict.</td></tr><tr><td><strong>Plus-minus rating (NBA/WNBA)</strong></td><td>A player's impact on scoring per 100 possessions, adjusted for who else was on the floor.</td></tr><tr><td><strong>Expected shooting (NBA/WNBA)</strong></td><td>How well a player &quot;should&quot; shoot based on where they shoot from. The gap from their actual shooting hints at luck.</td></tr><tr><td><strong>Elo (MLB)</strong></td><td>A team-strength rating that rises with wins and falls with losses, adjusted here for the day's starting pitcher, travel and rest.</td></tr><tr><td><strong>Player DNA</strong></td><td>A player's skills expressed as percentiles, used to find players with similar styles.</td></tr><tr><td><strong>Leverage (MLB)</strong></td><td>How much a given moment can swing the game's outcome.</td></tr><tr><td><strong>Calibration</strong></td><td>Whether forecasts mean what they say: 60% calls should come true about 60% of the time.</td></tr><tr><td><strong>Luxury tax / aprons</strong></td><td>Payroll thresholds that cost teams money or restrict roster moves once crossed.</td></tr></tbody></table></div>
+<p>For how these are calculated, see <a href="../how-it-works/">How the Models Work</a>.</p>
+  </main>
+  <footer>Front Office &middot; Data and forecasts for the NFL, NBA, WNBA and MLB</footer>
+  <script src="../assets/site-header.js" defer></script>
+</body>
+</html>

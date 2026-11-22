@@ -88,26 +88,12 @@
     return loaded[0] || null;
   }
 
-  function daysBetween(a, b) {
-    return Math.round((Date.parse(a + 'T00:00:00Z') - Date.parse(b + 'T00:00:00Z')) / 86400000);
-  }
-
-  // Freshness summary from a sport's data_manifest.json.
+  // Freshness summary from a sport's data_manifest.json. The staleness rule itself lives in
+  // assets/landing/staleness.js, shared with the guide pages' live examples (front-office#218).
+  var Staleness = root.FOStaleness ||
+    (typeof require === 'function' ? require('./staleness.js') : null);
   function freshness(manifest) {
-    if (!manifest || !manifest.datasets) return null;
-    var through = null, stale = 0, undated = 0;
-    var sched = manifest.schedule_through_date;
-    Object.keys(manifest.datasets).forEach(function (name) {
-      var d = manifest.datasets[name];
-      if (d.through_date_source === 'not_game_dated' || !d.through_date) {
-        if (!d.static) undated++;
-        return;
-      }
-      if (!through || d.through_date > through) through = d.through_date;
-      if (!d.static && sched && typeof d.max_lag_days === 'number' &&
-          daysBetween(sched, d.through_date) > d.max_lag_days) stale++;
-    });
-    return { through: through, stale: stale, undated: undated };
+    return Staleness.freshness(manifest);
   }
 
   var api = {

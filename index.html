@@ -9,6 +9,7 @@
   <meta name="theme-color" content="#041313" media="(prefers-color-scheme: dark)" />
   <link rel="stylesheet" href="assets/fonts/fonts.css" />
   <link rel="stylesheet" href="assets/design-tokens.css" />
+  <link rel="stylesheet" href="assets/site-header.css" />
   <link rel="stylesheet" href="assets/landing/digest.css" />
   <link rel="stylesheet" href="assets/landing/gifs.css" />
   <link rel="canonical" href="https://kailot-harris.github.io/front-office/" />
@@ -586,6 +587,23 @@
 </head>
 <body>
   <a class="fo-skip-link" href="#main">Skip to content</a>
+  <!-- Shared site header (front-office#218). Identical copies in index.html, guide/index.html and
+       how-it-works/index.html, apart from aria-current; tools/check_site_header_drift.mjs enforces it. -->
+  <div class="site-header" data-site-header>
+    <a class="site-header__name" href="/front-office/">Front Office</a>
+    <button type="button" class="site-header__toggle" aria-expanded="false" aria-controls="site-nav-list" hidden>Menu</button>
+    <nav aria-label="Site">
+      <ul class="site-header__list" id="site-nav-list">
+        <li><a href="/front-office/" aria-current="page">Home</a></li>
+        <li><a href="/front-office/guide/">Start here</a></li>
+        <li><a href="/front-office/how-it-works/">How the models work</a></li>
+        <li><a href="/front-office/nfl/">NFL</a></li>
+        <li><a href="/front-office/nba/">NBA</a></li>
+        <li><a href="/front-office/wnba/">WNBA</a></li>
+        <li><a href="/front-office/mlb/">MLB</a></li>
+      </ul>
+    </nav>
+  </div>
   <header class="hero-header">
     <div class="hero-title-row">
       <span class="hero-pip" aria-hidden="true"></span>
@@ -818,6 +836,8 @@
     </div>
     <p class="footer-cadence">Built from public sports data. In-season leagues update daily; offseason leagues update weekly.</p>
   </footer>
+  <script src="assets/site-header.js" defer></script>
+  <script src="assets/landing/staleness.js" defer></script>
   <script src="assets/landing/digest.js" defer></script>
   <script src="assets/landing/gifs.js" defer></script>
   <script>
