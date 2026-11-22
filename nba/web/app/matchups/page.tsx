@@ -39,7 +39,7 @@ export default function MatchupsPage() {
                 title={SEASON_SOURCES.matchups.note}
               />
             </div>
-            <h1 className="text-3xl font-black tracking-tight text-white"><span className="text-orange-400">NBA</span> Matchup Slates</h1>
+            <h1 className="text-3xl font-black tracking-tight text-white"><span className="text-orange-400">NBA</span> Matchups</h1>
             <p className="text-slate-400 text-sm mt-1 max-w-3xl">
               Every game of the {seasonLabel} season — and only that season — bucketed into
               weekly slates. Past weeks show the real final score next to the model&apos;s pre-game

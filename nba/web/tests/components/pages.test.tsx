@@ -62,7 +62,7 @@ describe('Sidebar navigation', () => {
     '/clutch',
     '/shots',
     '/coaches',
-    '/series',
+    '/playoffs',
     '/diagnostics',
   ];
 

@@ -6,7 +6,7 @@ import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
 import { GlossaryTerm } from '@/components/GlossaryTerm';
 
 export const metadata = {
-  title: 'Player Projections & Outliers',
+  title: 'Player Ratings & Projections',
   description:
     'Projected 2026-2027 games, minutes, points, rebounds, assists, and statistical outlier flags for all 330 active rotation players.',
 };
@@ -20,7 +20,7 @@ export default function PlayersPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-3">
-              <span><span className="text-orange-400">NBA</span> Player Projections & Outliers</span>
+              <span><span className="text-orange-400">NBA</span> Player Ratings & Projections</span>
               <span className="text-sm font-semibold px-2.5 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">
                 330 Active Rotation Players
               </span>

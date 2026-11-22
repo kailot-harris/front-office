@@ -71,7 +71,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore }) => 
     },
     {
       href: '/cap-sheet',
-      label: 'Cap & Aprons',
+      label: 'Payroll & Cap',
       badge: 'CBA 2026-2027',
       icon: Coins,
       desc: 'Apron handcuffs & tax brackets',
@@ -85,7 +85,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore }) => 
     },
     {
       href: '/players',
-      label: 'Player Projections',
+      label: 'Player Ratings & Projections',
       badge: '330 Pool',
       icon: Users,
       desc: 'Outliers & rate distributions',
@@ -99,7 +99,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore }) => 
     },
     {
       href: '/defense',
-      label: 'Defensive Versatility',
+      label: 'Defense',
       badge: 'Switch Matrix',
       icon: ShieldCheck,
       desc: 'Positional entropy & rim deterrence',
@@ -127,13 +127,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore }) => 
     },
     {
       href: '/matchups',
-      label: 'Matchup Slates',
+      label: 'Matchups',
       badge: 'Weekly Grid',
       icon: CalendarDays,
       desc: 'Per-game picks, scores & grades',
     },
     {
-      href: '/series',
+      href: '/playoffs',
       label: 'Playoff Simulator',
       badge: '10k Sims',
       icon: Swords,

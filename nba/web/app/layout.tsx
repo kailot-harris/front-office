@@ -12,7 +12,7 @@ import { getDiagnostics, getMetadata } from '@/lib/data';
 // the origin; BASE_PATH supplies /front-office/nba, because Next's basePath does
 // not rewrite hand-written paths like the image below. No canonical or og:url is
 // set here: this layout wraps every route, and both would point them all at home.
-const SOCIAL_TITLE = 'NBA Analytics: Projections, Cap & Aprons, Playoff Simulator';
+const SOCIAL_TITLE = 'NBA Analytics: Projections, Payroll & Cap, Playoff Simulator';
 const SOCIAL_DESCRIPTION =
   'Season simulations for all 30 NBA teams and 330 rotation players, with cap and apron sheets, shot charts, a clutch index and a playoff series simulator.';
 const SOCIAL_IMAGE = `${BASE_PATH}/social/og-card.png`;

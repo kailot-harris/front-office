@@ -55,7 +55,7 @@ test.describe('shots explorer interactivity', () => {
 
 test.describe('series simulator interactivity', () => {
   test('changing teams in playoff simulator updates probability outputs', async ({ page }) => {
-    await page.goto('/series', { waitUntil: 'networkidle' });
+    await page.goto('/playoffs', { waitUntil: 'networkidle' });
     await expect(page.locator('text=10,000 Sims / Run')).toBeVisible();
   });
 });
