@@ -340,7 +340,7 @@ export const PostseasonOpsClient: React.FC<PostseasonOpsClientProps> = ({ data, 
                   </div>
 
                   <Link
-                    href="/series"
+                    href="/playoffs"
                     className="flex items-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-amber-500/20 whitespace-nowrap"
                   >
                     <Swords className="w-4 h-4" />

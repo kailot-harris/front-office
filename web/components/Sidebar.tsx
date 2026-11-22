@@ -87,8 +87,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
 
   const primaryNavItems = [
     {
-      href: '/offseason-monitor',
-      label: '2026-2027 Off-Season Monitor',
+      href: '/offseason',
+      label: 'Offseason Moves',
       badge: 'Weekly Pulse',
       icon: Sparkles,
       desc: 'State-diff transactions & 2027 CBT intelligence',
@@ -96,7 +96,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
     },
     {
       href: '/cap-sheet',
-      label: 'CBT Payroll Sheet',
+      label: 'Payroll & Cap',
       badge: 'CBT $244M',
       icon: Coins,
       desc: 'Luxury tax thresholds & 40-man commitments',
@@ -113,14 +113,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
     },
     {
       href: '/gallery',
-      label: 'Visual Media Gallery',
+      label: 'Visual Gallery',
       badge: '20 GIFs',
       icon: Film,
       desc: 'Year-end animated races, brackets & scatters',
     },
     {
       href: '/retrospective',
-      label: '2026 Retrospective',
+      label: 'Retrospective',
       badge: 'WS Debrief',
       icon: Sparkles,
       desc: 'Postseason audit, champions and model postmortem',
@@ -134,21 +134,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
     },
     {
       href: '/matchups',
-      label: 'Weekly Matchups',
+      label: 'Matchups',
       badge: 'Slate Grades',
       icon: CalendarDays,
       desc: 'Every game by week, graded vs pre-game Elo',
     },
     {
       href: '/players',
-      label: 'Player Projections',
+      label: 'Player Ratings & Projections',
       badge: '1,279 Pool',
       icon: Users,
       desc: 'Batters (630) & Pitchers (649) toggle',
     },
     {
       href: '/player-dna',
-      label: 'Player DNA & Twins',
+      label: 'Player DNA & Peer Comps',
       badge: '16-D Manifold',
       icon: Dna,
       desc: 'Archetypes & historical comps (1980+)',
@@ -168,7 +168,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonMode = 'off
       desc: 'Spray, Strike Zone, IVB & Shift',
     },
     {
-      href: '/series',
+      href: '/playoffs',
       label: 'Playoff Simulator',
       badge: '10K Sims',
       icon: Swords,

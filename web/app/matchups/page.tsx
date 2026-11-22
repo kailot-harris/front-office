@@ -7,7 +7,7 @@ import { HowToRead } from '@/components/HowToRead';
 import { GlossaryTerm } from '@/components/Glossary';
 
 export const metadata: Metadata = {
-  title: { absolute: 'Weekly Matchups & Elo Projections | MLB Analytics' },
+  title: { absolute: 'Matchups & Elo Projections | MLB Analytics' },
   description:
     'Every game of the season grouped into weekly slates, with pre-game Elo win probabilities graded against results.',
 };
@@ -35,7 +35,7 @@ export default function MatchupsPage() {
               </span>
             </div>
             <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-3">
-              <span><span className="text-sky-400">MLB</span> Weekly Matchups</span>
+              <span><span className="text-sky-400">MLB</span> Matchups</span>
             </h1>
             <p className="text-slate-400 text-sm mt-1 max-w-3xl">
               Every {dataset.season} game grouped into Monday-anchored weekly slates. Completed games

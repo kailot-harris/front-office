@@ -6,7 +6,7 @@ import { HowToRead } from '@/components/HowToRead';
 export function generateMetadata() {
   const count = toVisualMediaItems(getVisualMediaIndex()).length;
   return {
-    title: { absolute: 'Visual Media Gallery & Year-End Race Animations | MLB Analytics' },
+    title: { absolute: 'Visual Gallery & Year-End Race Animations | MLB Analytics' },
     description: `${count} automated animated races, division trajectory plots, October postseason brackets, and sabermetric scatters.`,
   };
 }
@@ -19,7 +19,7 @@ export default function GalleryPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-3">
-              <span><span className="text-sky-400">MLB</span> Visual Media Gallery</span>
+              <span><span className="text-sky-400">MLB</span> Visual Gallery</span>
               <span className="text-sm font-semibold px-2.5 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">
                 {mediaItems.length} Animated Suites
               </span>

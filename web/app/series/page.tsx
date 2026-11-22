@@ -1,18 +1,7 @@
-import { getPlayoffSeriesCatalog } from '@/lib/data';
-import { PlayoffSeriesClient } from '@/components/PlayoffSeriesClient';
-import { Metadata } from 'next';
+import { RedirectStub, redirectMetadata } from '@/components/RedirectStub';
 
-export const metadata: Metadata = {
-  title: { absolute: 'Interactive Playoff Series Simulator | MLB Analytics' },
-  description: '10,000 Monte Carlo series simulations with rotation matchups and tactical radars.',
-};
+export const metadata = redirectMetadata('Playoff Simulator');
 
-export default function PlayoffSeriesPage() {
-  const catalog = getPlayoffSeriesCatalog();
-
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <PlayoffSeriesClient catalog={catalog} />
-    </div>
-  );
+export default function MovedPage() {
+  return <RedirectStub to="/playoffs/" label="Playoff Simulator" />;
 }
