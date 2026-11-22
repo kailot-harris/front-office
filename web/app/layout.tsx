@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import type { Metadata, Viewport } from 'next';
 import { GeistSans, GeistMono } from 'geist/font';
 // Shared tokens first, so globals.css and Tailwind can build on the --fo-* variables.
@@ -48,6 +50,21 @@ export const viewport: Viewport = {
   ],
 };
 
+// season_state from the published landing digest; undefined when the file or
+// field is missing, which gives the plain shared nav order (lib/navOrder.ts).
+function getSeasonState(): string | undefined {
+  try {
+    const raw = fs.readFileSync(
+      path.join(process.cwd(), 'public', 'data', 'landing_digest.json'),
+      'utf-8',
+    );
+    const value = (JSON.parse(raw) as { season_state?: unknown }).season_state;
+    return typeof value === 'string' ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -55,6 +72,7 @@ export default function RootLayout({
 }) {
   const { generated_at } = getMetadata();
   const { brierScore } = getDiagnostics();
+  const seasonState = getSeasonState();
   return (
     <html lang="en" data-site="nba" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body
@@ -66,7 +84,7 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        <Sidebar generatedAt={generated_at} brierScore={brierScore} />
+        <Sidebar generatedAt={generated_at} brierScore={brierScore} seasonState={seasonState} />
         <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
           <SportSwitcher current="nba" />
           <main id="main-content" className="flex-1 pb-10">{children}</main>
