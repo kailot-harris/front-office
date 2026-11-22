@@ -109,7 +109,7 @@ export default function HomePage() {
             <Award className="w-4 h-4 text-slate-400 group-hover:text-amber-400 transition-colors" />
           </div>
           <h2 className="text-base font-bold text-white mb-1 group-hover:text-amber-300 transition-colors">
-            14-Team Playoff Machine
+            14-Team Playoff Simulator
           </h2>
           <p className="text-xs text-slate-400 leading-relaxed">
             Provisional seeding, official NFL tiebreakers, and 1,000-trial Monte Carlo bracket advancement probabilities.

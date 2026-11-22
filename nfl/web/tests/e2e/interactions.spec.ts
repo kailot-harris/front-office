@@ -225,14 +225,14 @@ test.describe('playoff bracket simulator', () => {
 
 test.describe('salary cap tabs', () => {
   test('switching to the contracts tab lists players', async ({ page }) => {
-    await page.goto('/salary-cap', { waitUntil: 'networkidle' });
+    await page.goto('/cap-sheet', { waitUntil: 'networkidle' });
     await page.getByRole('tab', { name: /Top 100 League Contracts/i }).click();
     await expect(page.locator('tbody tr').first()).toBeVisible();
     expect(await page.locator('tbody tr').count()).toBeGreaterThan(10);
   });
 
   test('switching back to team profiles restores 32 rows', async ({ page }) => {
-    await page.goto('/salary-cap', { waitUntil: 'networkidle' });
+    await page.goto('/cap-sheet', { waitUntil: 'networkidle' });
     await page.getByRole('tab', { name: /Top 100 League Contracts/i }).click();
     await page.getByRole('tab', { name: /32 Team Cap Profiles/i }).click();
     await expect(page.locator('tbody tr')).toHaveCount(32);

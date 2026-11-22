@@ -260,7 +260,7 @@ export default function CoachingClient({ data }: CoachingClientProps) {
         <div>
           <div className="flex flex-wrap items-center gap-2 mb-1">
             <span className="text-xs font-mono font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded-full">
-              Coaching Analysis & In-Game Decisions
+              Coaching Staffs & In-Game Decisions
             </span>
             <span className="text-xs font-mono text-slate-400">{coaches.length} NFL Head Coaches</span>
             <span className="text-xs font-mono text-slate-400" data-testid="coaching-build-info">

@@ -91,7 +91,7 @@ export default function SalaryCapClient({ data }: SalaryCapClientProps) {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-mono font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded-full">
-              Salary Cap & Roster Valuation
+              Payroll & Cap
             </span>
             <span className="text-xs font-mono text-slate-400">
               2026 NFL Cap Ceiling: ${data.cap_ceiling}M (OverTheCap)

@@ -1,17 +1,7 @@
-import { getSalaryCapData } from '@/lib/data';
-import SalaryCapClient from '@/components/SalaryCapClient';
+import { RedirectStub, redirectMetadata } from '@/components/RedirectStub';
 
-export const metadata = {
-  title: 'Salary Cap & Positional Allocation',
-  description: 'NFL salary cap tracker, positional cash spending breakdown, and top 100 contracts from OverTheCap.',
-};
+export const metadata = redirectMetadata('Payroll & Cap');
 
-export default function SalaryCapPage() {
-  const data = getSalaryCapData();
-
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <SalaryCapClient data={data} />
-    </div>
-  );
+export default function MovedPage() {
+  return <RedirectStub to="/cap-sheet/" label="Payroll & Cap" />;
 }
