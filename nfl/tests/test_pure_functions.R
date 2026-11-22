@@ -332,10 +332,31 @@ PW_ENV$WEB_DATA_FILES <- WEB_DATA_FILES
 load_ast_symbols(
   "tools/publish_web.R",
   c(".pw_log_timestamp", ".pw_detect_run_start", ".scan_exporter_warnings",
-    ".pw_payload_generated_at", ".assert_payload_provenance",
+    ".pw_payload_generated_at", ".pw_payload_is_array", ".assert_payload_provenance",
     ".compute_active_week_from_schedules"),
   PW_ENV
 )
+
+# Assertion F treats a top-level array payload as a catalog with per-item
+# stamps (visual_media_index.json): it is neither stale nor unstamped, while a
+# stale object payload still fails. Regression for the 2026-11-21 block.
+f_dir <- tempfile("pwF_"); dir.create(f_dir)
+f_cat <- file.path(f_dir, "visual_media_index.json")
+f_obj <- file.path(f_dir, "standings_projections.json")
+writeLines('[{"generated_at":"2026-10-13T06:04:38Z","filename":"a.png"}]', f_cat)
+writeLines('{"generated_at":"2026-11-21T09:00:00Z"}', f_obj)
+saved_files <- PW_ENV$WEB_DATA_FILES
+PW_ENV$WEB_DATA_FILES <- c(f_cat, f_obj)
+f_start <- as.POSIXct("2026-11-21 04:15:05", tz = "UTC")
+f_res <- PW_ENV$.assert_payload_provenance(f_start)
+ok("F: array catalog is exempt, fresh object passes",
+   isTRUE(f_res$pass) && length(f_res$stale) == 0L && length(f_res$unstamped) == 0L &&
+     any(grepl("[CATALOG]", f_res$detail, fixed = TRUE)))
+writeLines('{"generated_at":"2026-11-20T05:53:21Z"}', f_obj)
+f_res2 <- PW_ENV$.assert_payload_provenance(f_start)
+ok("F: a stale object payload still fails", !isTRUE(f_res2$pass) &&
+     identical(f_res2$stale, "standings_projections.json"))
+PW_ENV$WEB_DATA_FILES <- saved_files
 
 log_sample <- c(
   "[2026-10-28 05:15:00] [INFO] [run_full_pipeline.R] Pipeline run started.",

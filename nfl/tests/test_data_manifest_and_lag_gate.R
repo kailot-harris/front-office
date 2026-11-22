@@ -156,4 +156,15 @@ ok("committed web/public/data manifest passes H (coverage)", isTRUE(h$pass))
 
 unlink(c(d, d2, ds), recursive = TRUE)
 cat(sprintf("\n%d failure(s)\n", failures))
+# front-office#211 follow-up: an array catalog is stamped by its NEWEST item,
+# not by item [0] (which made the NFL gallery catalog permanently "37 days old").
+arr <- list(list(filename = "old.png", generated_at = "2026-10-13T06:04:38Z"),
+            list(filename = "new.gif", generated_at = "2026-11-21T06:41:51Z"),
+            list(filename = "mid.gif", generated_at = "2026-11-01T00:00:00Z"))
+st <- dm_embedded_stamp(arr)
+ok("array payload stamp is the newest item's generated_at",
+   !is.null(st) && identical(st$value, "2026-11-21T06:41:51Z") && identical(st$field, "[max].generated_at"))
+ok("object payload stamp is unchanged by the array rule",
+   identical(dm_embedded_stamp(list(generated_at = "2026-11-16T05:00:00Z"))$field, "generated_at"))
+
 quit(status = if (failures) 1L else 0L)

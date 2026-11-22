@@ -449,12 +449,34 @@ if (file.exists(file.path("tools", "write_data_manifest.R"))) {
   as.POSIXct(val, format = "%Y-%m-%dT%H:%M:%S", tz = "UTC")
 }
 
+.pw_payload_is_array <- function(path) {
+  if (!file.exists(path)) return(FALSE)
+  con <- file(path, open = "rb")
+  on.exit(close(con), add = TRUE)
+  raw <- readBin(con, "raw", n = 64L)
+  txt <- trimws(rawToChar(raw[raw != as.raw(0)]))
+  startsWith(sub("^﻿", "", txt), "[")
+}
+
 .assert_payload_provenance <- function(run_start) {
   files <- WEB_DATA_FILES
   rows <- character(0)
   stale <- character(0)
   unstamped <- character(0)
+  catalogs <- character(0)
   for (f in files) {
+    # A top-level ARRAY payload (visual_media_index.json) is a catalog: each
+    # item carries the time that item was made, and items legitimately outlive
+    # a run (a GIF re-renders weekly, a still image may never). There is no
+    # run-level stamp to check, so F does not speak for it; Assertion A still
+    # requires the catalog itself to be rewritten this run, and H judges its
+    # age by the newest item (write_data_manifest.R). Reading item [0] here
+    # blocked every publish once #192 made per-item stamps honest.
+    if (.pw_payload_is_array(f)) {
+      catalogs <- c(catalogs, basename(f))
+      rows <- c(rows, sprintf("    %-9s %-40s per-item stamps; rebuild checked by A", "[CATALOG]", basename(f)))
+      next
+    }
     g <- .pw_payload_generated_at(f)
     if (is.na(g)) {
       unstamped <- c(unstamped, basename(f))
@@ -477,7 +499,7 @@ if (file.exists(file.path("tools", "write_data_manifest.R"))) {
        stale = stale, unstamped = unstamped,
        detail = rows,
        summary = sprintf("%d stamped payload(s) fresh, %d stale, %d carry no stamp",
-                         length(files) - length(stale) - length(unstamped),
+                         length(files) - length(stale) - length(unstamped) - length(catalogs),
                          length(stale), length(unstamped)))
 }
 
