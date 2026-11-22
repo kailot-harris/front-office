@@ -1,12 +1,12 @@
 {
   "schema_version": "1.0",
   "game_id": "401910637",
-  "generated_at": "2026-11-21T22:24:59Z",
+  "generated_at": "2026-11-22T14:03:21Z",
   "data": {
     "projection_basis": "primary_ensemble",
     "predicted_margin": 6.47,
     "predicted_home_win_prob": 0.7038,
-    "sigma_game": 12.0853,
+    "sigma_game": 12.0854,
     "margin_waterfall": [
       {
         "key": "bottom_up",
@@ -23,8 +23,8 @@
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
-        "points": -0.04,
-        "detail": "20% Shot/Fatigue blend (PHX -5.53 vs WAS -5.34)"
+        "points": -0.03,
+        "detail": "20% Shot/Fatigue blend (PHX -5.66 vs WAS -5.53)"
       },
       {
         "key": "embeddings",
@@ -43,6 +43,12 @@
         "label": "Schedule & travel",
         "points": 0.2,
         "detail": "WAS fatigue 0.20 minus PHX fatigue 0.00"
+      },
+      {
+        "key": "rounding",
+        "label": "Component rounding",
+        "points": -0.01,
+        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,
@@ -62,8 +68,8 @@
         {
           "feature": "diff_roll_ts",
           "label": "18-Game True Shooting Diff",
-          "feature_value": 0.0207,
-          "z_score": 0.6514,
+          "feature_value": 0.0211,
+          "z_score": 0.662,
           "shap_log_odds": 0.26524,
           "shap_prob_approx": 0.0641
         },
@@ -78,16 +84,16 @@
         {
           "feature": "diff_roll_tovp",
           "label": "18-Game Turnover Rate Diff",
-          "feature_value": -0.0068,
-          "z_score": -0.3889,
+          "feature_value": -0.0062,
+          "z_score": -0.3561,
           "shap_log_odds": 0.1458,
           "shap_prob_approx": 0.0356
         },
         {
           "feature": "diff_roll_efg",
           "label": "18-Game eFG% Diff",
-          "feature_value": 0.0343,
-          "z_score": 1.0106,
+          "feature_value": 0.0346,
+          "z_score": 1.0212,
           "shap_log_odds": 0.11071,
           "shap_prob_approx": 0.0271
         },

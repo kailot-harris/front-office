@@ -1,12 +1,12 @@
 {
   "schema_version": "1.0",
   "game_id": "401910272",
-  "generated_at": "2026-11-21T22:24:59Z",
+  "generated_at": "2026-11-22T14:03:21Z",
   "data": {
     "projection_basis": "primary_ensemble",
     "predicted_margin": 13.7,
-    "predicted_home_win_prob": 0.8716,
-    "sigma_game": 12.0836,
+    "predicted_home_win_prob": 0.8714,
+    "sigma_game": 12.093,
     "margin_waterfall": [
       {
         "key": "bottom_up",
@@ -24,7 +24,7 @@
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": 1.57,
-        "detail": "20% Shot/Fatigue blend (DEN +2.33 vs PHX -5.53)"
+        "detail": "20% Shot/Fatigue blend (DEN +2.20 vs PHX -5.66)"
       },
       {
         "key": "embeddings",
@@ -76,8 +76,8 @@
         {
           "feature": "diff_roll_ts",
           "label": "18-Game True Shooting Diff",
-          "feature_value": 0.0123,
-          "z_score": 0.3934,
+          "feature_value": 0.012,
+          "z_score": 0.3828,
           "shap_log_odds": 0.27753,
           "shap_prob_approx": 0.0669
         },
@@ -140,8 +140,8 @@
         {
           "feature": "diff_roll_tovp",
           "label": "18-Game Turnover Rate Diff",
-          "feature_value": 0.0016,
-          "z_score": 0.0762,
+          "feature_value": 0.001,
+          "z_score": 0.0434,
           "shap_log_odds": -0.01132,
           "shap_prob_approx": -0.0028
         },
@@ -156,8 +156,8 @@
         {
           "feature": "diff_roll_efg",
           "label": "18-Game eFG% Diff",
-          "feature_value": -0.0014,
-          "z_score": -0.0256,
+          "feature_value": -0.0018,
+          "z_score": -0.0362,
           "shap_log_odds": -0.00355,
           "shap_prob_approx": -0.0009
         },

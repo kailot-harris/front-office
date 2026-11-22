@@ -1,12 +1,12 @@
 {
   "schema_version": "1.0",
   "game_id": "401910152",
-  "generated_at": "2026-11-21T22:24:59Z",
+  "generated_at": "2026-11-22T14:03:21Z",
   "data": {
     "projection_basis": "primary_ensemble",
-    "predicted_margin": 16.05,
-    "predicted_home_win_prob": 0.8973,
-    "sigma_game": 12.6755,
+    "predicted_margin": 16.04,
+    "predicted_home_win_prob": 0.8971,
+    "sigma_game": 12.6775,
     "margin_waterfall": [
       {
         "key": "bottom_up",
@@ -23,8 +23,8 @@
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
-        "points": 3.51,
-        "detail": "20% Shot/Fatigue blend (CLE +8.15 vs UTA -9.38)"
+        "points": 3.49,
+        "detail": "20% Shot/Fatigue blend (CLE +7.95 vs UTA -9.51)"
       },
       {
         "key": "embeddings",
@@ -47,7 +47,7 @@
       {
         "key": "rounding",
         "label": "Component rounding",
-        "points": -0.02,
+        "points": -0.01,
         "detail": "2-decimal component rounding residual"
       }
     ],
@@ -84,8 +84,8 @@
         {
           "feature": "diff_roll_dreb",
           "label": "18-Game Defensive Rebound Diff",
-          "feature_value": 1.2941,
-          "z_score": 0.4239,
+          "feature_value": 1.3529,
+          "z_score": 0.4431,
           "shap_log_odds": 0.07525,
           "shap_prob_approx": 0.0185
         },
@@ -116,8 +116,8 @@
         {
           "feature": "diff_roll_stl",
           "label": "18-Game Steals Diff",
-          "feature_value": 0.7059,
-          "z_score": 0.4392,
+          "feature_value": 0.6471,
+          "z_score": 0.403,
           "shap_log_odds": 0.04224,
           "shap_prob_approx": 0.0104
         },
@@ -156,8 +156,8 @@
         {
           "feature": "diff_roll_blk",
           "label": "18-Game Blocks Diff",
-          "feature_value": -0.6471,
-          "z_score": -0.4514,
+          "feature_value": -0.5882,
+          "z_score": -0.4101,
           "shap_log_odds": -0.00962,
           "shap_prob_approx": -0.0024
         },
