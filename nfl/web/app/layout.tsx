@@ -6,7 +6,24 @@ import './globals.css';
 import { BASE_PATH } from '@/lib/basePath';
 import { Sidebar } from '@/components/Sidebar';
 import { SportSwitcher } from '@/components/SportSwitcher';
+import fs from 'fs';
+import path from 'path';
 import { getStandingsData } from '@/lib/data';
+
+/**
+ * `season_state` from the published landing digest (#221), read at build time.
+ * Missing file or field -> undefined, so the sidebar uses the plain NAV_ORDER.
+ */
+function getSeasonState(): string | undefined {
+  const filePath = path.join(process.cwd(), 'public', 'data', 'landing_digest.json');
+  if (!fs.existsSync(filePath)) return undefined;
+  try {
+    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as { season_state?: unknown };
+    return typeof parsed.season_state === 'string' ? parsed.season_state : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 // Link previews (Discord, X, iMessage) need absolute URLs. metadataBase supplies
 // the origin; BASE_PATH supplies /front-office/nfl, because Next's basePath does
@@ -58,6 +75,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const { generated_at } = getStandingsData();
+  const seasonState = getSeasonState();
   return (
     <html lang="en" data-site="nfl" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body
@@ -74,7 +92,7 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        <Sidebar generatedAt={generated_at} />
+        <Sidebar generatedAt={generated_at} seasonState={seasonState} />
         <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
           <SportSwitcher current="nfl" />
           <main id="main-content" className="flex-1 pb-10">{children}</main>
