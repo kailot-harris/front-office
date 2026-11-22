@@ -1,12 +1,12 @@
 {
   "schema_version": "1.0",
   "game_id": "401910908",
-  "generated_at": "2026-11-21T22:24:59Z",
+  "generated_at": "2026-11-22T14:03:21Z",
   "data": {
     "projection_basis": "primary_ensemble",
-    "predicted_margin": 10.67,
-    "predicted_home_win_prob": 0.8076,
-    "sigma_game": 12.2784,
+    "predicted_margin": 10.68,
+    "predicted_home_win_prob": 0.8077,
+    "sigma_game": 12.2843,
     "margin_waterfall": [
       {
         "key": "bottom_up",
@@ -24,7 +24,7 @@
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": 2.16,
-        "detail": "20% Shot/Fatigue blend (GSW +5.26 vs PHX -5.53)"
+        "detail": "20% Shot/Fatigue blend (GSW +5.12 vs PHX -5.66)"
       },
       {
         "key": "embeddings",
@@ -43,6 +43,12 @@
         "label": "Schedule & travel",
         "points": 0.11,
         "detail": "PHX fatigue 0.14 minus GSW fatigue 0.03"
+      },
+      {
+        "key": "rounding",
+        "label": "Component rounding",
+        "points": 0.01,
+        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,
@@ -62,8 +68,8 @@
         {
           "feature": "diff_roll_tovp",
           "label": "18-Game Turnover Rate Diff",
-          "feature_value": 0.0216,
-          "z_score": 1.1897,
+          "feature_value": 0.021,
+          "z_score": 1.1568,
           "shap_log_odds": -0.39422,
           "shap_prob_approx": -0.0982
         },
@@ -78,16 +84,16 @@
         {
           "feature": "diff_roll_efg",
           "label": "18-Game eFG% Diff",
-          "feature_value": -0.0169,
-          "z_score": -0.4759,
+          "feature_value": -0.0173,
+          "z_score": -0.4865,
           "shap_log_odds": -0.05417,
           "shap_prob_approx": -0.0134
         },
         {
           "feature": "diff_roll_ts",
           "label": "18-Game True Shooting Diff",
-          "feature_value": -0.0026,
-          "z_score": -0.0636,
+          "feature_value": -0.0029,
+          "z_score": -0.0742,
           "shap_log_odds": 0.04013,
           "shap_prob_approx": 0.0099
         },
