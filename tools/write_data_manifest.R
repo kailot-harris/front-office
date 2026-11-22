@@ -125,6 +125,19 @@ dm_sha256 <- function(path) {
 
 # Embedded stamp: list(value = ISO string, field = name) or NULL.
 dm_embedded_stamp <- function(parsed) {
+  # A top-level array of items (visual_media_index.json) has no stamp of its
+  # own; each item carries the time it was made. Use the NEWEST item's stamp.
+  # Taking item [0] made the catalog as old as whichever still image happened
+  # to sort first, which never re-renders, so assertion H blocked every
+  # publish once #192 made the per-item stamps honest (2026-11-21).
+  if (is.null(names(parsed)) && length(parsed) &&
+      all(vapply(parsed, function(o) is.list(o) && !is.null(names(o)), logical(1)))) {
+    for (k in c("generated_at", "updated_at", "generatedAt")) {
+      v <- unlist(lapply(parsed, function(o) if (is.character(o[[k]]) && length(o[[k]]) == 1) o[[k]] else NA_character_))
+      t <- as.POSIXct(v, format = "%Y-%m-%dT%H:%M:%S", tz = "UTC")
+      if (any(!is.na(t))) return(list(value = .dm_iso(max(t, na.rm = TRUE)), field = paste0("[max].", k)))
+    }
+  }
   cands <- list(parsed)
   if (is.null(names(parsed)) && length(parsed)) cands <- c(cands, list(parsed[[1]]))
   for (o in cands) {
