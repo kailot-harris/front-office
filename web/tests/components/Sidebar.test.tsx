@@ -66,11 +66,55 @@ describe('Sidebar active tab highlighting', () => {
 
   it('renders 2026 Championship Archive expandable section', () => {
     mockPathname = '/offseason';
-    render(<Sidebar />);
+    render(<Sidebar seasonState="offseason" />);
     const archiveBtn = screen.getByText(/2026 Championship Archive/i);
     expect(archiveBtn).toBeDefined();
     // Expand the archive
     fireEvent.click(archiveBtn);
     expect(screen.getByRole('link', { name: /Season Standings/i })).toBeDefined();
+  });
+});
+
+describe('Sidebar Front Office home link (#220)', () => {
+  it('is the first link, points at /front-office/ and is never current', () => {
+    mockPathname = '/';
+    const { container } = render(<Sidebar />);
+    const aside = container.querySelector('aside')!;
+    const first = aside.querySelector('a')!;
+    expect(first.textContent).toContain('Front Office home');
+    expect(first.getAttribute('href')).toBe('/front-office/');
+    expect(first.hasAttribute('aria-current')).toBe(false);
+    expect(first.className).not.toContain('bg-accent-600');
+  });
+
+  it('is also first in the phone drawer', () => {
+    mockPathname = '/';
+    render(<Sidebar />);
+    fireEvent.click(screen.getByLabelText('Toggle navigation menu'));
+    const drawer = screen.getByRole('dialog');
+    const first = drawer.querySelector('a')!;
+    expect(first.textContent).toContain('Front Office home');
+    expect(first.getAttribute('href')).toBe('/front-office/');
+  });
+});
+
+describe('Sidebar order (#221)', () => {
+  const labels = (container: HTMLElement) =>
+    Array.from(container.querySelector('aside')!.querySelectorAll('a'))
+      .map((a) => a.querySelector('span.font-semibold')?.textContent)
+      .filter(Boolean);
+
+  it('puts offseason pages first in the offseason', () => {
+    mockPathname = '/offseason/';
+    const { container } = render(<Sidebar seasonState="offseason" />);
+    expect(labels(container).slice(0, 2)).toEqual(['Offseason Moves', 'Retrospective']);
+  });
+
+  it('uses NAV_ORDER when the season state is missing', () => {
+    mockPathname = '/';
+    const { container } = render(<Sidebar />);
+    expect(labels(container).slice(0, 4)).toEqual([
+      'Season Standings', 'Matchups', 'Playoff Simulator', '2026 Bracket',
+    ]);
   });
 });
