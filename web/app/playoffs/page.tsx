@@ -6,7 +6,7 @@ import { GlossaryTerm } from '@/components/Glossary';
 import { HowToRead } from '@/components/HowToRead';
 
 export const metadata = {
-  title: 'NFL Playoff Machine & 14-Team Bracket Simulator',
+  title: 'NFL Playoff Simulator & 14-Team Bracket',
   description:
     '14-team provisional NFL playoff field (Seeds 1–7), official tiebreaker resolution, bubble contenders, and 10,000-trial Monte Carlo bracket simulation from Wild Card through the Super Bowl.',
 };
@@ -28,7 +28,7 @@ export default function PlayoffsPage() {
               <span className="text-xs text-slate-400 font-mono">14 Seeds (7 AFC / 7 NFC)</span>
             </div>
             <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-3">
-              <span><span className="text-emerald-400">NFL</span> Playoff Machine & Bracket Simulator</span>
+              <span><span className="text-emerald-400">NFL</span> Playoff Simulator & Bracket</span>
             </h1>
             <p className="text-slate-400 text-sm mt-1 max-w-3xl">
               Provisional 14-team postseason field resolved via real NFL tiebreakers (head-to-head, division, common games, conference, SOV, and SOS). Includes round-by-round <GlossaryTerm term="Monte Carlo Simulation" className="text-slate-300" /> advancement equity and single-trial simulation.

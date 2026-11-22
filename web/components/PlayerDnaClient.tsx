@@ -235,7 +235,7 @@ const RadarChart: React.FC<RadarChartProps> = ({ playerA, playerB, size = 320 })
 };
 
 export default function PlayerDnaClient({ initialProfiles, totalCount, season, throughWeek, generatedAt }: PlayerDnaClientProps) {
-  // #134: the server only sends the first screen of rows (see app/dna/page.tsx). If more exist,
+  // #134: the server only sends the first screen of rows (see app/player-dna/page.tsx). If more exist,
   // fetch the rest from the same JSON file the server read, client-side, so search/filter/compare
   // still work across the full roster without inlining ~900 KB of HTML on every page load.
   const [profiles, setProfiles] = useState<PlayerDnaProfile[]>(initialProfiles);
@@ -323,7 +323,7 @@ export default function PlayerDnaClient({ initialProfiles, totalCount, season, t
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white font-space">
-              Player DNA & Nearest Peer Comparables
+              Player DNA & Peer Comps
             </h1>
             <p className="text-sm text-slate-300 max-w-3xl mt-1.5 leading-relaxed">
               Empirical skill vectors quantifying deep accuracy, pressure resilience, quick game execution, and YAC over expected.

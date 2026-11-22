@@ -13,15 +13,15 @@ export const AXE_ROUTES = [
   '/',
   '/matchups',
   '/teams',
-  '/coaching',
-  '/salary-cap',
+  '/coaches',
+  '/cap-sheet',
   '/playoffs',
   '/players',
   '/variants',
   '/diagnostics',
   '/gallery',
   '/clutch',
-  '/dna',
+  '/player-dna',
   '/passing',
 ];
 

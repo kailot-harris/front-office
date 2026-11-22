@@ -12,7 +12,7 @@ import { getStandingsData } from '@/lib/data';
 // the origin; BASE_PATH supplies /front-office/nfl, because Next's basePath does
 // not rewrite hand-written paths like the image below. No canonical or og:url is
 // set here: this layout wraps every route, and both would point them all at home.
-const SOCIAL_TITLE = 'NFL Analytics: Season Projections & Playoff Machine';
+const SOCIAL_TITLE = 'NFL Analytics: Season Projections & Playoff Simulator';
 const SOCIAL_DESCRIPTION =
   '1,000-season Monte Carlo projections for all 32 NFL teams: weekly matchups, EPA efficiency, QB ratings, salary cap and a 14-team playoff machine.';
 const SOCIAL_IMAGE = `${BASE_PATH}/social/og-card.png`;
