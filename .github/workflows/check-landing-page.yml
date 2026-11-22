@@ -1,7 +1,8 @@
 name: Check landing page
 
 # front-office#202-#206 (epic #200): unit tests for the daily-digest helpers, and axe
-# (WCAG 2.2 AA, serious or critical fails) on the landing page in light and dark mode.
+# (WCAG 2.2 AA, serious or critical fails) on the landing page, /guide/ and /how-it-works/
+# (front-office#218) in light and dark mode.
 on:
   push:
     branches: [main]
@@ -18,6 +19,11 @@ jobs:
           node-version: 22
       - name: Digest and slideshow helper tests
         run: node --test tools/test_landing_digest.mjs tools/test_landing_gifs.mjs
+      # front-office#218: live-example contract, shared staleness module, header drift.
+      - name: Guide examples, staleness and header tests
+        run: node --test tools/test_guide_examples.mjs
+      - name: Site header drift
+        run: node tools/check_site_header_drift.mjs
       - name: Install axe tooling
         run: |
           npm i --no-save --no-package-lock playwright @axe-core/playwright

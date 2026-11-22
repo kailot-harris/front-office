@@ -1,0 +1,27 @@
+/* Shared site header (front-office#218): landing page, /guide/ and /how-it-works/. */
+.site-header {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem 1.5rem;
+  max-width: 72rem; margin: 0 auto; padding: 0.75rem 1.25rem; box-sizing: border-box;
+  font-family: var(--fo-font-sans); font-size: var(--fo-text-sm);
+  border-bottom: 1px solid var(--fo-border);
+}
+.site-header__name { font-weight: var(--fo-weight-bold); color: var(--fo-text); text-decoration: none; letter-spacing: 0.04em; }
+.site-header__list { display: flex; flex-wrap: wrap; gap: 0.25rem 1.1rem; list-style: none; margin: 0; padding: 0; }
+.site-header__list a { color: var(--fo-text); text-decoration: none; padding: 0.25rem 0; display: inline-block; }
+.site-header__list a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.site-header__list a[aria-current="page"] { color: var(--fo-accent); font-weight: var(--fo-weight-bold); text-decoration: underline; text-underline-offset: 3px; }
+.site-header a:focus-visible, .site-header__toggle:focus-visible { outline: var(--fo-focus-width) solid var(--fo-accent); outline-offset: 2px; }
+.site-header__toggle {
+  font: inherit; color: var(--fo-text); background: var(--fo-surface-raised);
+  border: 1px solid var(--fo-border); border-radius: var(--fo-radius-sm); padding: 0.35rem 0.8rem; cursor: pointer;
+}
+.site-header__toggle[hidden] { display: none; }
+@media (max-width: 640px) {
+  .site-header nav { flex-basis: 100%; }
+  .site-header.js-menu .site-header__list { display: none; flex-direction: column; gap: 0; }
+  .site-header.js-menu.is-open .site-header__list { display: flex; }
+  .site-header.js-menu .site-header__list a { padding: 0.5rem 0; }
+}
+@media (min-width: 641px) {
+  .site-header__toggle { display: none; }
+}

@@ -30,7 +30,7 @@ Each league offers roughly the same set of tools, so once you learn one, the oth
 - **Model variants and accuracy.** Side-by-side model comparisons and an honest scorecard of how past forecasts held up.
 - **Offseason monitor** (WNBA, MLB). A weekly digest of confirmed signings and trades, kept separate from rumors.
 
-Not sure where to start? The [Walkthrough](docs/WALKTHROUGH.md) is organized around questions you might bring to the site. [How the Models Work](docs/HOW_IT_WORKS.md) explains where the numbers come from.
+Not sure where to start? The [Walkthrough](https://kailot-harris.github.io/front-office/guide/) is organized around questions you might bring to the site. [How the Models Work](https://kailot-harris.github.io/front-office/how-it-works/) explains where the numbers come from.
 
 **Tip:** on the home page, press `/` and start typing (`clutch`, `cap`, `dna`) to search all 56 pages at once.
 
@@ -47,7 +47,7 @@ Everything is built from free, public sources:
 | WNBA | wehoop (box scores, play-by-play), ESPN scores and injuries, league transaction wire and beat-writer news feeds |
 | MLB | MLB Stats API, Baseball Savant (Statcast), FanGraphs, Chadwick Bureau player register, Spotrac payroll, team news feeds |
 
-See [How the Models Work](docs/HOW_IT_WORKS.md#limits-of-the-data) for what these sources can and can't tell you.
+See [How the Models Work](https://kailot-harris.github.io/front-office/how-it-works/#limits-of-the-data) for what these sources can and can't tell you.
 
 ---
 

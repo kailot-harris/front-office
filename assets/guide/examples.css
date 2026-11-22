@@ -1,0 +1,12 @@
+/* Live examples on /how-it-works/ (front-office#218). Slots stay hidden unless filled from fresh data. */
+.fo-example {
+  margin: 1rem 0; padding: 0.75rem 1rem;
+  background: var(--fo-surface-raised); border: 1px solid var(--fo-border);
+  border-left: 3px solid var(--fo-accent); border-radius: var(--fo-radius-sm);
+  font-size: var(--fo-text-sm);
+}
+.fo-example[hidden] { display: none; }
+.fo-example__label {
+  display: block; margin-bottom: 0.2rem; font-size: var(--fo-text-xs); font-weight: var(--fo-weight-bold);
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--fo-text-muted);
+}

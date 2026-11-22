@@ -143,6 +143,10 @@ jobs:
         run: |
           mkdir -p site
           cp index.html site/
+          # Visitor guide pages (front-office#218): hand-written static HTML,
+          # the only copy of this content. The landing footer and header link them.
+          cp -r guide site/
+          cp -r how-it-works site/
           # GitHub Pages only serves a root-level 404.html; without this,
           # any mistyped or stale link at any depth falls through to GitHub's
           # own default "Page not found" page instead of a styled one with
@@ -164,12 +168,6 @@ jobs:
       # the assembled output, before the Pages upload, so a failure here
       # leaves the previously deployed site live. All four sports block
       # (WARN_ONLY is empty). See tools/check_landing_freshness.mjs.
-      # The visitor docs (docs/WALKTHROUGH.md, docs/HOW_IT_WORKS.md) as site
-      # pages at /guide/ and /how-it-works/, which the landing footer links
-      # to. Built from the Markdown on every deploy so the two never drift.
-      - name: Render visitor doc pages
-        run: node tools/test_build_doc_pages.mjs && node tools/build_doc_pages.mjs site
-
       - name: Check landing digests agree with scores files
         run: node tools/check_landing_freshness.mjs site
 
