@@ -5,7 +5,7 @@ import { GeistSans, GeistMono } from 'geist/font';
 import './globals.css';
 import { BASE_PATH } from '@/lib/basePath';
 import { Sidebar } from '@/components/Sidebar';
-import { SportSwitcher } from '@/components/SportSwitcher';
+import { SwitchArrivalNote } from '@/components/SportSwitcher';
 import { getMetadata } from '@/lib/data';
 
 // Link previews (Discord, X, iMessage) need absolute URLs. metadataBase supplies
@@ -79,7 +79,7 @@ export default function RootLayout({
         </a>
         <Sidebar generatedAt={generated_at} seasonState={readSeasonState()} />
         <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
-          <SportSwitcher current="mlb" />
+          <SwitchArrivalNote current="mlb" />
           <main id="main-content" className="flex-1 pb-10">{children}</main>
           <footer className="border-t border-slate-800 bg-surface-raised/50 py-5 text-center text-xs text-slate-400 font-sans">
             <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">

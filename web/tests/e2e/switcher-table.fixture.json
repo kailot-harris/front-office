@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "about": "Sport switcher table (front-office#212). Fetched at runtime by each sport site from /front-office/nav/switcher.json. 'pages' lists each sport's sidebar pages (path relative to the sport base -> label) and must match each Sidebar.tsx mirror; 'related' maps a page label with no exact match in the target sport to the target sport's page label. Anything not covered falls back to the target's Season Standings ('/'). Checked by tools/test_switcher_table.mjs.",
+  "sports": {
+    "nfl": {
+      "label": "NFL",
+      "pages": {
+        "/": "Season Standings",
+        "/matchups": "Matchups",
+        "/teams": "Team Ratings & EPA",
+        "/coaches": "Coaching Staffs",
+        "/cap-sheet": "Payroll & Cap",
+        "/playoffs": "Playoff Simulator",
+        "/players": "Player Ratings & Projections",
+        "/passing": "Passing Charts",
+        "/player-dna": "Player DNA & Peer Comps",
+        "/clutch": "True Clutch Index",
+        "/variants": "Model Variants",
+        "/diagnostics": "Diagnostics",
+        "/gallery": "Visual Gallery"
+      }
+    },
+    "nba": {
+      "label": "NBA",
+      "pages": {
+        "/": "Season Standings",
+        "/offseason": "Offseason Moves",
+        "/cap-sheet": "Payroll & Cap",
+        "/variants": "Model Variants",
+        "/players": "Player Ratings & Projections",
+        "/player-dna": "Player DNA & Peer Comps",
+        "/defense": "Defense",
+        "/clutch": "True Clutch Index",
+        "/shots": "Shot Charts",
+        "/coaches": "Coaching Staffs",
+        "/matchups": "Matchups",
+        "/playoffs": "Playoff Simulator",
+        "/diagnostics": "Diagnostics",
+        "/gallery": "Visual Gallery"
+      }
+    },
+    "wnba": {
+      "label": "WNBA",
+      "pages": {
+        "/": "Season Standings",
+        "/offseason": "Offseason Moves",
+        "/retrospective": "Retrospective",
+        "/matchups": "Matchups",
+        "/variants": "Model Variants",
+        "/players": "Player Ratings & Projections",
+        "/player-dna": "Player DNA & Peer Comps",
+        "/clutch": "True Clutch Index",
+        "/shots": "Shot Charts",
+        "/defense": "Defense",
+        "/coaches": "Coaching Staffs",
+        "/bracket-2026": "2026 Bracket",
+        "/playoffs": "Playoff Simulator",
+        "/diagnostics": "Diagnostics",
+        "/gallery": "Visual Gallery"
+      }
+    },
+    "mlb": {
+      "label": "MLB",
+      "pages": {
+        "/": "Season Standings",
+        "/offseason": "Offseason Moves",
+        "/cap-sheet": "Payroll & Cap",
+        "/gallery": "Visual Gallery",
+        "/retrospective": "Retrospective",
+        "/postseason": "Postseason & Bullpen",
+        "/matchups": "Matchups",
+        "/players": "Player Ratings & Projections",
+        "/player-dna": "Player DNA & Peer Comps",
+        "/clutch": "True Clutch Index",
+        "/spatial": "Spatial Analytics",
+        "/playoffs": "Playoff Simulator",
+        "/variants": "Model Variants",
+        "/diagnostics": "Diagnostics"
+      }
+    }
+  },
+  "related": {
+    "Shot Charts": { "nfl": "Passing Charts", "mlb": "Spatial Analytics" },
+    "Passing Charts": { "nba": "Shot Charts", "wnba": "Shot Charts", "mlb": "Spatial Analytics" },
+    "Spatial Analytics": { "nba": "Shot Charts", "nfl": "Passing Charts", "wnba": "Shot Charts" },
+    "Defense": { "nfl": "Team Ratings & EPA", "mlb": "Season Standings" },
+    "Team Ratings & EPA": { "nba": "Defense", "wnba": "Defense", "mlb": "Season Standings" },
+    "Postseason & Bullpen": { "nba": "Playoff Simulator", "nfl": "Playoff Simulator", "wnba": "Playoff Simulator" },
+    "2026 Bracket": { "nba": "Playoff Simulator", "nfl": "Playoff Simulator", "mlb": "Playoff Simulator" },
+    "Payroll & Cap": { "wnba": "Offseason Moves" },
+    "Offseason Moves": { "nfl": "Payroll & Cap" },
+    "Coaching Staffs": { "mlb": "Season Standings" },
+    "Retrospective": { "nba": "Season Standings", "nfl": "Season Standings" }
+  }
+}
