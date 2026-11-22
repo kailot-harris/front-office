@@ -164,6 +164,12 @@ jobs:
       # the assembled output, before the Pages upload, so a failure here
       # leaves the previously deployed site live. All four sports block
       # (WARN_ONLY is empty). See tools/check_landing_freshness.mjs.
+      # The visitor docs (docs/WALKTHROUGH.md, docs/HOW_IT_WORKS.md) as site
+      # pages at /guide/ and /how-it-works/, which the landing footer links
+      # to. Built from the Markdown on every deploy so the two never drift.
+      - name: Render visitor doc pages
+        run: node tools/test_build_doc_pages.mjs && node tools/build_doc_pages.mjs site
+
       - name: Check landing digests agree with scores files
         run: node tools/check_landing_freshness.mjs site
 
@@ -183,6 +189,8 @@ jobs:
             echo '<?xml version="1.0" encoding="UTF-8"?>'
             echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
             echo "  <url><loc>${BASE_URL}/</loc></url>"
+            echo "  <url><loc>${BASE_URL}/guide/</loc></url>"
+            echo "  <url><loc>${BASE_URL}/how-it-works/</loc></url>"
             for sport in nba wnba mlb nfl; do
               find "site/$sport" -name 'index.html' | sort | while IFS= read -r f; do
                 route="${f#site/}"
