@@ -64,14 +64,14 @@ describe('Sidebar active tab highlighting', () => {
     expect(screen.getByText('Weekly Pulse')).toBeDefined();
   });
 
-  it('renders 2026 Championship Archive expandable section', () => {
+  it('renders one flat list in the offseason, with no archive or group headers', () => {
     mockPathname = '/offseason';
-    render(<Sidebar seasonState="offseason" />);
-    const archiveBtn = screen.getByText(/2026 Championship Archive/i);
-    expect(archiveBtn).toBeDefined();
-    // Expand the archive
-    fireEvent.click(archiveBtn);
-    expect(screen.getByRole('link', { name: /Season Standings/i })).toBeDefined();
+    const { container } = render(<Sidebar seasonState="offseason" />);
+    expect(screen.queryByText(/2026 Championship Archive/i)).toBeNull();
+    expect(screen.queryByText(/Off-Season Intelligence/i)).toBeNull();
+    const links = container.querySelector('aside')!.querySelectorAll('a');
+    // home link + all 15 nav items, every one visible without expanding anything
+    expect(links.length).toBe(16);
   });
 });
 
