@@ -28,6 +28,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { orderNavItems } from '@/lib/navOrder';
+import { SportSwitcher } from '@/components/SportSwitcher';
 
 /**
  * next.config.mjs sets `trailingSlash: true`, so usePathname() returns '/matchups/'
@@ -228,6 +229,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonState }) =>
           <ArrowLeft className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
           <span>Front Office home</span>
         </a>
+
+        {/* Sport switcher (#212), shared component; desktop sidebar and phone drawer. */}
+        <SportSwitcher current="wnba" />
         <div className="flex items-center gap-3 px-2 pt-1 pb-2 border-b border-slate-800/80">
           <div className="w-11 h-11 rounded-xl overflow-hidden border border-indigo-500/30 shadow-lg shadow-indigo-500/20 flex-shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
