@@ -79,16 +79,40 @@ export function switchHref(to: SportSlug, target: SwitchTarget): string {
   return `${base}?${q.toString()}`;
 }
 
+// Fetched at most once per page load. The sidebar can remount this component
+// on every render (NavContent is an inline component), so a per-mount fetch
+// would repeat endlessly and keep the network from ever going idle.
+let tableRequest: Promise<SwitcherTable | null> | null = null;
+let loadedTable: SwitcherTable | null = null;
+function loadTable(): Promise<SwitcherTable | null> {
+  if (tableRequest) return tableRequest;
+  // Read the body even on an error status (an unread body leaves the request
+  // open), and give up after 5 s so a stuck request cannot hold the page busy.
+  const ctrl = typeof AbortController === 'undefined' ? null : new AbortController();
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), 5000) : null;
+  tableRequest = fetch(SWITCHER_TABLE_URL, ctrl ? { signal: ctrl.signal } : undefined)
+    .then((r) => (r.ok ? r.json() : r.text().then(() => null)))
+    .then((t) => (t?.sports && t?.related ? (t as SwitcherTable) : null))
+    .catch(() => null)
+    .then((t) => {
+      if (timer) clearTimeout(timer);
+      return (loadedTable = t);
+    });
+  return tableRequest;
+}
+/** Test hook: forget the cached table. */
+export function resetSwitcherTableCache() {
+  tableRequest = null;
+  loadedTable = null;
+}
+
 export const SportSwitcher: React.FC<{ current: SportSlug }> = ({ current }) => {
   const pathname = usePathname();
-  const [table, setTable] = useState<SwitcherTable | null>(null);
+  const [table, setTable] = useState<SwitcherTable | null>(loadedTable);
 
   useEffect(() => {
     let live = true;
-    fetch(SWITCHER_TABLE_URL)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((t) => { if (live && t?.sports && t?.related) setTable(t); })
-      .catch(() => {});
+    loadTable().then((t) => { if (live && t) setTable(t); });
     return () => { live = false; };
   }, []);
 
