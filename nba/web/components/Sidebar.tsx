@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
 import { orderNavItems } from '@/lib/navOrder';
+import { SportSwitcher } from '@/components/SportSwitcher';
 
 /**
  * next.config.mjs sets `trailingSlash: true`, so usePathname() returns '/offseason/'
@@ -179,6 +180,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore, seaso
             <span>Front Office home</span>
           </a>
         </div>
+
+        {/* Sport switcher (#212), shared component; desktop sidebar and phone drawer. */}
+        <SportSwitcher current="nba" />
 
         {/* Brand Header with Halloween Basketball Button Logo */}
         <div className="flex items-center gap-3 px-2 pt-1 pb-2 border-b border-slate-800/80">

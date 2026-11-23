@@ -24,7 +24,7 @@ describe('Sidebar Front Office home link (#220)', () => {
   });
   it('orders nav items with offseason pages first when seasonState is offseason', () => {
     const { container } = render(<Sidebar seasonState="offseason" />);
-    const labels = Array.from(container.querySelectorAll('aside a')).map((a) => a.getAttribute('href'));
+    const labels = Array.from(container.querySelectorAll('aside a')).filter((a) => !a.closest('nav[aria-label="Switch sport"]')).map((a) => a.getAttribute('href'));
     expect(labels[1]).toBe('/offseason');
     expect(labels[2]).toBe('/');
   });
