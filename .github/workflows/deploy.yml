@@ -125,6 +125,9 @@ jobs:
         with:
           name: site-${{ matrix.sport }}
           path: ${{ matrix.sport }}/web/out
+          # Only needed until assemble-and-deploy runs. The default 90 days
+          # filled the account artifact quota (about 16 GB by 2026-11-22).
+          retention-days: 1
 
   assemble-and-deploy:
     needs: [predeploy-gate, build, nav-sync-check]
