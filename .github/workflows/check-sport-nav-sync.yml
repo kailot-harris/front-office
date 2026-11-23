@@ -31,3 +31,9 @@ jobs:
 
       - name: Check sport switcher table matches each sport's Sidebar (issue #212)
         run: node tools/test_switcher_table.mjs
+
+      - name: Check page counts in the static pages match the switcher table
+        run: node tools/fill_page_counts.mjs --check
+
+      - name: Test the page-count filler
+        run: node --test tools/test_fill_page_counts.mjs

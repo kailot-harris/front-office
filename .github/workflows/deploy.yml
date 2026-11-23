@@ -168,6 +168,12 @@ jobs:
             cp -r "artifacts/site-$sport/." "site/$sport/"
           done
 
+      # The page counts on the landing, guide and how-it-works pages come from
+      # nav/switcher.json, not hand-typed numbers. Fails (and keeps the live
+      # site) if a marker is missing or broken. See tools/fill_page_counts.mjs.
+      - name: Fill page counts from nav/switcher.json
+        run: node tools/fill_page_counts.mjs --write site
+
       # Stops the deploy when a sport's landing digest shows a game as not
       # final that the same sport's scores file has as final (2026-11-21: the
       # slot refresh committed NBA's scores but not its re-graded digest, and
