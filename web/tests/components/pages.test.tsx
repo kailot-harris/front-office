@@ -106,6 +106,8 @@ describe('Sidebar', () => {
   it('links nowhere that the app does not serve', () => {
     const { container } = render(<Sidebar />);
     const internal = Array.from(container.querySelectorAll('a'))
+      // #212: sport switcher links point at the other sport apps on purpose.
+      .filter((a) => !a.closest('nav[aria-label="Switch sport"]'))
       .map((a) => a.getAttribute('href') ?? '')
       .filter((h) => h.startsWith('/'))
       // #220: the Front Office home link points outside this app on purpose.

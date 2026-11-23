@@ -5,6 +5,7 @@
  * failure a visitor would see.
  */
 import { expect, test } from '@playwright/test';
+import switcherTable from './switcher-table.fixture.json';
 import {
   BASE_PATH,
   ROUTES,
@@ -58,6 +59,9 @@ for (const route of ROUTES) {
         }
       });
 
+      // The sport switcher table (front-office#212) is served by the aggregator,
+      // not this app; stand in for it the way production serves it.
+      await page.route('**/nav/switcher.json', (r) => r.fulfill({ json: switcherTable }));
       await page.goto(route.path, { waitUntil: 'networkidle' });
 
       expect(consoleErrors, `${route.path} logged console errors`).toEqual([]);
