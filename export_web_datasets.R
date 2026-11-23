@@ -822,6 +822,9 @@ run_export_web_datasets <- function() {
     for (i in seq_len(nrow(df))) {
       row <- df[i, ]
       tm <- row$team
+      # All four round probabilities share one precision: rounding them
+      # differently let a later round read higher than an earlier one
+      # (CLE 2026-11-23: conference showed 0, Super Bowl 0.0001).
       res[[length(res) + 1]] <- list(
         seed                 = as.integer(row$seed),
         team                 = tm,
@@ -830,9 +833,9 @@ run_export_web_datasets <- function() {
         role                 = as.character(row$role),
         win_pct              = round(row$win_pct, 3),
         power_rating         = round(row$power_rating, 2),
-        wild_card_win_prob   = if (is.na(row$wild_card_win_prob)) 1.0 else round(row$wild_card_win_prob, 3),
-        divisional_win_prob  = round(row$divisional_win_prob, 3),
-        conf_champ_win_prob  = round(row$conference_championship_win_prob, 3),
+        wild_card_win_prob   = if (is.na(row$wild_card_win_prob)) 1.0 else round(row$wild_card_win_prob, 4),
+        divisional_win_prob  = round(row$divisional_win_prob, 4),
+        conf_champ_win_prob  = round(row$conference_championship_win_prob, 4),
         super_bowl_win_prob  = round(row$super_bowl_win_prob, 4)
       )
     }

@@ -554,20 +554,28 @@ if (!dir.exists(WEB_GAMES_DIR)) {
   if (is.null(pred_row)) return(NULL)
 
   # 1. Waterfall steps (Section 5.2)
+  # Each step and the margin are published rounded to 2 decimals, so the
+  # Rounding step is the residual of those ROUNDED values: the published steps
+  # then add up to the published margin exactly. The unrounded model residual
+  # (pred_row$step_rounding) is ~0 and left a gap of up to ~0.025 here.
+  r2 <- function(x) round(as.numeric(x), 2)
+  shown_margin <- r2(pred_row$projected_margin)
+  shown_rounding <- round(shown_margin - (r2(pred_row$step_current_epa) + r2(pred_row$step_prior_epa) +
+    r2(pred_row$step_elo_diff) + r2(pred_row$step_home_field) + r2(pred_row$step_qb_adjustment)), 3)
   waterfall_steps <- list(
     list(key = "step_current_epa", label = "Current-Season EPA", points = round(as.numeric(pred_row$step_current_epa), 2), description = "Current season rolling EPA net differential"),
     list(key = "step_prior_epa", label = "Pre-Season Prior", points = round(as.numeric(pred_row$step_prior_epa), 2), description = "Prior season baseline regressed to mean"),
     list(key = "step_elo_diff", label = "Elo Differential", points = round(as.numeric(pred_row$step_elo_diff), 2), description = "Elo rating points differential"),
     list(key = "step_home_field", label = "Home Field Advantage", points = round(as.numeric(pred_row$step_home_field), 2), description = "Neutral site and home field advantage blend"),
     list(key = "step_qb_adjustment", label = "Starting Quarterback", points = round(as.numeric(pred_row$step_qb_adjustment), 2), description = "Quarterback availability and injury adjustment"),
-    list(key = "step_rounding", label = "Rounding", points = round(as.numeric(pred_row$step_rounding), 3), description = "Decomposition residual")
+    list(key = "step_rounding", label = "Rounding", points = shown_rounding, description = "Decomposition residual")
   )
 
   waterfall_payload <- list(
-    projected_margin = round(as.numeric(pred_row$projected_margin), 2),
+    projected_margin = shown_margin,
     home_win_prob    = round(as.numeric(pred_row$home_win_prob), 3),
     steps            = waterfall_steps,
-    rounding         = round(as.numeric(pred_row$step_rounding), 3),
+    rounding         = shown_rounding,
     sigma            = if (!is.null(pred_row$margin_sigma) && !is.na(pred_row$margin_sigma)) as.numeric(pred_row$margin_sigma) else 14.60,
     intercept        = if (!is.null(pred_row$ridge_b_intercept) && !is.na(pred_row$ridge_b_intercept)) round(as.numeric(pred_row$ridge_b_intercept), 2) else 1.84
   )
