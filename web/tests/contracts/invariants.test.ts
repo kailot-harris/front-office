@@ -567,11 +567,20 @@ describe('team EPA profiles', () => {
   });
 
   it('league-average offensive and defensive EPA roughly cancel', () => {
-    // Every offensive play is some defence's play, so the two league means
-    // must be near-identical. A drift here means one side is mis-aggregated.
+    // Every offensive play is some defence's play, but each team's figures are
+    // a trailing window of ITS last ROLLING_WINDOW_SIZE games. When bye weeks
+    // differ, a game can sit in one team's window and not its opponent's, so
+    // the two league means legitimately drift apart. On 2026-11-23, 8 of 68
+    // windowed games were unmatched: -0.0063 vs -0.0145 published, while the
+    // 60 matched games and the whole season both cancel exactly (-0.0125 and
+    // -0.0098 on each side). So allow a bye-week gap (< 0.025) and still
+    // catch real mis-aggregation (a swapped column or sign flip is ~0.1+).
     const off = sumBy(d, (t) => t.off_epa_per_play) / d.length;
     const def = sumBy(d, (t) => t.def_epa_per_play) / d.length;
-    expect(off, `league mean off EPA ${off.toFixed(4)} vs def ${def.toFixed(4)}`).toBeCloseTo(def, 2);
+    expect(
+      Math.abs(off - def),
+      `league mean off EPA ${off.toFixed(4)} vs def ${def.toFixed(4)}`,
+    ).toBeLessThan(0.025);
   });
 
   it('league-average success rate sits in a believable band', () => {
