@@ -92,7 +92,7 @@ describe('Remaining NFL SVG accessibility', () => {
         />
       );
 
-      const svg = container.querySelector('svg[viewBox="0 0 320 320"]');
+      const svg = container.querySelector('svg[aria-label^="Player DNA skill radar chart"]');
       expect(svg).not.toBeNull();
       expect(svg).toHaveAttribute('role', 'img');
       expect(svg).not.toHaveAttribute('aria-hidden', 'true');

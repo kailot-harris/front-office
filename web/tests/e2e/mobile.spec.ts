@@ -175,10 +175,13 @@ test.describe('every route is usable on a phone', () => {
           }
           return false;
         };
+        /** Empty, non-interactive decoration (a blurred glow behind a card): nothing to read or reach. */
+        const decorative = (el: Element): boolean =>
+          !el.textContent?.trim() && getComputedStyle(el).pointerEvents === 'none';
         return Array.from(document.querySelectorAll('main *'))
           .filter((el) => {
             const r = el.getBoundingClientRect();
-            return r.width > 0 && r.right > docWidth + 2 && !insideScroller(el);
+            return r.width > 0 && r.right > docWidth + 2 && !insideScroller(el) && !decorative(el);
           })
           .slice(0, 3)
           .map(

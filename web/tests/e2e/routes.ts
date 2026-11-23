@@ -2,7 +2,8 @@
  * The route table every end-to-end spec iterates.
  *
  * Kept in one place so adding a page to `app/` means adding one row here and
- * the smoke, accessibility and asset specs all pick it up.
+ * the smoke, accessibility and asset specs all pick it up. A page under `app/`
+ * with no row here (or in MOVED_ROUTES) fails route-coverage.test.tsx (#82).
  *
  * `title` and `heading` were read off a real `next start` build rather than
  * copied from the source, so they double as a record of the live page copy.
@@ -17,6 +18,11 @@ export interface RouteSpec {
   dataMarkers: string[];
   /** Whether the page exposes a text filter input. */
   expectsSearch: boolean;
+  /**
+   * The elements the search filters, when they are not table rows or cards
+   * (interactions.spec.ts counts `tbody tr, [class*="rounded-xl"]` by default).
+   */
+  resultRows?: string;
 }
 
 export const ROUTES: RouteSpec[] = [
@@ -70,6 +76,29 @@ export const ROUTES: RouteSpec[] = [
     expectsSearch: true,
   },
   {
+    path: '/passing',
+    title: 'QB Passing Charts & Throw Maps',
+    heading: 'QB Passing Charts & Throw Maps',
+    dataMarkers: ['NextGenStats Throw Canvas', 'EPA / Pass'],
+    expectsSearch: true,
+    resultRows: 'select[aria-label="Select quarterback"] option',
+  },
+  {
+    path: '/player-dna',
+    title: 'Player DNA & Peer Comps',
+    heading: 'Player DNA & Peer Comps',
+    dataMarkers: ['Qualified players', 'Empirical Skill Profiles'],
+    expectsSearch: true,
+    resultRows: 'div.divide-y > button',
+  },
+  {
+    path: '/clutch',
+    title: 'True Clutch Index & Leverage',
+    heading: 'True Clutch Index & Pressure Resilience',
+    dataMarkers: ['High-Leverage Leaderboard', 'Clutch EPA vs Baseline'],
+    expectsSearch: true,
+  },
+  {
     path: '/variants',
     title: 'Model Variants',
     heading: 'Multi-Model Architecture',
@@ -93,6 +122,17 @@ export const ROUTES: RouteSpec[] = [
 ];
 
 export const ROUTE_PATHS = ROUTES.map((r) => r.path);
+
+/**
+ * #211: renamed pages that keep their old address as a forwarding stub
+ * (redirects.spec.ts). Every app/<route>/page.tsx must be in ROUTES or here; the
+ * coverage test in tests/components/route-coverage.test.tsx fails otherwise (#82).
+ */
+export const MOVED_ROUTES: ReadonlyArray<readonly [from: string, to: string]> = [
+  ['/dna', '/player-dna'],
+  ['/coaching', '/coaches'],
+  ['/salary-cap', '/cap-sheet'],
+];
 
 /** Console messages that are environmental noise rather than app defects. */
 export const IGNORED_CONSOLE_PATTERNS: RegExp[] = [

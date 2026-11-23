@@ -227,8 +227,8 @@ export const PassingExplorerClient: React.FC<PassingExplorerClientProps> = ({
       {/* 1. Top Controls Bar: Search, Team Filter, Quick Select Pills */}
       <div className="bg-surface-raised/90 border border-slate-800 rounded-xl p-4 space-y-4">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <div className="relative flex-1 md:w-64">
+          <div className="flex flex-wrap md:flex-nowrap items-center gap-3 w-full md:w-auto">
+            <div className="relative flex-1 min-w-[12rem] md:w-64">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
