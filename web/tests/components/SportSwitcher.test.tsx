@@ -7,6 +7,7 @@ import {
   SportSwitcher,
   SwitchArrivalNote,
   resolveSwitch,
+  resetSwitcherTableCache,
   switchHref,
   type SwitcherTable,
 } from '@/components/SportSwitcher';
@@ -24,7 +25,10 @@ const TABLE: SwitcherTable = {
   },
 };
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  resetSwitcherTableCache();
+});
 
 describe('resolveSwitch (#212)', () => {
   it('keeps the same address when the target has it', () => {
