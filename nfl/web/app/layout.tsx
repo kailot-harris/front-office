@@ -5,7 +5,7 @@ import './palette.css';
 import './globals.css';
 import { BASE_PATH } from '@/lib/basePath';
 import { Sidebar } from '@/components/Sidebar';
-import { SportSwitcher } from '@/components/SportSwitcher';
+import { SwitchArrivalNote } from '@/components/SportSwitcher';
 import fs from 'fs';
 import path from 'path';
 import { getStandingsData } from '@/lib/data';
@@ -94,7 +94,7 @@ export default function RootLayout({
         </a>
         <Sidebar generatedAt={generated_at} seasonState={seasonState} />
         <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
-          <SportSwitcher current="nfl" />
+          <SwitchArrivalNote current="nfl" />
           <main id="main-content" className="flex-1 pb-10">{children}</main>
           <footer className="border-t border-slate-800 bg-surface-raised/50 py-5 text-center text-xs text-slate-400 font-sans">
             <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
