@@ -69,7 +69,7 @@ describe('Sidebar active tab highlighting', () => {
     const { container } = render(<Sidebar seasonState="offseason" />);
     expect(screen.queryByText(/2026 Championship Archive/i)).toBeNull();
     expect(screen.queryByText(/Off-Season Intelligence/i)).toBeNull();
-    const links = container.querySelector('aside')!.querySelectorAll('a');
+    const links = container.querySelector('aside')!.querySelectorAll('a:not(nav[aria-label="Switch sport"] a)');
     // home link + all 15 nav items, every one visible without expanding anything
     expect(links.length).toBe(16);
   });
