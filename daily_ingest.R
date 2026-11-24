@@ -142,6 +142,47 @@ derive_rest_features <- function(sched_long) {
     arrange(game_date, game_id, desc(is_home))
 }
 
+# Keep a played game "completed" across schedule re-ingests.
+#
+# ROOT CAUSE this guards (#253): the schedule feed (wehoop) can lag ESPN, so a game that
+# is already FINAL in the box-score cache (or was already completed in the previous
+# schedule cache) can come back with status_type_completed == FALSE. daily_schedule_ingest()
+# used to overwrite CACHE_WNBA_SCHEDULE wholesale from the feed, which silently undid the
+# one-off patch from tools/espn_game7_fallback.R and flipped 2026 Finals Game 7 back to
+# not completed.
+#
+# Completion is only ever RAISED here, and only on evidence some source reported:
+#   * a final box score: the game has a box row for BOTH sides with a non-NA team_score
+#   * the previous schedule cache already had it completed (a source reported that earlier)
+# It never touches any other column and never invents a score or status.
+reconcile_schedule_completed <- function(sched_long, box = NULL, prior_sched = NULL) {
+  if (is.null(sched_long) || nrow(sched_long) == 0 || !"is_completed" %in% names(sched_long)) {
+    return(sched_long)
+  }
+  ids <- as.character(sched_long$game_id)
+
+  final_ids <- character(0)
+  if (!is.null(box) && all(c("game_id", "team_score") %in% names(box))) {
+    scored <- box[!is.na(box$team_score), , drop = FALSE]
+    n_sides <- tapply(seq_len(nrow(scored)), as.character(scored$game_id), length)
+    final_ids <- names(n_sides)[n_sides >= 2L]
+  }
+  prior_ids <- character(0)
+  if (!is.null(prior_sched) && all(c("game_id", "is_completed") %in% names(prior_sched))) {
+    prior_ids <- unique(as.character(prior_sched$game_id[prior_sched$is_completed %in% TRUE]))
+  }
+
+  keep <- ids %in% union(final_ids, prior_ids)
+  flip <- keep & !(sched_long$is_completed %in% TRUE)
+  if (any(flip)) {
+    log_info(sprintf("Schedule reconcile: kept %d team-game row(s) completed (game_id %s) that the feed reported as not completed.",
+                     sum(flip), paste(unique(ids[flip]), collapse = ", ")),
+             call = "reconcile_schedule_completed()")
+    sched_long$is_completed[flip] <- TRUE
+  }
+  sched_long
+}
+
 # Fetch + cache the schedule. Fail-safe: any error or empty response leaves any existing
 # cache untouched and returns NULL; it never stops the ingest pipeline.
 daily_schedule_ingest <- function(season = CURRENT_SEASON) {
@@ -178,6 +219,11 @@ daily_schedule_ingest <- function(season = CURRENT_SEASON) {
   sched_long <- sched_long |> filter(opponent_team_abbreviation %in% names(WNBA_TEAMS))
 
   sched_long <- derive_rest_features(sched_long)
+
+  # Never let a lagging feed flip a played game back to not completed (#253).
+  box_cache  <- if (file.exists(CACHE_TEAM_BOX)) tryCatch(readRDS(CACHE_TEAM_BOX), error = function(e) NULL) else NULL
+  prior_cache <- if (file.exists(CACHE_WNBA_SCHEDULE)) tryCatch(readRDS(CACHE_WNBA_SCHEDULE), error = function(e) NULL) else NULL
+  sched_long <- reconcile_schedule_completed(sched_long, box = box_cache, prior_sched = prior_cache)
 
   saveRDS(sched_long, CACHE_WNBA_SCHEDULE)
   n_unplayed <- sum(!sched_long$is_completed)

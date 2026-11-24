@@ -29,7 +29,8 @@ RUN <- c(
   "tools/test_pure_functions.R",
   "tools/test_phase4_foundation.R",
   "tools/test_logging_fault_injection.R",
-  "tools/test_db_logs.R"
+  "tools/test_db_logs.R",
+  "tests/unit/test_schedule_completed_reconcile.R"
 )
 
 # Scripts under tests/ that run on a hosted runner too. Listed by path, not
@@ -67,7 +68,8 @@ SKIP <- c(
 # 64 vendored third-party suites under renv/library/ or the agent worktree
 # copies under .claude/, so the exclusion the brief asks for is structural
 # here rather than a pattern someone has to remember to maintain.
-present <- sort(Sys.glob(file.path("tools", "test_*.R")))
+present <- sort(c(Sys.glob(file.path("tools", "test_*.R")),
+                  Sys.glob(file.path("tests", "unit", "test_schedule_completed_reconcile.R"))))
 
 if (length(present) == 0L) {
   stop("No tools/test_*.R found - is this running from the repository root?")
