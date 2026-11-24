@@ -22,7 +22,10 @@ export function getTeamsData(): TeamProjection[] {
 export function getPlayersData(): PlayerProjection[] {
   const filePath = path.join(process.cwd(), 'public', 'data', 'projections_season_players.json');
   const fileContent = fs.readFileSync(filePath, 'utf-8');
-  return JSON.parse(fileContent) as PlayerProjection[];
+  const parsed = JSON.parse(fileContent) as
+    | PlayerProjection[]
+    | { players: PlayerProjection[] };
+  return Array.isArray(parsed) ? parsed : parsed.players;
 }
 
 export function getMetadata(): ModelMetadata {

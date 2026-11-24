@@ -507,5 +507,150 @@ MLB_OFFSEASON_BURST_WINDOWS <- list(
 )
 
 # ---------------------------------------------------------------------------
+# 9. Projections Season Players Snapshot Reader & Validator (Issue #136)
+# ---------------------------------------------------------------------------
+# Reads `web/public/data/projections_season_players.json`, extracts its
+# explicit `season` and `generated_at` (top-level or under `metadata`),
+# validates that `season` matches `expected_season`, and returns a structured
+# result list:
+#   list(ok = TRUE/FALSE, players = <data.frame or NULL>,
+#        season = <integer or NA_integer_>,
+#        generated_at = <character or NA_character_>,
+#        as_of_date = <character YYYY-MM-DD or NA_character_>,
+#        reason = <character or NULL>)
+#
+# On missing file, parse error, missing metadata, or season mismatch, logs a
+# `>>> [FAIL]` message and returns `ok = FALSE` so callers return cleanly
+# (exit 0) without consuming a stale snapshot.
+read_projections_season_players <- function(
+  players_file,
+  expected_season = MLB_CURRENT_SEASON,
+  caller = "PROJECTIONS READER"
+) {
+  fail_res <- function(reason, season = NA_integer_, generated_at = NA_character_, as_of_date = NA_character_) {
+    msg <- sprintf(">>> [FAIL] [%s] %s", caller, reason)
+    message(msg)
+    if (exists("log_warn", mode = "function")) {
+      tryCatch(log_warn(msg, script = caller), error = function(e) NULL)
+    }
+    list(
+      ok = FALSE,
+      players = NULL,
+      season = season,
+      generated_at = generated_at,
+      as_of_date = as_of_date,
+      reason = reason
+    )
+  }
+
+  if (!.mlb_has_jsonlite) {
+    return(fail_res("jsonlite package is required to read projections_season_players.json."))
+  }
+  if (is.null(players_file) || !nzchar(players_file) || !file.exists(players_file)) {
+    return(fail_res(sprintf("Missing projections file: %s", as.character(players_file))))
+  }
+
+  parsed <- tryCatch(
+    jsonlite::fromJSON(players_file, simplifyDataFrame = TRUE),
+    error = function(e) e
+  )
+  if (inherits(parsed, "error")) {
+    return(fail_res(sprintf("Failed to parse %s: %s", basename(players_file), conditionMessage(parsed))))
+  }
+
+  snap_season <- NA_integer_
+  snap_generated_at <- NA_character_
+  snap_as_of_date <- NA_character_
+  players_df <- NULL
+
+  if (is.data.frame(parsed)) {
+    return(fail_res(sprintf(
+      "%s is missing explicit season/generated_at metadata (legacy bare array); refusing unstamped snapshot.",
+      basename(players_file)
+    )))
+  } else if (is.list(parsed)) {
+    meta <- if (!is.null(parsed$metadata) && is.list(parsed$metadata)) parsed$metadata else parsed
+    raw_season <- if (!is.null(meta$season)) meta$season else parsed$season
+    raw_gen <- if (!is.null(meta$generated_at)) meta$generated_at else parsed$generated_at
+    raw_as_of <- if (!is.null(meta$as_of_date)) meta$as_of_date else parsed$as_of_date
+
+    if (!is.null(raw_season) && length(raw_season) > 0L && !is.na(raw_season)) {
+      snap_season <- suppressWarnings(as.integer(raw_season[[1L]]))
+    }
+    if (!is.null(raw_gen) && length(raw_gen) > 0L && !is.na(raw_gen) && nzchar(as.character(raw_gen[[1L]]))) {
+      snap_generated_at <- as.character(raw_gen[[1L]])
+    }
+    if (!is.null(raw_as_of) && length(raw_as_of) > 0L && !is.na(raw_as_of) && nzchar(as.character(raw_as_of[[1L]]))) {
+      snap_as_of_date <- as.character(raw_as_of[[1L]])
+    } else if (!is.na(snap_generated_at) && grepl("^\\d{4}-\\d{2}-\\d{2}", snap_generated_at)) {
+      snap_as_of_date <- substr(snap_generated_at, 1L, 10L)
+    }
+
+    if (!is.null(parsed$players)) {
+      if (is.data.frame(parsed$players)) {
+        players_df <- parsed$players
+      } else if (is.list(parsed$players) && length(parsed$players) == 0L) {
+        players_df <- data.frame(
+          player_id = character(0),
+          mlbam_id = character(0),
+          player_name = character(0),
+          player_type = character(0),
+          team = character(0),
+          position = character(0),
+          stringsAsFactors = FALSE
+        )
+      }
+    }
+  } else {
+    return(fail_res(sprintf("Unexpected JSON root type in %s.", basename(players_file))))
+  }
+
+  if (is.na(snap_season)) {
+    return(fail_res(
+      sprintf("%s is missing explicit season metadata; refusing unstamped snapshot.", basename(players_file)),
+      generated_at = snap_generated_at,
+      as_of_date = snap_as_of_date
+    ))
+  }
+
+  exp_season <- suppressWarnings(as.integer(expected_season))
+  if (!is.na(exp_season) && !identical(snap_season, exp_season)) {
+    return(fail_res(
+      sprintf("%s season mismatch: snapshot is %d, expected %d. Refusing stale snapshot.",
+              basename(players_file), snap_season, exp_season),
+      season = snap_season,
+      generated_at = snap_generated_at,
+      as_of_date = snap_as_of_date
+    ))
+  }
+
+  if (is.na(snap_generated_at) || !nzchar(snap_generated_at)) {
+    return(fail_res(
+      sprintf("%s is missing generated_at timestamp metadata; refusing unstamped snapshot.", basename(players_file)),
+      season = snap_season,
+      as_of_date = snap_as_of_date
+    ))
+  }
+
+  if (is.null(players_df) || !is.data.frame(players_df)) {
+    return(fail_res(
+      sprintf("%s has no valid players table.", basename(players_file)),
+      season = snap_season,
+      generated_at = snap_generated_at,
+      as_of_date = snap_as_of_date
+    ))
+  }
+
+  list(
+    ok = TRUE,
+    players = players_df,
+    season = snap_season,
+    generated_at = snap_generated_at,
+    as_of_date = snap_as_of_date,
+    reason = NULL
+  )
+}
+
+# ---------------------------------------------------------------------------
 # End of config.R
 # ---------------------------------------------------------------------------

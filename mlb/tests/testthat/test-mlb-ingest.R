@@ -454,14 +454,18 @@ test_that("spatial exporters resolve season Statcast cache paths dynamically wit
     file.path(cw_dir, "mlb_id_crosswalk.rds")
   )
   jsonlite::write_json(
-    data.frame(
-      player_id = c("mlb_592450", "mlb_543037"),
-      mlbam_id = c(592450L, 543037L),
-      player_name = c("Aaron Judge", "Gerrit Cole"),
-      player_type = c("Batter", "Pitcher"),
-      team = c("NYY", "NYY"),
-      position = c("RF", "SP"),
-      stringsAsFactors = FALSE
+    list(
+      generated_at = sprintf("%d-04-01T12:00:00Z", MLB_CURRENT_SEASON),
+      season = MLB_CURRENT_SEASON,
+      players = data.frame(
+        player_id = c("mlb_592450", "mlb_543037"),
+        mlbam_id = c(592450L, 543037L),
+        player_name = c("Aaron Judge", "Gerrit Cole"),
+        player_type = c("Batter", "Pitcher"),
+        team = c("NYY", "NYY"),
+        position = c("RF", "SP"),
+        stringsAsFactors = FALSE
+      )
     ),
     file.path(out_dir, "projections_season_players.json"),
     auto_unbox = TRUE

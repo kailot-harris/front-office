@@ -5,13 +5,15 @@ import { LeverageBreakdown } from '@/lib/clutchTypes';
 
 interface LeverageDistributionBarProps {
   breakdown: LeverageBreakdown;
-  avgLeverageIndex: number;
+  avgLeverageIndex: number | null;
 }
 
 export const LeverageDistributionBar: React.FC<LeverageDistributionBarProps> = ({
   breakdown,
   avgLeverageIndex,
 }) => {
+  const lowPct = breakdown.lowPct ?? 0;
+  const medPct = breakdown.medPct ?? 0;
   return (
     <div className="p-4 bg-surface/70 rounded-2xl border border-slate-800 shadow-xl space-y-3">
       <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
@@ -23,7 +25,9 @@ export const LeverageDistributionBar: React.FC<LeverageDistributionBarProps> = (
         </div>
         <div className="text-right font-mono">
           <span className="text-[11px] sm:text-[10px] text-slate-400 block">Avg Leverage</span>
-          <span className="text-sm font-black text-rose-400">{avgLeverageIndex.toFixed(2)} LI</span>
+          <span className="text-sm font-black text-rose-400">
+            {avgLeverageIndex != null ? `${avgLeverageIndex.toFixed(2)} LI` : '— LI'}
+          </span>
         </div>
       </div>
 
@@ -31,23 +35,23 @@ export const LeverageDistributionBar: React.FC<LeverageDistributionBarProps> = (
       <div className="w-full bg-surface-raised h-3 rounded-full overflow-hidden flex shadow-inner">
         <div
           className="bg-slate-700 h-full transition-all duration-500"
-          style={{ width: `${breakdown.lowPct}%` }}
-          title={`Low Leverage (<0.85): ${breakdown.lowPct}%`}
+          style={{ width: `${lowPct}%` }}
+          title={`Low Leverage (<0.85): ${breakdown.lowPct ?? '—'}%`}
         />
         <div
           className="bg-sky-600 h-full transition-all duration-500"
-          style={{ width: `${breakdown.medPct}%` }}
-          title={`Medium Leverage (0.85-1.50): ${breakdown.medPct}%`}
+          style={{ width: `${medPct}%` }}
+          title={`Medium Leverage (0.85-1.50): ${breakdown.medPct ?? '—'}%`}
         />
         <div
           className="bg-amber-500 h-full transition-all duration-500"
-          style={{ width: `${breakdown.highPct}%` }}
-          title={`High Leverage (1.50-2.50): ${breakdown.highPct}%`}
+          style={{ width: `${breakdown.highPct ?? 0}%` }}
+          title={`High Leverage (1.50-2.50): ${breakdown.highPct ?? '—'}%`}
         />
         <div
           className="bg-rose-500 h-full transition-all duration-500"
-          style={{ width: `${breakdown.extremePct}%` }}
-          title={`Extreme Leverage (>=2.50): ${breakdown.extremePct}%`}
+          style={{ width: `${breakdown.extremePct ?? 0}%` }}
+          title={`Extreme Leverage (>=2.50): ${breakdown.extremePct ?? '—'}%`}
         />
       </div>
 

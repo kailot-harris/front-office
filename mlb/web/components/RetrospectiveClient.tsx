@@ -25,9 +25,9 @@ interface RetrospectiveClientProps {
     teams: Array<{
       teamAbbr: string;
       teamName: string;
-      payroll2026: number;
+      payroll2026: number | null;
       cbtTier: string;
-      cbtTaxBill: number;
+      cbtTaxBill: number | null;
     }>;
   };
 }
@@ -103,21 +103,22 @@ export const RetrospectiveClient: React.FC<RetrospectiveClientProps> = ({
   const efficiencyList = useMemo(() => {
     if (!cbtSheet?.teams) return [];
     return teams
-      .map((t) => {
+      .flatMap((t) => {
         const cbt = cbtSheet.teams.find((c) => c.teamAbbr === t.team);
-        const payroll = cbt ? cbt.payroll2026 : 150;
+        const payroll = cbt?.payroll2026 ?? null;
+        if (payroll === null) return [];
         const wins = t.proj_wins || 81;
         const costPerWin = payroll / wins; // Millions per win
-        return {
+        return [{
           team: t.team,
           fullName: t.full_name,
           league: t.league,
           wins,
           payroll,
-          cbtTier: cbt?.cbtTier || 'Under Threshold',
+          cbtTier: cbt?.cbtTier || 'Unknown',
           costPerWin,
           titleProb: t.ensemble_title_prob || 0,
-        };
+        }];
       })
       .sort((a, b) => a.costPerWin - b.costPerWin);
   }, [teams, cbtSheet]);

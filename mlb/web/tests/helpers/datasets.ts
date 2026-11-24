@@ -108,10 +108,18 @@ export function readMatchupWeekFile(week: number): Matchup[] {
   return JSON.parse(fs.readFileSync(fullPath, 'utf-8')) as Matchup[];
 }
 
+export function unwrapPlayersPayload(
+  raw: PlayerProjection[] | { players: PlayerProjection[] },
+): PlayerProjection[] {
+  return Array.isArray(raw) ? raw : raw.players;
+}
+
 export function loadAllDatasets() {
+  const playersRaw = readJsonFile<PlayerProjection[] | { players: PlayerProjection[] }>('projections_season_players.json');
   return {
     teams: readJsonFile<TeamProjection[]>('projections_season_teams.json'),
-    players: readJsonFile<PlayerProjection[]>('projections_season_players.json'),
+    players: unwrapPlayersPayload(playersRaw),
+    playersRaw,
     metadata: readJsonFile<ModelMetadata>('projections_models_metadata.json'),
     diagnostics: readJsonFile<ModelDiagnostics>('projections_diagnostics.json'),
     postseasonOps: readJsonFile<PostseasonOpsData>('projections_postseason_ops.json'),

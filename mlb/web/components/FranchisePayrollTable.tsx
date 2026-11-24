@@ -208,8 +208,14 @@ export const FranchisePayrollTable: React.FC<FranchisePayrollTableProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono">
-              {filteredContracts.map((c) => {
-                const isSurplusPositive = c.surplusValue >= 0;
+              {filteredContracts.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-8 px-4 text-center font-sans text-xs text-slate-400">
+                    No sourced contract records available for this club.
+                  </td>
+                </tr>
+              ) : filteredContracts.map((c) => {
+                const isSurplusPositive = (c.surplusValue ?? 0) >= 0;
                 return (
                   <tr
                     key={c.playerId}
@@ -239,10 +245,10 @@ export const FranchisePayrollTable: React.FC<FranchisePayrollTableProps> = ({
                       {money(c.salary2026)}
                     </td>
                     <td className="py-3 px-3 text-right text-slate-400 hidden sm:table-cell">
-                      {c.salary2027 > 0 ? money(c.salary2027) : <span className="text-slate-400">FA</span>}
+                      {c.salary2027 !== null && c.salary2027 > 0 ? money(c.salary2027) : c.salary2027 === 0 ? <span className="text-slate-400">FA</span> : '—'}
                     </td>
                     <td className="py-3 px-3 text-right text-slate-400 hidden sm:table-cell">
-                      {c.salary2028 > 0 ? money(c.salary2028) : <span className="text-slate-400">FA</span>}
+                      {c.salary2028 !== null && c.salary2028 > 0 ? money(c.salary2028) : c.salary2028 === 0 ? <span className="text-slate-400">FA</span> : '—'}
                     </td>
                     <td className="py-3 px-3 text-right text-sky-400 font-bold">
                       {num(c.projectedWar)}

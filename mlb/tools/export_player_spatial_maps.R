@@ -56,10 +56,16 @@ export_player_spatial_maps <- function(out_dir = file.path(root_dir, "web", "pub
     alt_p <- file.path(root_dir, "web", "public", "data", "projections_season_players.json")
     if (file.exists(alt_p)) players_file <- alt_p
   }
-  if (!file.exists(players_file)) {
-    stop(sprintf("Players file not found at %s. Run export_web_data.R first.", players_file))
+  expected_season <- if (!is.null(season)) as.integer(season) else MLB_CURRENT_SEASON
+  snap <- read_projections_season_players(
+    players_file = players_file,
+    expected_season = expected_season,
+    caller = "export_player_spatial_maps.R"
+  )
+  if (!isTRUE(snap$ok)) {
+    return(invisible(NULL))
   }
-  players <- jsonlite::fromJSON(players_file)
+  players <- snap$players
   if (!is.data.frame(players) || nrow(players) == 0L) {
     players <- data.frame(
       player_id = character(0),
@@ -261,6 +267,7 @@ export_player_spatial_maps <- function(out_dir = file.path(root_dir, "web", "pub
         player_type = "Batter",
         team = p$team,
         position = p$position,
+        projectionsSnapshot = list(season = snap$season, as_of_date = snap$as_of_date),
         is_statcast_tracked = is_statcast,
         has_statcast_tracking = is_statcast,
         sample_size = n_total,
@@ -359,6 +366,7 @@ export_player_spatial_maps <- function(out_dir = file.path(root_dir, "web", "pub
         player_type = "Pitcher",
         team = p$team,
         position = p$position,
+        projectionsSnapshot = list(season = snap$season, as_of_date = snap$as_of_date),
         is_statcast_tracked = is_statcast,
         has_statcast_tracking = is_statcast,
         sample_size = n_pitches,
@@ -415,6 +423,7 @@ export_player_spatial_maps <- function(out_dir = file.path(root_dir, "web", "pub
       player_type = sm$player_type,
       team = sm$team,
       position = sm$position,
+      projectionsSnapshot = sm$projectionsSnapshot,
       is_statcast_tracked = sm$is_statcast_tracked,
       sample_size = sm$sample_size
     )

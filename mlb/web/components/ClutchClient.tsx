@@ -64,11 +64,16 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
         return matchesSearch && matchesArch;
       })
       .sort((a, b) => {
+        const av = a[sortKey];
+        const bv = b[sortKey];
+        if (av == null && bv == null) return 0;
+        if (av == null) return 1;
+        if (bv == null) return -1;
         if (sortKey === 'deltaClutch' && playerType === 'Pitcher') {
           // For pitchers, negative delta (suppressing wOBA against) is better
-          return a.deltaClutch - b.deltaClutch;
+          return av - bv;
         }
-        return b[sortKey] - a[sortKey];
+        return bv - av;
       });
   }, [typeProfiles, searchQuery, selectedArchetype, sortKey, playerType]);
 
@@ -185,7 +190,8 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
             <div tabIndex={0} role="region" aria-label="Clutch leaderboard" className="space-y-1.5 max-h-[580px] overflow-y-auto pr-1">
               {filteredProfiles.map((p) => {
                 const isSelected = p.playerId === selectedProfile?.playerId;
-                const isGoodDelta = isBatter ? p.deltaClutch >= 0 : p.deltaClutch <= 0;
+                const isGoodDelta =
+                  p.deltaClutch != null && (isBatter ? p.deltaClutch >= 0 : p.deltaClutch <= 0);
 
                 return (
                   <div
@@ -203,7 +209,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-xs text-white truncate">{p.playerName}</span>
                           <span className="text-[11px] sm:text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
-                            {p.position}
+                            {p.position ?? '—'}
                           </span>
                         </div>
                         <p className="text-[10.5px] text-slate-400 font-mono truncate">{p.clutchArchetype}</p>
@@ -220,7 +226,7 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
                             isGoodDelta ? 'text-emerald-400' : 'text-slate-400'
                           }`}
                         >
-                          Δ {p.deltaClutch > 0 ? `+${p.deltaClutch}` : p.deltaClutch}
+                          Δ {p.deltaClutch == null ? '—' : p.deltaClutch > 0 ? `+${p.deltaClutch}` : p.deltaClutch}
                         </span>
                       </div>
                       <ChevronRight className={`w-4 h-4 ${isSelected ? 'text-rose-400' : 'text-slate-600'}`} />
@@ -244,9 +250,9 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
                   <div className="flex items-center gap-2 text-xs font-mono text-slate-400 mt-0.5">
                     <span>{selectedProfile.team}</span>
                     <span>•</span>
-                    <span>{selectedProfile.position}</span>
+                    <span>{selectedProfile.position ?? '—'}</span>
                     <span>•</span>
-                    <span>{selectedProfile.avgLeverageIndex.toFixed(2)} pLI</span>
+                    <span>{selectedProfile.avgLeverageIndex != null ? `${selectedProfile.avgLeverageIndex.toFixed(2)} pLI` : '— pLI'}</span>
                   </div>
                 </div>
               </div>
@@ -272,22 +278,31 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
             <div className="grid grid-cols-3 gap-2 text-center font-mono text-xs">
               <div className="bg-surface p-2 rounded-lg border border-slate-800">
                 <span className="text-[11px] sm:text-[10px] text-slate-400 block">{selectedProfile.baseMetricLabel}</span>
-                <span className="font-bold text-white text-xs">{selectedProfile.baseMetricVal.toFixed(3)}</span>
+                <span className="font-bold text-white text-xs">
+                  {selectedProfile.baseMetricVal != null ? selectedProfile.baseMetricVal.toFixed(3) : '—'}
+                </span>
               </div>
               <div className="bg-surface p-2 rounded-lg border border-slate-800">
                 <span className="text-[11px] sm:text-[10px] text-slate-400 block">{selectedProfile.clutchMetricLabel}</span>
-                <span className="font-bold text-sky-400 text-xs">{selectedProfile.clutchMetricVal.toFixed(3)}</span>
+                <span className="font-bold text-sky-400 text-xs">
+                  {selectedProfile.clutchMetricVal != null ? selectedProfile.clutchMetricVal.toFixed(3) : '—'}
+                </span>
               </div>
               <div className="bg-surface p-2 rounded-lg border border-slate-800">
                 <span className="text-[11px] sm:text-[10px] text-slate-400 block">Pressure Delta</span>
                 <span
                   className={`font-black text-xs ${
+                    selectedProfile.deltaClutch != null &&
                     (isBatter ? selectedProfile.deltaClutch >= 0 : selectedProfile.deltaClutch <= 0)
                       ? 'text-emerald-400'
                       : 'text-rose-400'
                   }`}
                 >
-                  {selectedProfile.deltaClutch > 0 ? `+${selectedProfile.deltaClutch}` : selectedProfile.deltaClutch}
+                  {selectedProfile.deltaClutch == null
+                    ? '—'
+                    : selectedProfile.deltaClutch > 0
+                      ? `+${selectedProfile.deltaClutch}`
+                      : selectedProfile.deltaClutch}
                 </span>
               </div>
             </div>
@@ -297,13 +312,17 @@ export const ClutchClient: React.FC<ClutchClientProps> = ({ catalog }) => {
               <div className="bg-surface/80 p-2.5 rounded-xl border border-slate-800/60">
                 <span className="text-[11px] sm:text-[10px] text-slate-400 block">Total Season WPA</span>
                 <span className="text-base font-bold text-white">
-                  {selectedProfile.wpaTotal > 0 ? `+${selectedProfile.wpaTotal.toFixed(2)}` : selectedProfile.wpaTotal.toFixed(2)} Wins
+                  {selectedProfile.wpaTotal == null
+                    ? '—'
+                    : `${selectedProfile.wpaTotal > 0 ? `+${selectedProfile.wpaTotal.toFixed(2)}` : selectedProfile.wpaTotal.toFixed(2)} Wins`}
                 </span>
               </div>
               <div className="bg-surface/80 p-2.5 rounded-xl border border-slate-800/60">
                 <span className="text-[11px] sm:text-[10px] text-slate-400 block">High-Leverage WPA (LI &ge; 1.5)</span>
                 <span className="text-base font-bold text-rose-400">
-                  {selectedProfile.highLiWpa > 0 ? `+${selectedProfile.highLiWpa.toFixed(2)}` : selectedProfile.highLiWpa.toFixed(2)} Wins
+                  {selectedProfile.highLiWpa == null
+                    ? '—'
+                    : `${selectedProfile.highLiWpa > 0 ? `+${selectedProfile.highLiWpa.toFixed(2)}` : selectedProfile.highLiWpa.toFixed(2)} Wins`}
                 </span>
               </div>
             </div>

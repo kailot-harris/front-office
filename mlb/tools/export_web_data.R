@@ -899,8 +899,14 @@ run_web_export <- function(season = 2026, n_sims = 1000L, out_dir = file.path(ML
   f_diag    <- file.path(out_dir, "projections_diagnostics.json")
   f_ops     <- file.path(out_dir, "projections_postseason_ops.json")
 
+  players_payload <- list(
+    generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+    season       = as.integer(season),
+    players      = player_projections
+  )
+
   jsonlite::write_json(team_projections,   f_teams,   pretty = TRUE, auto_unbox = TRUE)
-  jsonlite::write_json(player_projections, f_players, pretty = TRUE, auto_unbox = TRUE)
+  jsonlite::write_json(players_payload,    f_players, pretty = TRUE, auto_unbox = TRUE)
   jsonlite::write_json(metadata_obj,       f_meta,    pretty = TRUE, auto_unbox = TRUE)
   jsonlite::write_json(diagnostics_obj,    f_diag,    pretty = TRUE, auto_unbox = TRUE)
   jsonlite::write_json(postseason_ops_obj, f_ops,     pretty = TRUE, auto_unbox = TRUE)

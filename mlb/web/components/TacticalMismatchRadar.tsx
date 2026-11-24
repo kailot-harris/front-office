@@ -174,16 +174,18 @@ export const TacticalMismatchRadar: React.FC<TacticalMismatchRadarProps> = ({
         {axes.map((axis, i) => {
           const valA = ratingsA[axis.key];
           const valB = ratingsB[axis.key];
-          const advA = valA >= valB;
+          const bothPresent = valA !== null && valB !== null;
+          const advA = bothPresent && valA >= valB;
+          const advB = bothPresent && valB > valA;
           return (
             <div key={i} className="bg-surface/60 p-1.5 rounded-lg border border-slate-800/60">
               <span className="text-[9.5px] font-mono text-slate-400 block truncate" title={axis.desc}>
                 {axis.label}
               </span>
               <div className="flex items-center justify-center gap-1 font-mono text-[11px] font-bold mt-0.5">
-                <span className={advA ? 'text-sky-400 font-black' : 'text-slate-400'}>{valA}</span>
+                <span className={advA ? 'text-sky-400 font-black' : 'text-slate-400'}>{valA ?? '—'}</span>
                 <span className="text-slate-600">:</span>
-                <span className={!advA ? 'text-amber-400 font-black' : 'text-slate-400'}>{valB}</span>
+                <span className={advB ? 'text-amber-400 font-black' : 'text-slate-400'}>{valB ?? '—'}</span>
               </div>
             </div>
           );

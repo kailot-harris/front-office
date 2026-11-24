@@ -35,6 +35,10 @@ suppressPackageStartupMessages({
   library(jsonlite)
 })
 
+if (!exists("read_projections_season_players", mode = "function") && file.exists(file.path(PROJECT_DIR, "config.R"))) {
+  source(file.path(PROJECT_DIR, "config.R"))
+}
+
 # Helper function to create provenanced fields
 provenanced <- function(value, source_url = NULL, as_of_date = "2026-10-29",
                         confidence_tier = "CONFIRMED", origin = "SEASON_END_PULL") {
@@ -47,19 +51,30 @@ provenanced <- function(value, source_url = NULL, as_of_date = "2026-10-29",
   )
 }
 
-main <- function() {
+main <- function(
+  root_dir = PROJECT_DIR,
+  expected_season = if (exists("MLB_CURRENT_SEASON")) MLB_CURRENT_SEASON else 2026L
+) {
   message(">>> [S0 Baseline Engine] Reconstituting S0 baseline anchored at 2026-10-29T03:13:00Z...")
 
-  cbt_file <- file.path(PROJECT_DIR, "web", "public", "data", "cbt_payroll_sheet.json")
-  players_file <- file.path(PROJECT_DIR, "web", "public", "data", "projections_season_players.json")
-  teams_file <- file.path(PROJECT_DIR, "web", "public", "data", "projections_season_teams.json")
+  cbt_file <- file.path(root_dir, "web", "public", "data", "cbt_payroll_sheet.json")
+  players_file <- file.path(root_dir, "web", "public", "data", "projections_season_players.json")
+  teams_file <- file.path(root_dir, "web", "public", "data", "projections_season_teams.json")
 
   if (!file.exists(cbt_file)) stop(sprintf("Missing source file: %s", cbt_file))
-  if (!file.exists(players_file)) stop(sprintf("Missing source file: %s", players_file))
   if (!file.exists(teams_file)) stop(sprintf("Missing source file: %s", teams_file))
 
+  snap <- read_projections_season_players(
+    players_file = players_file,
+    expected_season = expected_season,
+    caller = "S0 BASELINE ENGINE"
+  )
+  if (!isTRUE(snap$ok)) {
+    return(invisible(NULL))
+  }
+
   cbt_data <- jsonlite::fromJSON(cbt_file, simplifyVector = FALSE)
-  players_data <- jsonlite::fromJSON(players_file, simplifyVector = TRUE)
+  players_data <- snap$players
   teams_data <- jsonlite::fromJSON(teams_file, simplifyVector = TRUE)
 
   # Git SHA for generatedBy attribution
@@ -273,6 +288,7 @@ main <- function() {
     seasonStatus = "2026_WORLD_SERIES_CONCLUDED",
     worldSeriesChampion = "MIL",
     generatedBy = sprintf("tools/offseason/capture_baseline_s0.R@%s", git_sha),
+    projectionsSnapshot = list(season = snap$season, as_of_date = snap$as_of_date),
     coverage = list(
       rosters40 = "POPULATED",
       contracts = "POPULATED",
@@ -286,7 +302,7 @@ main <- function() {
   )
 
   # Ensure destination cache directory exists
-  cache_dir <- file.path(PROJECT_DIR, "cache")
+  cache_dir <- file.path(root_dir, "cache")
   if (!dir.exists(cache_dir)) dir.create(cache_dir, recursive = TRUE)
 
   out_file <- file.path(cache_dir, "league_state_baseline.json")
@@ -295,6 +311,9 @@ main <- function() {
 
   message(sprintf(">>> [S0 Baseline Engine] Wrote S0 baseline to %s (%d teams, %d players).",
                   out_file, length(teams_list), length(players_list)))
+  invisible(baseline_doc)
 }
 
-main()
+if (sys.nframe() == 0) {
+  main()
+}

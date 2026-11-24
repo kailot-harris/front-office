@@ -135,6 +135,21 @@ export const PlayerProjectionSchema = z
   })
   .strict();
 
+export const ProjectionsSnapshotSchema = z
+  .object({
+    season: z.number().int().min(2020).max(2035),
+    as_of_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  })
+  .strict();
+
+export const PlayersSnapshotSchema = z
+  .object({
+    generated_at: z.string().datetime(),
+    season: z.number().int().min(2020).max(2035),
+    players: z.array(PlayerProjectionSchema),
+  })
+  .strict();
+
 // ----------------------------------------------------------------------------
 // 3. projections_models_metadata.json -> ModelMetadata (lib/types.ts)
 // ----------------------------------------------------------------------------
@@ -349,6 +364,7 @@ export const CbtLeagueOverviewSchema = z
   .object({
     generated_at: z.string().datetime(),
     season: z.string().min(4),
+    projectionsSnapshot: ProjectionsSnapshotSchema.optional(),
     baseThreshold: num.positive(),
     tier1Threshold: num.positive(),
     tier2Threshold: num.positive(),
@@ -369,33 +385,33 @@ export const ClutchProfileSchema = z
     playerName: z.string().min(2),
     team: playerTeamEnum,
     playerType: playerTypeEnum,
-    position: z.string().min(1),
+    position: z.string().min(1).nullable(),
     clutchArchetype: z.string().min(2),
     baseMetricLabel: z.string().min(1),
-    baseMetricVal: num,
+    baseMetricVal: num.nullable(),
     clutchMetricLabel: z.string().min(1),
-    clutchMetricVal: num,
-    deltaClutch: num,
+    clutchMetricVal: num.nullable(),
+    deltaClutch: num.nullable(),
     clutchScore: num,
-    wpaTotal: num,
-    highLiWpa: num,
-    avgLeverageIndex: nonNeg,
+    wpaTotal: num.nullable(),
+    highLiWpa: num.nullable(),
+    avgLeverageIndex: nonNeg.nullable(),
     leverageBreakdown: z
       .object({
-        lowPct: pct,
-        medPct: pct,
-        highPct: pct,
-        extremePct: pct,
+        lowPct: pct.nullable(),
+        medPct: pct.nullable(),
+        highPct: pct.nullable(),
+        extremePct: pct.nullable(),
       })
       .strict(),
     rispSplit: z
       .object({
-        pa: z.number().int().min(0),
-        avg: num,
-        obp: num,
-        slg: num,
-        wOBA: num,
-        ops: num,
+        pa: z.number().int().min(0).nullable(),
+        avg: num.nullable(),
+        obp: num.nullable(),
+        slg: num.nullable(),
+        wOBA: num.nullable(),
+        ops: num.nullable(),
       })
       .strict(),
     firemanStats: z
@@ -403,9 +419,9 @@ export const ClutchProfileSchema = z
         inheritedRunners: z.number().int().min(0),
         inheritedScored: z.number().int().min(0),
         strandRatePct: pct,
-        shutdowns: z.number().int().min(0),
-        meltdowns: z.number().int().min(0),
-        firemanIndex: num,
+        shutdowns: z.number().int().min(0).nullable(),
+        meltdowns: z.number().int().min(0).nullable(),
+        firemanIndex: num.nullable(),
       })
       .strict()
       .optional(),
@@ -416,6 +432,7 @@ export const ClutchCatalogSchema = z
   .object({
     generated_at: z.string().datetime(),
     updatedAt: z.string().min(1),
+    projectionsSnapshot: ProjectionsSnapshotSchema.optional(),
     totalProfiles: z.number().int().positive(),
     clutchLeaderBatters: z.array(z.string().min(1)).min(1),
     clutchLeaderPitchers: z.array(z.string().min(1)).min(1),
@@ -535,8 +552,8 @@ export const SeriesSimulationResultSchema = z
             awayTeam: teamEnum,
             starterA: z.string().min(1),
             starterB: z.string().min(1),
-            starterArGS: num,
-            starterBrGS: num,
+            starterArGS: num.nullable(),
+            starterBrGS: num.nullable(),
             winProbA: prob,
             winProbB: prob,
           })
@@ -555,13 +572,13 @@ export const TeamPlayoffProfileSchema = z
     league: leagueEnum,
     division: divisionEnum,
     regularWins: wins,
-    baseElo: num.min(1200).max(1800),
+    baseElo: num.min(1200).max(1800).nullable(),
     tacticalRatings: z
       .object({
-        rotationDepth: pct,
+        rotationDepth: pct.nullable(),
         bullpenLeverage: pct,
-        powerIso: pct,
-        contactDiscipline: pct,
+        powerIso: pct.nullable(),
+        contactDiscipline: pct.nullable(),
         defenseFielding: pct,
       })
       .strict(),
@@ -572,11 +589,11 @@ export const TeamPlayoffProfileSchema = z
             playerId: z.string().min(1),
             mlbamId: z.string().min(1),
             playerName: z.string().min(2),
-            rGS: num,
-            projEra: nonNeg,
-            xFip: nonNeg,
-            kPct: nonNeg,
-            bbPct: nonNeg,
+            rGS: num.nullable(),
+            projEra: nonNeg.nullable(),
+            xFip: nonNeg.nullable(),
+            kPct: nonNeg.nullable(),
+            bbPct: nonNeg.nullable(),
             role: z.string().min(1),
           })
           .strict(),
@@ -588,9 +605,9 @@ export const TeamPlayoffProfileSchema = z
           .object({
             playerId: z.string().min(1),
             playerName: z.string().min(2),
-            projEra: nonNeg,
-            xFip: nonNeg,
-            kPct: nonNeg,
+            projEra: nonNeg.nullable(),
+            xFip: nonNeg.nullable(),
+            kPct: nonNeg.nullable(),
             role: z.string().min(1),
           })
           .strict(),
@@ -602,12 +619,12 @@ export const TeamPlayoffProfileSchema = z
           .object({
             playerId: z.string().min(1),
             playerName: z.string().min(2),
-            wOBA: nonNeg,
-            iso: nonNeg,
-            obp: nonNeg,
-            hr: nonNeg,
-            kPct: nonNeg,
-            bbPct: nonNeg,
+            wOBA: nonNeg.nullable(),
+            iso: nonNeg.nullable(),
+            obp: nonNeg.nullable(),
+            hr: nonNeg.nullable(),
+            kPct: nonNeg.nullable(),
+            bbPct: nonNeg.nullable(),
             slot: z.string().min(1),
           })
           .strict(),
@@ -632,6 +649,7 @@ export const PlayoffMatchupsCatalogSchema = z
   .object({
     generated_at: z.string().datetime(),
     updatedAt: z.string().min(1),
+    projectionsSnapshot: ProjectionsSnapshotSchema.optional(),
     nSims: z.number().int().positive(),
     teams: z.record(teamEnum, TeamPlayoffProfileSchema),
     matchups: z.record(z.string(), PrecomputedMatchupSchema),

@@ -16,7 +16,7 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
   const t2 = team.tier2Threshold;      // 284
   const t3 = team.tier3Threshold;      // 304
 
-  const payrollPct = Math.min(100, Math.max(0, (team.payroll2026 / maxAxis) * 100));
+  const payrollPct = team.payroll2026 !== null ? Math.min(100, Math.max(0, (team.payroll2026 / maxAxis) * 100)) : 0;
   const basePct = (baseT / maxAxis) * 100;
   const t1Pct = (t1 / maxAxis) * 100;
   const t2Pct = (t2 / maxAxis) * 100;
@@ -24,6 +24,7 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
 
   // Determine bar gradient based on threshold breached
   const getBarGradient = () => {
+    if (team.payroll2026 === null) return 'from-slate-600 to-slate-500';
     if (team.payroll2026 > t3) return 'from-amber-500 via-rose-500 to-red-600 shadow-rose-500/30';
     if (team.payroll2026 > t2) return 'from-sky-500 via-amber-500 to-rose-500 shadow-amber-500/20';
     if (team.payroll2026 > baseT) return 'from-sky-500 via-cyan-400 to-amber-400 shadow-sky-500/20';
@@ -37,15 +38,17 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
           <div className="flex items-center gap-2">
             <h3 className="font-bold text-white text-base">CBT Threshold Thermometer</h3>
             <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
-              team.payroll2026 > baseT
-                ? 'bg-rose-500/10 border-rose-500/30 text-rose-400'
-                : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+              team.payroll2026 === null
+                ? 'bg-slate-800 border-slate-700 text-slate-300'
+                : team.payroll2026 > baseT
+                  ? 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
             }`}>
               {team.cbtTier}
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
-            2026 Tax Threshold: {money(baseT)} • Tax Bill: {money(team.cbtTaxBill, 2)}
+            2026 Tax Threshold: {money(baseT)} • Tax Bill: {team.cbtTaxBill !== null ? money(team.cbtTaxBill, 2) : 'Unavailable'}
           </p>
         </div>
 
@@ -58,7 +61,7 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
           <div className="text-right">
             <span className="text-[11px] sm:text-[10px] text-slate-400 block uppercase tracking-wider">Total Commit</span>
             <span className="font-mono font-extrabold text-base text-white">
-              {money(team.totalCommitment)}
+              {team.totalCommitment !== null ? money(team.totalCommitment) : 'Unavailable'}
             </span>
           </div>
         </div>
@@ -142,7 +145,9 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
           <DollarSign className="w-4 h-4 text-emerald-400 flex-shrink-0" />
           <div className="min-w-0">
             <div className="text-[11px] sm:text-[10px] text-slate-400">CBT Tax Rate Applied</div>
-            <div className="font-semibold text-slate-200 truncate">{team.penalties.taxRateDescription}</div>
+            <div className="font-semibold text-slate-200 truncate">
+              {team.penalties.taxRateDescription ?? 'Unavailable'}
+            </div>
           </div>
         </div>
 
@@ -155,7 +160,11 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
           <div className="min-w-0">
             <div className="text-[11px] sm:text-[10px] text-slate-400">Draft Selection Status</div>
             <div className={`font-semibold truncate ${team.penalties.draftPickDrop10 ? 'text-amber-300' : 'text-slate-400'}`}>
-              {team.penalties.draftPickDrop10 ? 'Top Pick Dropped 10 Spots' : 'Protected (No Penalty)'}
+              {team.penalties.draftPickDrop10 === null
+                ? 'Unavailable'
+                : team.penalties.draftPickDrop10
+                  ? 'Top Pick Dropped 10 Spots'
+                  : 'Protected (No Penalty)'}
             </div>
           </div>
         </div>
@@ -169,7 +178,11 @@ export const CbtThermometer: React.FC<CbtThermometerProps> = ({ team }) => {
           <div className="min-w-0">
             <div className="text-[11px] sm:text-[10px] text-slate-400">Intl Pool & Rev Sharing</div>
             <div className={`font-semibold truncate ${team.penalties.internationalPoolReduction ? 'text-rose-400' : 'text-slate-300'}`}>
-              {team.penalties.internationalPoolReduction ? '-$1.0M Intl Pool Slashed' : (team.penalties.revenueShareEligible ? 'Revenue Share Eligible' : 'Standard')}
+              {team.penalties.internationalPoolReduction === null
+                ? 'Unavailable'
+                : team.penalties.internationalPoolReduction
+                  ? '-$1.0M Intl Pool Slashed'
+                  : (team.penalties.revenueShareEligible ? 'Revenue Share Eligible' : 'Standard')}
             </div>
           </div>
         </div>

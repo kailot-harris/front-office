@@ -46,7 +46,7 @@ source("tools/viz_theme.R")
 #' @param cleanup_frames Logical; remove temporary frame PNGs (default TRUE)
 #' @return Invisible list of output paths
 generate_gif_trade_deadline_splits <- function(season = 2026,
-                                               deadline_date = "2026-08-01",
+                                               deadline_date = sprintf("%d-08-01", season),
                                                schedule_file = cache_path("ingest", sprintf("mlb_schedule_%d.rds", season)),
                                                output_gif = "gif_trade_deadline_splits.gif",
                                                output_png = "gif_trade_deadline_splits.png",

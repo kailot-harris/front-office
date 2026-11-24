@@ -101,7 +101,12 @@ export const PressureResiliencePlot: React.FC<PressureResiliencePlotProps> = ({
           />
 
           {/* Scatter Points */}
-          {profiles.map((p) => {
+          {profiles
+            .filter(
+              (p): p is typeof p & { baseMetricVal: number; deltaClutch: number } =>
+                p.baseMetricVal != null && p.deltaClutch != null,
+            )
+            .map((p) => {
             const isSelected = p.playerId === selectedProfile.playerId;
             const cx = scaleX(p.baseMetricVal);
             const cy = scaleY(p.deltaClutch);

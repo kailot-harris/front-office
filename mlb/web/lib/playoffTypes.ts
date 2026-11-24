@@ -7,41 +7,41 @@ export interface PlayoffStarter {
   playerId: string;
   mlbamId: string;
   playerName: string;
-  rGS: number;
-  projEra: number;
-  xFip: number;
-  kPct: number;
-  bbPct: number;
+  rGS: number | null;
+  projEra: number | null;
+  xFip: number | null;
+  kPct: number | null;
+  bbPct: number | null;
   role: string;
 }
 
 export interface PlayoffReliever {
   playerId: string;
   playerName: string;
-  projEra: number;
-  xFip: number;
-  kPct: number;
+  projEra: number | null;
+  xFip: number | null;
+  kPct: number | null;
   role: string;
 }
 
 export interface PlayoffHitter {
   playerId: string;
   playerName: string;
-  wOBA: number;
-  iso: number;
-  obp: number;
-  hr: number;
-  kPct: number;
-  bbPct: number;
+  wOBA: number | null;
+  iso: number | null;
+  obp: number | null;
+  hr: number | null;
+  kPct: number | null;
+  bbPct: number | null;
   slot: string;
 }
 
 export interface MlbTacticalRatings {
-  rotationDepth: number;     // 0-100: Quality and depth of starting pitching rotation
-  bullpenLeverage: number;   // 0-100: Late-inning shutdown capability & fatigue resilience
-  powerIso: number;          // 0-100: Lineup power, barrel rate, and home run impact
-  contactDiscipline: number; // 0-100: Contact% in zone, low whiff, and K-avoidance
-  defenseFielding: number;   // 0-100: Defensive run prevention & catcher framing
+  rotationDepth: number | null;     // 0-100: Quality and depth of starting pitching rotation
+  bullpenLeverage: number;          // 0-100: Late-inning shutdown capability & fatigue resilience
+  powerIso: number | null;          // 0-100: Lineup power, barrel rate, and home run impact
+  contactDiscipline: number | null; // 0-100: Contact% in zone, low whiff, and K-avoidance
+  defenseFielding: number;          // 0-100: Defensive run prevention & catcher framing
 }
 
 export interface TeamPlayoffProfile {
@@ -51,7 +51,7 @@ export interface TeamPlayoffProfile {
   league: 'AL' | 'NL';
   division: string;
   regularWins: number;
-  baseElo: number;
+  baseElo: number | null;
   tacticalRatings: MlbTacticalRatings;
   starters: PlayoffStarter[];
   relievers: PlayoffReliever[];
@@ -77,8 +77,8 @@ export interface GameScheduleDetail {
   awayTeam: string;
   starterA: string;
   starterB: string;
-  starterArGS: number;
-  starterBrGS: number;
+  starterArGS: number | null;
+  starterBrGS: number | null;
   winProbA: number;
   winProbB: number;
 }
@@ -113,6 +113,10 @@ export interface PrecomputedMatchup {
 export interface PlayoffMatchupsCatalog {
   generated_at: string;
   updatedAt: string;
+  projectionsSnapshot?: {
+    season: number;
+    as_of_date: string | null;
+  };
   nSims: number;
   teams: Record<string, TeamPlayoffProfile>;
   matchups: Record<string, PrecomputedMatchup>;
