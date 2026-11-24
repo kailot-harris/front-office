@@ -1,14 +1,22 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { StandingsClient } from '@/components/StandingsClient';
+import { deriveActualTeamRecords } from '@/lib/data';
+import * as exportCsvModule from '@/lib/exportToCsv';
 import { loadAllDatasets } from '../helpers/datasets';
 
-const { teams, metadata } = loadAllDatasets();
+const { teams, metadata, matchups } = loadAllDatasets();
+const actualRecords = deriveActualTeamRecords(matchups.matchups);
 const TEAM_NAMES = new Set(teams.map((t) => t.team_name));
 
-function renderTable() {
+function renderTable(records = actualRecords) {
   const { container } = render(
-    <StandingsClient teams={teams} metadata={metadata} initialTab="table" />
+    <StandingsClient
+      teams={teams}
+      metadata={metadata}
+      actualRecords={records}
+      initialTab="table"
+    />
   );
   const table = container.querySelector('table');
   if (!table) throw new Error('table view rendered without a <table>');
@@ -91,12 +99,12 @@ describe('StandingsClient division filter', () => {
 
 describe('StandingsClient Projections vs. Actual tracker', () => {
   it('renders overperformer and underperformer callouts banner', () => {
-    render(<StandingsClient teams={teams} metadata={metadata} />);
+    render(<StandingsClient teams={teams} metadata={metadata} actualRecords={actualRecords} />);
     expect(screen.getByText(/league overperformers/i)).toBeInTheDocument();
     expect(screen.getByText(/league underperformers/i)).toBeInTheDocument();
   });
 
-  it('toggles Projections vs. Actual sub-view in table and renders delta headers', () => {
+  it('toggles Projections vs. Actual sub-view in table and renders derived W-L and finite delta headers', () => {
     const { container } = renderTable();
     const realityBtn = screen.getByRole('button', { name: /projections vs\. actual/i });
     expect(realityBtn).toBeInTheDocument();
@@ -105,11 +113,44 @@ describe('StandingsClient Projections vs. Actual tracker', () => {
     expect(screen.getByText(/actual rec \(w-l\)/i)).toBeInTheDocument();
     expect(screen.getByText(/current win pace/i)).toBeInTheDocument();
     expect(screen.getByText(/performance delta/i)).toBeInTheDocument();
+
+    // Derived record from matchups_slates.json is rendered
+    const bosRec = actualRecords.BOS;
+    expect(container.textContent).toContain(`${bosRec.wins}-${bosRec.losses}`);
     expect(container.textContent).not.toMatch(/NaN|undefined/);
   });
 
+  it('exports finite reality CSV without NaN or undefined', () => {
+    const spy = vi.spyOn(exportCsvModule, 'exportToCsv').mockImplementation(() => {});
+    try {
+      renderTable();
+      fireEvent.click(screen.getByRole('button', { name: /projections vs\. actual/i }));
+      fireEvent.click(screen.getByRole('button', { name: /export standings table as csv/i }));
+
+      expect(spy).toHaveBeenCalledTimes(1);
+      const [rows] = spy.mock.calls[0];
+      expect(rows).toHaveLength(30);
+      for (const row of rows) {
+        for (const val of Object.values(row)) {
+          expect(String(val)).not.toMatch(/NaN|undefined|Infinity/);
+        }
+      }
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('handles empty actualRecords cleanly without NaN or undefined', () => {
+    const { container } = renderTable({});
+    fireEvent.click(screen.getByRole('button', { name: /projections vs\. actual/i }));
+    expect(container.textContent).toContain('0-0');
+    expect(container.textContent).not.toMatch(/NaN|undefined|Infinity/);
+  });
+
   it('updates 6 Divisions view when Projections vs. Actual mode is toggled', () => {
-    const { container } = render(<StandingsClient teams={teams} initialTab="divisions" />);
+    const { container } = render(
+      <StandingsClient teams={teams} actualRecords={actualRecords} initialTab="divisions" />
+    );
     const realityBtn = screen.getByRole('button', { name: /projections vs\. actual/i });
     fireEvent.click(realityBtn);
 
