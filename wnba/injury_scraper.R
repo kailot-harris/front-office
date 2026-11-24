@@ -137,41 +137,29 @@ fetch_live_wnba_injuries <- function() {
 
   n_live_rows <- length(all_scratches)
 
-  # Broadened fallback: literal 0 (true offseason) OR implausibly few rows (partial/
-  # stale feed) both trigger the clearly-labeled synthetic sample.
-  if (n_live_rows < MIN_PLAUSIBLE_INJURY_ROWS) {
-    if (n_live_rows == 0) {
-      cat("[OFFSEASON INFO] WNBA daily injury reports are inactive (offseason).\n")
-      log_warn("Live injury feed returned 0 rows (offseason); falling back to SYNTHETIC_FALLBACK sample.",
-               call = "fetch_live_wnba_injuries()", n_live_rows = n_live_rows)
-    } else {
-      cat(sprintf(
-        "[FEED WARNING] Live feed returned only %d row(s) (< plausibility floor of %d for a %d-team league) - treating as an unreliable/partial snapshot.\n",
-        n_live_rows, MIN_PLAUSIBLE_INJURY_ROWS, WNBA_TEAM_COUNT
-      ))
-      log_warn(sprintf("Live injury feed returned only %d row(s), below plausibility floor of %d; treating as unreliable/partial and falling back to SYNTHETIC_FALLBACK sample.",
-                        n_live_rows, MIN_PLAUSIBLE_INJURY_ROWS),
-               call = "fetch_live_wnba_injuries()", n_live_rows = n_live_rows, floor = MIN_PLAUSIBLE_INJURY_ROWS)
-    }
-    cat("[OFFSEASON INFO] Loading labeled synthetic high-impact injury/rehab sample.\n\n")
-
-    # Real, current/recent WNBA players (verified live via ESPN WNBA roster endpoint
-    # on 2026-09-12 - see run notes; NOT the NBA sample's Porzingis/Kawhi/Embiid names,
-    # and NOT fictional). Statuses/descriptions below are illustrative placeholders for
-    # the fallback sample, not scraped injury facts.
+  if (n_live_rows == 0) {
+    cat("[OFFSEASON INFO] WNBA daily injury reports are inactive or empty; returning 0 injury rows.\n")
+    log_warn("Live injury feed returned 0 rows; returning empty injury table.",
+             call = "fetch_live_wnba_injuries()", n_live_rows = n_live_rows)
     injury_table <- tibble(
-      game_date   = Sys.Date(),
-      team_name   = c("Las Vegas Aces", "Indiana Fever", "New York Liberty",
-                       "Minnesota Lynx", "Connecticut Sun", "Atlanta Dream"),
-      player_name = c("A'ja Wilson", "Caitlin Clark", "Breanna Stewart",
-                       "Napheesa Collier", "Brittney Griner", "Angel Reese"),
-      player_id   = c(3149391L, 4433403L, 2998928L, 3917450L, 2490553L, 4433402L),
-      status      = c("Probable", "Questionable", "Out", "Probable", "Questionable", "Doubtful"),
-      injury_desc = c("Knee Maintenance", "Quad Strain", "Achilles Recovery",
-                       "Ankle Sprain", "Finger Injury", "Ankle Soreness"),
-      data_source = "SYNTHETIC_FALLBACK"
+      game_date   = as.Date(character()),
+      team_name   = character(),
+      player_name = character(),
+      player_id   = integer(),
+      status      = character(),
+      injury_desc = character(),
+      data_source = character()
     )
   } else {
+    if (n_live_rows < MIN_PLAUSIBLE_INJURY_ROWS) {
+      cat(sprintf(
+        "[FEED WARNING] Live feed returned only %d row(s) (< plausibility floor of %d for a %d-team league) - keeping real rows only.\n",
+        n_live_rows, MIN_PLAUSIBLE_INJURY_ROWS, WNBA_TEAM_COUNT
+      ))
+      log_warn(sprintf("Live injury feed returned only %d row(s), below plausibility floor of %d; keeping real rows without synthetic fallback.",
+                       n_live_rows, MIN_PLAUSIBLE_INJURY_ROWS),
+               call = "fetch_live_wnba_injuries()", n_live_rows = n_live_rows, floor = MIN_PLAUSIBLE_INJURY_ROWS)
+    }
     injury_table <- bind_rows(all_scratches) |> mutate(data_source = "LIVE_ESPN")
     cat(sprintf("[INJURY SUCCESS] Parsed %d official player injury designations.\n\n", nrow(injury_table)))
     log_info(sprintf("Parsed %d live official injury designations.", nrow(injury_table)),
@@ -179,7 +167,9 @@ fetch_live_wnba_injuries <- function() {
   }
 
   # Display preview
-  print(knitr::kable(injury_table, format = "simple"))
+  if (nrow(injury_table) > 0) {
+    print(knitr::kable(injury_table, format = "simple"))
+  }
 
   saveRDS(injury_table, CACHE_INJURY_DATA)
   cat(sprintf("\n[CACHE] Saved injury disclosures to: %s\n", CACHE_INJURY_DATA))
