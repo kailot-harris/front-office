@@ -45,18 +45,23 @@ export const FiremanLeaderboardCard: React.FC<FiremanLeaderboardCardProps> = ({ 
           <div className="bg-surface-raised/80 p-2.5 rounded-xl border border-slate-800/60 space-y-1">
             <span className="text-[11px] sm:text-[10px] text-slate-400 uppercase block">Shutdowns vs Meltdowns</span>
             <div className="flex items-baseline justify-between">
-              <span className="text-xl font-black text-sky-400">{fireman.shutdowns} SD</span>
-              <span className="text-xs font-bold text-rose-400">{fireman.meltdowns} MD</span>
+              <span className="text-xl font-black text-sky-400">{fireman.shutdowns ?? '—'} SD</span>
+              <span className="text-xs font-bold text-rose-400">{fireman.meltdowns ?? '—'} MD</span>
             </div>
             <span className="text-[11px] sm:text-[10px] text-slate-400 block">
-              Ratio: {((fireman.shutdowns / Math.max(1, fireman.meltdowns))).toFixed(1)}:1
+              Ratio:{' '}
+              {fireman.shutdowns != null && fireman.meltdowns != null
+                ? `${(fireman.shutdowns / Math.max(1, fireman.meltdowns)).toFixed(1)}:1`
+                : '—'}
             </span>
           </div>
         </div>
 
         <div className="flex items-center justify-between p-2 rounded-lg bg-surface-raised/60 border border-slate-800/50 text-[11px]">
           <span className="text-slate-400">High-LI WPA Generated:</span>
-          <span className="font-bold text-white">+{profile.highLiWpa.toFixed(2)} Wins</span>
+          <span className="font-bold text-white">
+            {profile.highLiWpa != null ? `+${profile.highLiWpa.toFixed(2)} Wins` : '—'}
+          </span>
         </div>
       </div>
     );
@@ -73,32 +78,34 @@ export const FiremanLeaderboardCard: React.FC<FiremanLeaderboardCardProps> = ({ 
           </h4>
         </div>
         <span className="text-[11px] sm:text-[10px] text-slate-400">
-          N = {risp.pa} Plate Appearances
+          N = {risp.pa ?? '—'} Plate Appearances
         </span>
       </div>
 
       <div className="grid grid-cols-4 gap-2 text-center text-xs">
         <div className="bg-surface-raised/80 p-2 rounded-xl border border-slate-800/60">
           <span className="text-[11px] sm:text-[10px] text-slate-400 block">AVG</span>
-          <span className="text-sm font-black text-white">{risp.avg.toFixed(3)}</span>
+          <span className="text-sm font-black text-white">{risp.avg != null ? risp.avg.toFixed(3) : '—'}</span>
         </div>
         <div className="bg-surface-raised/80 p-2 rounded-xl border border-slate-800/60">
           <span className="text-[11px] sm:text-[10px] text-slate-400 block">OBP</span>
-          <span className="text-sm font-black text-sky-400">{risp.obp.toFixed(3)}</span>
+          <span className="text-sm font-black text-sky-400">{risp.obp != null ? risp.obp.toFixed(3) : '—'}</span>
         </div>
         <div className="bg-surface-raised/80 p-2 rounded-xl border border-slate-800/60">
           <span className="text-[11px] sm:text-[10px] text-slate-400 block">SLG</span>
-          <span className="text-sm font-black text-amber-400">{risp.slg.toFixed(3)}</span>
+          <span className="text-sm font-black text-amber-400">{risp.slg != null ? risp.slg.toFixed(3) : '—'}</span>
         </div>
         <div className="bg-surface-raised/80 p-2 rounded-xl border border-slate-800/60">
           <span className="text-[11px] sm:text-[10px] text-slate-400 block">OPS</span>
-          <span className="text-sm font-black text-rose-400">{risp.ops.toFixed(3)}</span>
+          <span className="text-sm font-black text-rose-400">{risp.ops != null ? risp.ops.toFixed(3) : '—'}</span>
         </div>
       </div>
 
       <div className="flex items-center justify-between p-2 rounded-lg bg-surface-raised/60 border border-slate-800/50 text-[11px]">
         <span className="text-slate-400">High-Leverage WPA Added:</span>
-        <span className="font-bold text-white">+{profile.highLiWpa.toFixed(2)} Wins</span>
+        <span className="font-bold text-white">
+          {profile.highLiWpa != null ? `+${profile.highLiWpa.toFixed(2)} Wins` : '—'}
+        </span>
       </div>
     </div>
   );

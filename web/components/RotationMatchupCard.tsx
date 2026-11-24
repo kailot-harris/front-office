@@ -229,8 +229,8 @@ export const RotationMatchupCard: React.FC<RotationMatchupCardProps> = ({
               <div key={idx} className="flex items-center justify-between bg-surface-raised/60 p-1.5 rounded border border-slate-800/50">
                 <span className="text-white font-semibold truncate mr-2">{b.playerName}</span>
                 <div className="flex items-center gap-2 text-[10.5px]">
-                  <span className="text-amber-400 font-bold">wOBA {b.wOBA.toFixed(3)}</span>
-                  <span className="text-slate-300">ISO {b.iso.toFixed(3)}</span>
+                  <span className="text-amber-400 font-bold">wOBA {b.wOBA != null ? b.wOBA.toFixed(3) : '—'}</span>
+                  <span className="text-slate-300">ISO {b.iso != null ? b.iso.toFixed(3) : '—'}</span>
                   <span className="text-slate-400">{b.hr} HR</span>
                 </div>
               </div>
@@ -246,8 +246,8 @@ export const RotationMatchupCard: React.FC<RotationMatchupCardProps> = ({
               <div key={idx} className="flex items-center justify-between bg-surface-raised/60 p-1.5 rounded border border-slate-800/50">
                 <span className="text-white font-semibold truncate mr-2">{b.playerName}</span>
                 <div className="flex items-center gap-2 text-[10.5px]">
-                  <span className="text-amber-400 font-bold">wOBA {b.wOBA.toFixed(3)}</span>
-                  <span className="text-slate-300">ISO {b.iso.toFixed(3)}</span>
+                  <span className="text-amber-400 font-bold">wOBA {b.wOBA != null ? b.wOBA.toFixed(3) : '—'}</span>
+                  <span className="text-slate-300">ISO {b.iso != null ? b.iso.toFixed(3) : '—'}</span>
                   <span className="text-slate-400">{b.hr} HR</span>
                 </div>
               </div>

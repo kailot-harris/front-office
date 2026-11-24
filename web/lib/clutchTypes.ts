@@ -4,28 +4,28 @@
 // ==============================================================================
 
 export interface LeverageBreakdown {
-  lowPct: number;      // LI < 0.85
-  medPct: number;      // 0.85 <= LI < 1.50
-  highPct: number;     // 1.50 <= LI < 2.50
-  extremePct: number;  // LI >= 2.50
+  lowPct: number | null;      // LI < 0.85
+  medPct: number | null;      // 0.85 <= LI < 1.50
+  highPct: number | null;     // 1.50 <= LI < 2.50
+  extremePct: number | null;  // LI >= 2.50
 }
 
 export interface SituationSplit {
-  pa: number;
-  avg: number;
-  obp: number;
-  slg: number;
-  wOBA: number;
-  ops: number;
+  pa: number | null;
+  avg: number | null;
+  obp: number | null;
+  slg: number | null;
+  wOBA: number | null;
+  ops: number | null;
 }
 
 export interface FiremanRelieverStats {
   inheritedRunners: number;
   inheritedScored: number;
   strandRatePct: number; // IRS%
-  shutdowns: number;    // WPA > +0.06
-  meltdowns: number;    // WPA < -0.06
-  firemanIndex: number; // Composite fireman rating
+  shutdowns: number | null;    // WPA > +0.06
+  meltdowns: number | null;    // WPA < -0.06
+  firemanIndex: number | null; // Composite fireman rating
 }
 
 export interface ClutchProfile {
@@ -34,20 +34,20 @@ export interface ClutchProfile {
   playerName: string;
   team: string;
   playerType: 'Batter' | 'Pitcher';
-  position: string;
+  position: string | null;
   clutchArchetype: string;
   
   // Core sabermetric leverage ratings
   baseMetricLabel: string;
-  baseMetricVal: number;    // e.g. base wOBA or base xFIP
+  baseMetricVal: number | null;    // e.g. base wOBA or base xFIP
   clutchMetricLabel: string;
-  clutchMetricVal: number;  // e.g. high-LI wOBA or high-LI wOBA against
-  deltaClutch: number;      // clutch - base (positive is good for batters, negative good for pitchers)
+  clutchMetricVal: number | null;  // e.g. high-LI wOBA or high-LI wOBA against
+  deltaClutch: number | null;      // clutch - base (positive is good for batters, negative good for pitchers)
   
   clutchScore: number;      // Tango Clutch = (WPA / pLI) - WPA_base
-  wpaTotal: number;         // Total Win Probability Added
-  highLiWpa: number;        // WPA generated strictly in LI >= 1.50
-  avgLeverageIndex: number; // pLI or gmLI
+  wpaTotal: number | null;         // Total Win Probability Added
+  highLiWpa: number | null;        // WPA generated strictly in LI >= 1.50
+  avgLeverageIndex: number | null; // pLI or gmLI
   
   leverageBreakdown: LeverageBreakdown;
   rispSplit: SituationSplit;

@@ -24,51 +24,83 @@ source("logging_utils.R")
 source("config.R")
 .LOG_SCRIPT <- "mlb_clutch_leverage_engine.R"
 
+num_or_na <- function(x) {
+  if (is.null(x) || length(x) == 0 || is.na(x)) NA_real_ else as.numeric(x)
+}
+
+str_or_na <- function(x) {
+  if (is.null(x) || length(x) == 0 || is.na(x) || !nzchar(as.character(x))) NA_character_ else as.character(x)
+}
+
+round_or_na <- function(x, digits = 2) {
+  if (is.null(x) || length(x) == 0 || is.na(x)) NA_real_ else round(as.numeric(x), digits)
+}
+
 message(">>> [CLUTCH ENGINE] Initializing MLB True Clutch & Leverage Engine...")
 
-run_mlb_clutch_engine <- function() {
-  players_file <- file.path(PROJECT_DIR, "web", "public", "data", "projections_season_players.json")
-  post_file <- file.path(PROJECT_DIR, "web", "public", "data", "projections_postseason_ops.json")
-  
+run_mlb_clutch_engine <- function(
+  players_file = file.path(PROJECT_DIR, "web", "public", "data", "projections_season_players.json"),
+  post_file = file.path(PROJECT_DIR, "web", "public", "data", "projections_postseason_ops.json"),
+  fg_batters_file = NULL,
+  fg_pitchers_file = NULL,
+  boxscores_file = NULL,
+  output_json = file.path(PROJECT_DIR, "web", "public", "data", "clutch_leverage_metrics.json")
+) {
   if (!file.exists(players_file)) {
-    stop("Missing projections_season_players.json")
+    msg <- sprintf("Missing %s; skipping clutch leverage engine.", basename(players_file))
+    warning(msg)
+    if (exists("log_warn")) log_warn(msg)
+    return(invisible(NULL))
   }
   
-  players_df <- fromJSON(players_file)
-  post_ops <- if (file.exists(post_file)) fromJSON(post_file) else list()
+  players_df <- tryCatch(fromJSON(players_file), error = function(e) {
+    warning(sprintf("Failed to parse %s: %s", basename(players_file), e$message))
+    NULL
+  })
+  if (is.null(players_df) || !is.data.frame(players_df) || nrow(players_df) == 0) {
+    warning("No player rows available; skipping clutch leverage engine.")
+    return(invisible(NULL))
+  }
+  post_ops <- if (!is.null(post_file) && file.exists(post_file)) fromJSON(post_file) else list()
   
   message(sprintf(">>> Loaded %d players from projections database.", nrow(players_df)))
   
-  # Select Top Batters (by composite z-score and workload)
+  # Select Top Batters (by composite z-score and workload, NAs last)
   batters_pool <- players_df %>% 
     filter(player_type == "Batter") %>% 
-    arrange(desc(composite_zscore), desc(proj_workload)) %>% 
+    arrange(is.na(composite_zscore), desc(composite_zscore), is.na(proj_workload), desc(proj_workload)) %>% 
     head(150)
     
-  # Select Top Pitchers (Relievers + Top Starters)
+  # Select Top Pitchers (Relievers + Top Starters, NAs last)
   pitchers_pool <- players_df %>% 
     filter(player_type == "Pitcher") %>% 
-    arrange(desc(composite_zscore), desc(proj_workload)) %>% 
+    arrange(is.na(composite_zscore), desc(composite_zscore), is.na(proj_workload), desc(proj_workload)) %>% 
     head(150)
     
   # Load empirical FanGraphs splits and boxscores
-  fg_batters_file <- file.path(PROJECT_DIR, "cache", "stats_sync", "fg_batters.rds")
-  if (!file.exists(fg_batters_file) && exists("cache_path")) {
-    fg_batters_file <- cache_path("stats_sync", "fg_batters.rds")
+  if (is.null(fg_batters_file)) {
+    fg_batters_file <- file.path(PROJECT_DIR, "cache", "stats_sync", "fg_batters.rds")
+    if (!file.exists(fg_batters_file) && exists("cache_path")) {
+      fg_batters_file <- cache_path("stats_sync", "fg_batters.rds")
+    }
   }
-  fg_batters <- if (file.exists(fg_batters_file)) readRDS(fg_batters_file) else tibble::tibble()
+  fg_batters <- if (!is.null(fg_batters_file) && file.exists(fg_batters_file)) readRDS(fg_batters_file) else tibble::tibble()
 
-  fg_pitchers_file <- file.path(PROJECT_DIR, "cache", "stats_sync", "fg_pitchers.rds")
-  if (!file.exists(fg_pitchers_file) && exists("cache_path")) {
-    fg_pitchers_file <- cache_path("stats_sync", "fg_pitchers.rds")
+  if (is.null(fg_pitchers_file)) {
+    fg_pitchers_file <- file.path(PROJECT_DIR, "cache", "stats_sync", "fg_pitchers.rds")
+    if (!file.exists(fg_pitchers_file) && exists("cache_path")) {
+      fg_pitchers_file <- cache_path("stats_sync", "fg_pitchers.rds")
+    }
   }
-  fg_pitchers <- if (file.exists(fg_pitchers_file)) readRDS(fg_pitchers_file) else tibble::tibble()
+  fg_pitchers <- if (!is.null(fg_pitchers_file) && file.exists(fg_pitchers_file)) readRDS(fg_pitchers_file) else tibble::tibble()
 
-  boxscores_file <- file.path(PROJECT_DIR, "cache", "ingest", "mlb_boxscores_2026.rds")
-  if (!file.exists(boxscores_file) && exists("cache_path")) {
-    boxscores_file <- cache_path("ingest", "mlb_boxscores_2026.rds")
+  if (is.null(boxscores_file)) {
+    boxscores_file <- file.path(PROJECT_DIR, "cache", "ingest", "mlb_boxscores_2026.rds")
+    if (!file.exists(boxscores_file) && exists("cache_path")) {
+      boxscores_file <- cache_path("ingest", "mlb_boxscores_2026.rds")
+    }
   }
-  boxscores_df <- if (file.exists(boxscores_file)) {
+  boxscores_df <- if (!is.null(boxscores_file) && file.exists(boxscores_file)) {
     tryCatch(readRDS(boxscores_file), error = function(e) NULL)
   } else {
     NULL
@@ -82,11 +114,11 @@ run_mlb_clutch_engine <- function() {
   for (i in seq_len(nrow(batters_pool))) {
     p <- batters_pool[i, ]
     
-    woba <- coalesce(p$stat1_raw, 0.315)
-    iso <- coalesce(p$stat2_raw, 0.160)
-    obp <- coalesce(p$stat3_val, 0.320)
-    z_score <- coalesce(p$composite_zscore, 1.0)
-    pa <- coalesce(p$proj_workload, 500)
+    woba <- num_or_na(p$stat1_raw)
+    iso <- num_or_na(p$stat2_raw)
+    obp <- num_or_na(p$stat3_val)
+    z_score <- num_or_na(p$composite_zscore)
+    pa <- num_or_na(p$proj_workload)
     
     # Ingest true FanGraphs clutch, WPA, and leverage metrics (cache/stats_sync/fg_batters.rds)
     fg_b_match <- if (nrow(fg_batters) > 0) {
@@ -124,6 +156,7 @@ run_mlb_clutch_engine <- function() {
     
     # Clutch Archetype Assignment
     archetype <- case_when(
+      is.na(clutch_delta) ~ "Unclassified",
       clutch_delta >= 0.035 & high_li_wpa >= 2.0 ~ "Ice-in-Veins Walkoff Anchor",
       clutch_delta >= 0.020 & risp_ops >= 0.880 ~ "Two-Out RISP Punisher",
       clutch_delta >= 0.010 ~ "High-Discipline Pressure Grinder",
@@ -138,13 +171,13 @@ run_mlb_clutch_engine <- function() {
       playerName        = p$player_name,
       team              = p$team,
       playerType        = "Batter",
-      position          = coalesce(p$position, "OF"),
+      position          = str_or_na(p$position),
       clutchArchetype   = archetype,
       baseMetricLabel   = "Base wOBA",
-      baseMetricVal     = round(woba, 3),
+      baseMetricVal     = round_or_na(woba, 3),
       clutchMetricLabel = "High-LI wOBA",
-      clutchMetricVal   = round(clutch_woba, 3),
-      deltaClutch       = round(clutch_delta, 3),
+      clutchMetricVal   = round_or_na(clutch_woba, 3),
+      deltaClutch       = round_or_na(clutch_delta, 3),
       clutchScore       = clutch_score,
       wpaTotal          = wpa_total,
       highLiWpa         = high_li_wpa,
@@ -172,12 +205,12 @@ run_mlb_clutch_engine <- function() {
   for (j in seq_len(nrow(pitchers_pool))) {
     p <- pitchers_pool[j, ]
     
-    xfip <- coalesce(p$stat1_pooled, 3.85)
-    proj_era <- coalesce(p$stat2_pooled, 3.80)
-    rgs <- coalesce(p$stat3_val, 52.0)
-    z_score <- coalesce(p$composite_zscore, 1.0)
-    workload <- coalesce(p$proj_workload, 120)
-    is_reliever <- workload < 95
+    xfip <- num_or_na(p$stat1_pooled)
+    proj_era <- num_or_na(p$stat2_pooled)
+    rgs <- num_or_na(p$stat3_val)
+    z_score <- num_or_na(p$composite_zscore)
+    workload <- num_or_na(p$proj_workload)
+    is_reliever <- if (!is.na(workload)) workload < 95 else NA
     
     # Expected wOBA against baseline
     base_woba_against <- round(pmax(0.240, pmin(0.360, (proj_era * 0.055) + 0.110)), 3)
@@ -196,8 +229,10 @@ run_mlb_clutch_engine <- function() {
     wpa_total <- if (nrow(fg_p_match) > 0 && !is.na(fg_p_match$WPA)) round(fg_p_match$WPA, 2) else round((0.315 - base_woba_against) * (workload / 25) * 1.25, 2)
     gmli <- if (nrow(fg_p_match) > 0 && !is.na(fg_p_match$pLI)) {
       round(max(0.0, fg_p_match$pLI), 2)
-    } else {
+    } else if (!is.na(is_reliever) && !is.na(z_score)) {
       round(max(0.80, min(2.15, if (is_reliever) 1.55 + (z_score * 0.12) else 1.05 + (z_score * 0.04))), 2)
+    } else {
+      NA_real_
     }
 
     # High-LI wOBA against delta: negative delta means elite suppression under pressure
@@ -207,9 +242,17 @@ run_mlb_clutch_engine <- function() {
     high_li_wpa <- round(wpa_total * 0.55 - (clutch_delta * 40), 2)
 
     # Leverage Breakdown
-    high_pct <- round(pmax(10.0, pmin(35.0, if (is_reliever) 24.0 + (gmli - 1.5) * 20 else 12.0)), 1)
-    extreme_pct <- round(pmax(4.0, pmin(15.0, if (is_reliever) 9.0 + (gmli - 1.5) * 10 else 4.0)), 1)
-    med_pct <- round(pmax(20.0, pmin(32.0, 26.0)), 1)
+    high_pct <- if (!is.na(is_reliever)) {
+      round(pmax(10.0, pmin(35.0, if (is_reliever) 24.0 + (gmli - 1.5) * 20 else 12.0)), 1)
+    } else {
+      NA_real_
+    }
+    extreme_pct <- if (!is.na(is_reliever)) {
+      round(pmax(4.0, pmin(15.0, if (is_reliever) 9.0 + (gmli - 1.5) * 10 else 4.0)), 1)
+    } else {
+      NA_real_
+    }
+    med_pct <- if (!is.na(is_reliever)) round(pmax(20.0, pmin(32.0, 26.0)), 1) else NA_real_
     low_pct <- round(100.0 - high_pct - extreme_pct - med_pct, 1)
 
     # Ingest inherited runners (IR) and inherited scored (IS) from boxscores or set to 0 when absent
@@ -253,26 +296,33 @@ run_mlb_clutch_engine <- function() {
     fireman_idx <- round((strand_rate * 0.5) + (high_li_wpa * 12) + (shutdowns * 1.2) - (meltdowns * 2.5), 1)
     
     # Clutch Archetype
-    archetype <- if (is_reliever) {
-      if (strand_rate >= 82.0 && high_li_wpa >= 2.5) {
+    archetype <- if (isTRUE(is_reliever)) {
+      if (!is.na(strand_rate) && strand_rate >= 82.0 && !is.na(high_li_wpa) && high_li_wpa >= 2.5) {
         "Bases-Loaded Fireman Eraser"
-      } else if (gmli >= 1.70 && clutch_delta <= -0.020) {
+      } else if (!is.na(gmli) && gmli >= 1.70 && !is.na(clutch_delta) && clutch_delta <= -0.020) {
         "Triple-Digit 9th Inning Closer"
-      } else if (workload >= 65 && strand_rate >= 74.0) {
+      } else if (!is.na(workload) && workload >= 65 && !is.na(strand_rate) && strand_rate >= 74.0) {
         "High-Leverage Multi-Inning Bridge"
-      } else if (clutch_delta <= -0.010) {
+      } else if (!is.na(clutch_delta) && clutch_delta <= -0.010) {
         "Groundball Double-Play Specialist"
       } else {
         "Middle Relief Low-Stress Arm"
       }
-    } else {
-      if (clutch_delta <= -0.020 && rgs >= 58.0) {
+    } else if (isFALSE(is_reliever)) {
+      if (!is.na(clutch_delta) && clutch_delta <= -0.020 && !is.na(rgs) && rgs >= 58.0) {
         "Ace Jam-Escape Specialist"
-      } else if (abs(clutch_delta) <= 0.015) {
+      } else if (!is.na(clutch_delta) && abs(clutch_delta) <= 0.015) {
         "Steady Workhorse Starter"
       } else {
         "High-Stress Volatile Starter"
       }
+    } else {
+      "Unclassified"
+    }
+
+    pitcher_pos <- str_or_na(p$position)
+    if (is.na(pitcher_pos) && !is.na(is_reliever)) {
+      pitcher_pos <- if (is_reliever) "RP" else "SP"
     }
     
     clutch_profiles[[p$player_id]] <- list(
@@ -281,13 +331,13 @@ run_mlb_clutch_engine <- function() {
       playerName        = p$player_name,
       team              = p$team,
       playerType        = "Pitcher",
-      position          = if (is_reliever) "RP" else "SP",
+      position          = pitcher_pos,
       clutchArchetype   = archetype,
       baseMetricLabel   = "Base wOBA Against",
-      baseMetricVal     = round(base_woba_against, 3),
+      baseMetricVal     = round_or_na(base_woba_against, 3),
       clutchMetricLabel = "High-LI wOBA Against",
-      clutchMetricVal   = round(clutch_woba_against, 3),
-      deltaClutch       = round(clutch_delta, 3),
+      clutchMetricVal   = round_or_na(clutch_woba_against, 3),
+      deltaClutch       = round_or_na(clutch_delta, 3),
       clutchScore       = clutch_score,
       wpaTotal          = wpa_total,
       highLiWpa         = high_li_wpa,
@@ -322,13 +372,21 @@ run_mlb_clutch_engine <- function() {
                   length(profile_list), nrow(batters_pool), nrow(pitchers_pool)))
                   
   # Top clutch leaders
-  batter_sub <- profile_list[sapply(profile_list, function(x) x$playerType == "Batter")]
-  batter_order <- order(sapply(batter_sub, function(x) x$clutchScore), decreasing = TRUE)
-  batter_leaders <- sapply(head(batter_sub[batter_order], 10), function(x) x$playerName)
+  batter_sub <- profile_list[vapply(profile_list, function(x) identical(x$playerType, "Batter"), logical(1))]
+  batter_leaders <- if (length(batter_sub) > 0) {
+    batter_order <- order(vapply(batter_sub, function(x) num_or_na(x$clutchScore), numeric(1)), decreasing = TRUE, na.last = TRUE)
+    unname(vapply(head(batter_sub[batter_order], 10), function(x) as.character(x$playerName), character(1)))
+  } else {
+    character(0)
+  }
     
-  pitcher_sub <- profile_list[sapply(profile_list, function(x) x$playerType == "Pitcher")]
-  pitcher_order <- order(sapply(pitcher_sub, function(x) x$clutchScore), decreasing = TRUE)
-  pitcher_leaders <- sapply(head(pitcher_sub[pitcher_order], 10), function(x) x$playerName)
+  pitcher_sub <- profile_list[vapply(profile_list, function(x) identical(x$playerType, "Pitcher"), logical(1))]
+  pitcher_leaders <- if (length(pitcher_sub) > 0) {
+    pitcher_order <- order(vapply(pitcher_sub, function(x) num_or_na(x$clutchScore), numeric(1)), decreasing = TRUE, na.last = TRUE)
+    unname(vapply(head(pitcher_sub[pitcher_order], 10), function(x) as.character(x$playerName), character(1)))
+  } else {
+    character(0)
+  }
     
   output_catalog <- list(
     # generated_at is what tools/publish_web.R's assertion F reads: UTC, ISO-8601,
@@ -343,8 +401,8 @@ run_mlb_clutch_engine <- function() {
     profiles             = profile_list
   )
   
-  output_json <- file.path(PROJECT_DIR, "web", "public", "data", "clutch_leverage_metrics.json")
-  write(toJSON(output_catalog, auto_unbox = TRUE, pretty = TRUE), output_json)
+  dir.create(dirname(output_json), recursive = TRUE, showWarnings = FALSE)
+  write(toJSON(output_catalog, auto_unbox = TRUE, pretty = TRUE, na = "null"), output_json)
   message(sprintf(">>> Wrote clutch metrics catalog to %s (%.2f MB)", output_json, file.info(output_json)$size / 1e6))
   
   invisible(output_catalog)

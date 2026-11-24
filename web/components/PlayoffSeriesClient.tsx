@@ -139,16 +139,19 @@ export function simulateClientFallback(
     ? [0, 1, 2, 3, 0]
     : [0, 1, 2, 3, 0, 1, 2];
 
-  const baseEloDiff = pA.baseElo - pB.baseElo;
+  const baseEloDiff = pA.baseElo != null && pB.baseElo != null ? pA.baseElo - pB.baseElo : 0;
   const hfaElo = 24.0;
-  const mismatchElo = (pA.tacticalRatings.rotationDepth - pB.tacticalRatings.rotationDepth) * 0.15;
+  const mismatchElo =
+    pA.tacticalRatings.rotationDepth != null && pB.tacticalRatings.rotationDepth != null
+      ? (pA.tacticalRatings.rotationDepth - pB.tacticalRatings.rotationDepth) * 0.15
+      : 0;
 
   // League-average rGS, derived from whatever starters both rosters actually
   // have, used as the fallback value when a team has no listed starter for
   // a given slot (issue #127). Falls back to a league-typical constant if
   // neither roster has any usable starter data at all.
   const knownStarterRGS = [...pA.starters, ...pB.starters]
-    .filter((s) => s && Number.isFinite(s.rGS))
+    .filter((s): s is typeof s & { rGS: number } => Boolean(s) && Number.isFinite(s.rGS))
     .map((s) => s.rGS);
   const leagueAvgRGS =
     knownStarterRGS.length > 0
@@ -184,7 +187,7 @@ export function simulateClientFallback(
     const hfaAdj = isHome ? hfaElo : -hfaElo;
     const { starter: spA, isFallback: spAIsFallback } = resolveStarter(pA, spSlot[g]);
     const { starter: spB, isFallback: spBIsFallback } = resolveStarter(pB, spSlot[g]);
-    const rgsDiff = 4.7 * (spA.rGS - spB.rGS);
+    const rgsDiff = spA.rGS != null && spB.rGS != null ? 4.7 * (spA.rGS - spB.rGS) : 0;
 
     const totalDiff = baseEloDiff + hfaAdj + rgsDiff + mismatchElo;
     const pWin = 1 / (1 + Math.pow(10, -totalDiff / 400));
@@ -274,7 +277,10 @@ export function simulateClientFallback(
     tacticalEdges: [
       {
         title: 'Pitching Rotation Quality & Depth',
-        advantageTeam: pA.tacticalRatings.rotationDepth >= pB.tacticalRatings.rotationDepth ? pA.teamAbbr : pB.teamAbbr,
+        advantageTeam:
+          pA.tacticalRatings.rotationDepth !== null && pB.tacticalRatings.rotationDepth !== null
+            ? (pA.tacticalRatings.rotationDepth >= pB.tacticalRatings.rotationDepth ? pA.teamAbbr : pB.teamAbbr)
+            : (pA.tacticalRatings.rotationDepth !== null ? pA.teamAbbr : pB.teamAbbr),
         description: 'Differential in starting pitching game score across projected games.',
         deltaElo: Math.abs(mismatchElo),
       },
@@ -608,27 +614,31 @@ export const PlayoffSeriesClient: React.FC<PlayoffSeriesClientProps> = ({ catalo
               </div>
 
               <div className="flex items-center justify-between p-2 rounded bg-surface/60 border border-slate-800/50">
-                <span className="text-sky-400 font-bold">{profileA.baseElo}</span>
+                <span className="text-sky-400 font-bold">{profileA.baseElo ?? '—'}</span>
                 <span className="text-slate-400 text-[11px]">Base Team Elo Rating</span>
-                <span className="text-amber-400 font-bold">{profileB.baseElo}</span>
+                <span className="text-amber-400 font-bold">{profileB.baseElo ?? '—'}</span>
               </div>
 
               <div className="flex items-center justify-between p-2 rounded bg-surface/60 border border-slate-800/50">
-                <span className="text-sky-400 font-bold">rGS {profileA.starters[0]?.rGS}</span>
+                <span className="text-sky-400 font-bold">rGS {profileA.starters[0]?.rGS ?? '—'}</span>
                 <span className="text-slate-400 text-[11px]">Ace Starter Rating (Game 1)</span>
-                <span className="text-amber-400 font-bold">rGS {profileB.starters[0]?.rGS}</span>
+                <span className="text-amber-400 font-bold">rGS {profileB.starters[0]?.rGS ?? '—'}</span>
               </div>
 
               <div className="flex items-center justify-between p-2 rounded bg-surface/60 border border-slate-800/50">
-                <span className="text-sky-400 font-bold">xFIP {profileA.relievers[0]?.xFip}</span>
+                <span className="text-sky-400 font-bold">xFIP {profileA.relievers[0]?.xFip ?? '—'}</span>
                 <span className="text-slate-400 text-[11px]">Closer / High-LI Shutdown</span>
-                <span className="text-amber-400 font-bold">xFIP {profileB.relievers[0]?.xFip}</span>
+                <span className="text-amber-400 font-bold">xFIP {profileB.relievers[0]?.xFip ?? '—'}</span>
               </div>
 
               <div className="flex items-center justify-between p-2 rounded bg-surface/60 border border-slate-800/50">
-                <span className="text-sky-400 font-bold">wOBA {profileA.lineupCore[0]?.wOBA.toFixed(3)}</span>
+                <span className="text-sky-400 font-bold">
+                  wOBA {profileA.lineupCore[0]?.wOBA != null ? profileA.lineupCore[0].wOBA.toFixed(3) : '—'}
+                </span>
                 <span className="text-slate-400 text-[11px]">Lineup Anchor wOBA</span>
-                <span className="text-amber-400 font-bold">wOBA {profileB.lineupCore[0]?.wOBA.toFixed(3)}</span>
+                <span className="text-amber-400 font-bold">
+                  wOBA {profileB.lineupCore[0]?.wOBA != null ? profileB.lineupCore[0].wOBA.toFixed(3) : '—'}
+                </span>
               </div>
             </div>
           </div>

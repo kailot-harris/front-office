@@ -25,6 +25,10 @@ source("logging_utils.R")
 source("config.R")
 .LOG_SCRIPT <- "mlb_series_simulator.R"
 
+round_or_na <- function(x, digits = 2) {
+  if (is.null(x) || length(x) == 0 || is.na(x)) NA_real_ else round(as.numeric(x), digits)
+}
+
 message(">>> [SERIES SIM] Initializing MLB Playoff Series Simulator Engine...")
 
 #' Build 30-Team Playoff Profiles (Rotations, Lineups, Bullpen, Tactical Ratings)
@@ -94,9 +98,9 @@ build_mlb_playoff_profiles <- function(teams_df, players_df, post_ops) {
     pitchers <- tm_players %>% filter(player_type == "Pitcher")
     batters <- tm_players %>% filter(player_type == "Batter")
     
-    # Sort Pitchers by rGS (stat3_val) descending, then proj_workload
+    # Sort Pitchers by rGS (stat3_val) descending, then proj_workload (NAs last)
     pitchers_sorted <- pitchers %>% 
-      arrange(desc(coalesce(stat3_val, 50)), desc(proj_workload))
+      arrange(is.na(stat3_val), desc(stat3_val), is.na(proj_workload), desc(proj_workload))
     
     # Designate Top 4 Starters
     sp_count <- min(4, nrow(pitchers_sorted))
@@ -110,11 +114,11 @@ build_mlb_playoff_profiles <- function(teams_df, players_df, post_ops) {
         playerId   = p$player_id,
         mlbamId    = p$mlbam_id,
         playerName = p$player_name,
-        rGS        = round(coalesce(p$stat3_val, 52.0), 1),
-        projEra    = round(coalesce(p$stat2_pooled, 3.80), 2),
-        xFip       = round(coalesce(p$stat1_pooled, 3.85), 2),
-        kPct       = round(coalesce(p$k_pct_pooled, 22.0), 1),
-        bbPct      = round(coalesce(p$bb_pct_pooled, 7.5), 1),
+        rGS        = round_or_na(p$stat3_val, 1),
+        projEra    = round_or_na(p$stat2_pooled, 2),
+        xFip       = round_or_na(p$stat1_pooled, 2),
+        kPct       = round_or_na(p$k_pct_pooled, 1),
+        bbPct      = round_or_na(p$bb_pct_pooled, 1),
         role       = sp_roles[s]
       )
     }
@@ -138,7 +142,7 @@ build_mlb_playoff_profiles <- function(teams_df, players_df, post_ops) {
     
     # Designate Relievers (next 4 pitchers or lowest xFIP)
     relievers_pool <- if (nrow(pitchers_sorted) > 4) tail(pitchers_sorted, -4) else pitchers_sorted
-    relievers_sorted <- relievers_pool %>% arrange(coalesce(stat1_pooled, 4.00))
+    relievers_sorted <- relievers_pool %>% arrange(is.na(stat1_pooled), stat1_pooled)
     rel_count <- min(4, nrow(relievers_sorted))
     relievers_list <- list()
     rel_roles <- c("Closer (High-LI)", "Setup Arm", "Bridge Reliever", "Middle Reliever")
@@ -148,9 +152,9 @@ build_mlb_playoff_profiles <- function(teams_df, players_df, post_ops) {
       relievers_list[[r]] <- list(
         playerId   = p$player_id,
         playerName = p$player_name,
-        projEra    = round(coalesce(p$stat2_pooled, 3.50), 2),
-        xFip       = round(coalesce(p$stat1_pooled, 3.60), 2),
-        kPct       = round(coalesce(p$k_pct_pooled, 25.0), 1),
+        projEra    = round_or_na(p$stat2_pooled, 2),
+        xFip       = round_or_na(p$stat1_pooled, 2),
+        kPct       = round_or_na(p$k_pct_pooled, 1),
         role       = rel_roles[r]
       )
     }
@@ -170,7 +174,7 @@ build_mlb_playoff_profiles <- function(teams_df, players_df, post_ops) {
     }
     
     # Designate Lineup Core (Top 9 Batters by wOBA)
-    batters_sorted <- batters %>% arrange(desc(coalesce(stat1_raw, 0.310)))
+    batters_sorted <- batters %>% arrange(is.na(stat1_raw), desc(stat1_raw))
     lineup_count <- min(9, nrow(batters_sorted))
     lineup_list <- list()
     
@@ -179,12 +183,12 @@ build_mlb_playoff_profiles <- function(teams_df, players_df, post_ops) {
       lineup_list[[b]] <- list(
         playerId   = p$player_id,
         playerName = p$player_name,
-        wOBA       = round(coalesce(p$stat1_raw, 0.315), 3),
-        iso        = round(coalesce(p$stat2_raw, 0.160), 3),
-        obp        = round(coalesce(p$stat3_val, 0.320), 3),
-        hr         = round(coalesce(p$count1_val, 18), 0),
-        kPct       = round(coalesce(p$k_pct_pooled, 21.0), 1),
-        bbPct      = round(coalesce(p$bb_pct_pooled, 8.0), 1),
+        wOBA       = round_or_na(p$stat1_raw, 3),
+        iso        = round_or_na(p$stat2_raw, 3),
+        obp        = round_or_na(p$stat3_val, 3),
+        hr         = round_or_na(p$count1_val, 0),
+        kPct       = round_or_na(p$k_pct_pooled, 1),
+        bbPct      = round_or_na(p$bb_pct_pooled, 1),
         slot       = paste0("Lineup #", b)
       )
     }
@@ -207,15 +211,16 @@ build_mlb_playoff_profiles <- function(teams_df, players_df, post_ops) {
     }
     
     # Base Elo & Projected Wins
-    base_elo <- round(coalesce(tm_row$variant_bottom_up_mean_wins * 2.8 + 1250, 1500.0), 1)
-    if (!is.null(bullpen_lookup[[tm_code]])) {
+    base_elo <- round_or_na(tm_row$variant_bottom_up_mean_wins * 2.8 + 1250, 1)
+    if (!is.null(bullpen_lookup[[tm_code]]) && !is.na(bullpen_lookup[[tm_code]]$elo_rating)) {
       base_elo <- round(bullpen_lookup[[tm_code]]$elo_rating, 1)
     }
     
     # Calculate 5 Sabermetric Tactical Ratings (0-100 Percentiles)
     # 1. Rotation Depth: weighted rGS of top 4 starters
-    mean_rgs <- mean(sapply(starters_list, function(x) x$rGS))
-    rotation_rating <- pmin(99, pmax(30, round((mean_rgs - 46) * 3.5 + 50)))
+    rgs_vals <- sapply(starters_list, function(x) as.numeric(x$rGS))
+    mean_rgs <- if (all(is.na(rgs_vals))) NA_real_ else mean(rgs_vals, na.rm = TRUE)
+    rotation_rating <- if (is.na(mean_rgs)) NA_real_ else pmin(99, pmax(30, round((mean_rgs - 46) * 3.5 + 50)))
     
     # 2. Bullpen Leverage: based on reliever fatigue & xFIP
     bp_data <- bullpen_lookup[[tm_code]]
@@ -224,12 +229,14 @@ build_mlb_playoff_profiles <- function(teams_df, players_df, post_ops) {
     bullpen_rating <- pmin(99, pmax(25, round(100 - (bp_vuln * 0.55 + bp_fatigue * 0.25))))
     
     # 3. Power / ISO: Lineup average ISO
-    mean_iso <- mean(sapply(lineup_list, function(x) x$iso))
-    power_rating <- pmin(99, pmax(30, round((mean_iso - 0.140) * 550 + 50)))
+    iso_vals <- sapply(lineup_list, function(x) as.numeric(x$iso))
+    mean_iso <- if (all(is.na(iso_vals))) NA_real_ else mean(iso_vals, na.rm = TRUE)
+    power_rating <- if (is.na(mean_iso)) NA_real_ else pmin(99, pmax(30, round((mean_iso - 0.140) * 550 + 50)))
     
     # 4. Contact & Plate Discipline: Lineup average K-avoidance & BB%
-    mean_k <- mean(sapply(lineup_list, function(x) x$kPct))
-    contact_rating <- pmin(99, pmax(30, round((25.0 - mean_k) * 3.8 + 50)))
+    k_vals <- sapply(lineup_list, function(x) as.numeric(x$kPct))
+    mean_k <- if (all(is.na(k_vals))) NA_real_ else mean(k_vals, na.rm = TRUE)
+    contact_rating <- if (is.na(mean_k)) NA_real_ else pmin(99, pmax(30, round((25.0 - mean_k) * 3.8 + 50)))
     
     # 5. Defensive Efficiency & Catcher Framing (Empirical composite from fg_batters.rds)
     def_rating <- if (!is.null(defense_lookup[[tm_code]])) defense_lookup[[tm_code]] else 50
@@ -301,7 +308,8 @@ simulate_mlb_series <- function(team_a_code, team_b_code, hca_team_code, profile
   mismatch_elo <- 0
   
   # 1. High-Whiff Pitching vs High-K Lineup
-  if (p_a$tacticalRatings$rotationDepth >= 85 && p_b$tacticalRatings$contactDiscipline <= 48) {
+  if (!is.na(p_a$tacticalRatings$rotationDepth) && p_a$tacticalRatings$rotationDepth >= 85 &&
+      !is.na(p_b$tacticalRatings$contactDiscipline) && p_b$tacticalRatings$contactDiscipline <= 48) {
     edge_elo <- 14.0
     mismatch_elo <- mismatch_elo + edge_elo
     edges[[length(edges) + 1]] <- list(
@@ -310,7 +318,8 @@ simulate_mlb_series <- function(team_a_code, team_b_code, hca_team_code, profile
       description = sprintf("%s's high-strikeout rotation exploits %s's swing-and-miss tendencies.", team_a_code, team_b_code),
       deltaElo = edge_elo
     )
-  } else if (p_b$tacticalRatings$rotationDepth >= 85 && p_a$tacticalRatings$contactDiscipline <= 48) {
+  } else if (!is.na(p_b$tacticalRatings$rotationDepth) && p_b$tacticalRatings$rotationDepth >= 85 &&
+             !is.na(p_a$tacticalRatings$contactDiscipline) && p_a$tacticalRatings$contactDiscipline <= 48) {
     edge_elo <- 14.0
     mismatch_elo <- mismatch_elo - edge_elo
     edges[[length(edges) + 1]] <- list(
@@ -322,7 +331,9 @@ simulate_mlb_series <- function(team_a_code, team_b_code, hca_team_code, profile
   }
   
   # 2. Bullpen Firepower & Rest Advantage
-  bp_diff <- (p_a$tacticalRatings$bullpenLeverage - p_b$tacticalRatings$bullpenLeverage) * 0.35
+  bp_diff <- if (!is.na(p_a$tacticalRatings$bullpenLeverage) && !is.na(p_b$tacticalRatings$bullpenLeverage)) {
+    (p_a$tacticalRatings$bullpenLeverage - p_b$tacticalRatings$bullpenLeverage) * 0.35
+  } else 0
   if (abs(bp_diff) >= 4.0) {
     adv_team <- if (bp_diff > 0) team_a_code else team_b_code
     mismatch_elo <- mismatch_elo + bp_diff
@@ -335,7 +346,9 @@ simulate_mlb_series <- function(team_a_code, team_b_code, hca_team_code, profile
   }
   
   # 3. Defensive Efficiency & Catcher Framing
-  def_diff <- (p_a$tacticalRatings$defenseFielding - p_b$tacticalRatings$defenseFielding) * 0.25
+  def_diff <- if (!is.na(p_a$tacticalRatings$defenseFielding) && !is.na(p_b$tacticalRatings$defenseFielding)) {
+    (p_a$tacticalRatings$defenseFielding - p_b$tacticalRatings$defenseFielding) * 0.25
+  } else 0
   if (abs(def_diff) >= 3.5) {
     adv_team <- if (def_diff > 0) team_a_code else team_b_code
     mismatch_elo <- mismatch_elo + def_diff
@@ -348,7 +361,7 @@ simulate_mlb_series <- function(team_a_code, team_b_code, hca_team_code, profile
   }
   
   # Base Elo differential
-  base_elo_diff <- p_a$baseElo - p_b$baseElo
+  base_elo_diff <- if (!is.na(p_a$baseElo) && !is.na(p_b$baseElo)) p_a$baseElo - p_b$baseElo else 0
   hfa_elo <- 24.0 # Playoff HFA
   
   # Precompute Game-by-Game Win Probabilities for Team A
@@ -362,7 +375,7 @@ simulate_mlb_series <- function(team_a_code, team_b_code, hca_team_code, profile
     # Starter rGS differential
     sp_a <- p_a$starters[[sp_slot_a[g]]]
     sp_b <- p_b$starters[[sp_slot_b[g]]]
-    rgs_diff <- 4.7 * (sp_a$rGS - sp_b$rGS)
+    rgs_diff <- if (!is.na(sp_a$rGS) && !is.na(sp_b$rGS)) 4.7 * (sp_a$rGS - sp_b$rGS) else 0
     
     # Short rest penalty for Game 4 or 5 if ace brought back on short rest
     if (series_length >= 5 && sp_slot_a[g] == 1 && g %in% c(4, 5)) {
@@ -537,7 +550,7 @@ run_mlb_series_simulator <- function() {
   )
   
   output_json <- file.path(PROJECT_DIR, "web", "public", "data", "playoff_series_matchups.json")
-  write(toJSON(output_catalog, auto_unbox = TRUE, pretty = TRUE), output_json)
+  write(toJSON(output_catalog, auto_unbox = TRUE, pretty = TRUE, na = "null"), output_json)
   message(sprintf(">>> Wrote series simulator catalog to %s (%.2f MB)", output_json, file.info(output_json)$size / 1e6))
   
   invisible(output_catalog)
