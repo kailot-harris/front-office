@@ -384,10 +384,14 @@ for /f "delims=" %%S in ('git rev-parse HEAD 2^>nul') do set PUB_HEAD_AFTER=%%S
 
 if not "%PUBLISH_RC%"=="0" (
     echo [ERROR] Step 4/4 - publish gate - exit code %PUBLISH_RC% in mode %MODE_LABEL% >> "%LOG_FILE%"
-    echo [ERROR] NOTHING WAS PUBLISHED. Yesterday's correct site stays up rather >> "%LOG_FILE%"
-    echo [ERROR] than a half-updated one. Read the "-- Assertions --" block above: >> "%LOG_FILE%"
-    echo [ERROR] every failing assertion is on a "[FAIL]" line with its id, name, >> "%LOG_FILE%"
-    echo [ERROR] summary and the offending file or value in its detail lines. >> "%LOG_FILE%"
+    echo [ERROR] NOTHING WAS PUSHED to origin. Yesterday's correct site stays up rather >> "%LOG_FILE%"
+    echo [ERROR] than a half-updated one. If an assertion failed, nothing was committed: >> "%LOG_FILE%"
+    echo [ERROR] read the "-- Assertions --" block above; every failing assertion is on >> "%LOG_FILE%"
+    echo [ERROR] a "[FAIL]" line with its id, name, summary and the offending file or value. >> "%LOG_FILE%"
+    echo [ERROR] If the push step failed, publish_web.R reset the local publish commit back >> "%LOG_FILE%"
+    echo [ERROR] to origin, so the checkout is in step with origin and no local commit is >> "%LOG_FILE%"
+    echo [ERROR] left behind; the regenerated files are still in the working tree. Its >> "%LOG_FILE%"
+    echo [ERROR] "the publish commit was NOT pushed" line above names the failed step. >> "%LOG_FILE%"
 ) else (
     echo [OK] Step 4/4 - publish gate passed in mode %MODE_LABEL%. >> "%LOG_FILE%"
 )
