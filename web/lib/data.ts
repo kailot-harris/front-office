@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import { TeamProjection, PlayerProjection, ModelMetadata, ModelDiagnostics } from './types';
+import { TeamProjection, PlayerProjection, ModelMetadata, ModelDiagnostics, ActualTeamRecord } from './types';
+import { Matchup, MatchupsPayload } from './matchupTypes';
 import { PlayoffBracketSeason } from './playoffTypes';
 import { OffseasonMonitorDataset } from './offseasonTypes';
 import type { VisualMediaIndexEntry } from './visualMedia';
@@ -129,4 +130,74 @@ export function getVisualMediaIndex(): VisualMediaIndexEntry[] {
   const filePath = path.join(process.cwd(), 'public', 'data', 'visual_media_index.json');
   const fileContent = fs.readFileSync(filePath, 'utf-8');
   return JSON.parse(fileContent) as VisualMediaIndexEntry[];
+}
+
+export function getMatchupsData(): MatchupsPayload | null {
+  const filePath = path.join(process.cwd(), 'public', 'data', 'matchups_slates.json');
+  if (!fs.existsSync(filePath)) return null;
+  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(fileContent) as MatchupsPayload;
+}
+
+/**
+ * Derive actual regular-season team W-L, pointsFor, and pointsAgainst from
+ * completed games in matchups_slates.json. Skips pending games, postseason
+ * games, and rows lacking finite scores.
+ */
+export function deriveActualTeamRecords(
+  matchups: readonly Pick<
+    Matchup,
+    'is_completed' | 'season_type' | 'home_team' | 'away_team' | 'home_score' | 'away_score'
+  >[],
+): Record<string, ActualTeamRecord> {
+  const records: Record<string, ActualTeamRecord> = {};
+
+  const ensureTeam = (abbr: string): ActualTeamRecord => {
+    let rec = records[abbr];
+    if (!rec) {
+      rec = { wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 };
+      records[abbr] = rec;
+    }
+    return rec;
+  };
+
+  for (const game of matchups) {
+    if (!game.is_completed) continue;
+    if (game.season_type && game.season_type !== 'regular') continue;
+
+    const { home_team, away_team, home_score, away_score } = game;
+    if (
+      typeof home_score !== 'number' ||
+      typeof away_score !== 'number' ||
+      !Number.isFinite(home_score) ||
+      !Number.isFinite(away_score)
+    ) {
+      continue;
+    }
+
+    const home = ensureTeam(home_team);
+    const away = ensureTeam(away_team);
+
+    home.pointsFor += home_score;
+    home.pointsAgainst += away_score;
+    away.pointsFor += away_score;
+    away.pointsAgainst += home_score;
+
+    if (home_score > away_score) {
+      home.wins += 1;
+      away.losses += 1;
+    } else if (away_score > home_score) {
+      away.wins += 1;
+      home.losses += 1;
+    }
+  }
+
+  return records;
+}
+
+/** Build-time actual regular-season team records derived from matchups_slates.json. */
+export function getActualTeamRecords(): Record<string, ActualTeamRecord> {
+  const payload = getMatchupsData();
+  if (!payload?.matchups) return {};
+  return deriveActualTeamRecords(payload.matchups);
 }

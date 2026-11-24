@@ -1,8 +1,25 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { TeamProjection, ModelMetadata } from '@/lib/types';
-import { Trophy, TrendingUp, Filter, ArrowUpDown, ArrowUp, ArrowDown, ShieldAlert, Award, BarChart2, Table, ArrowRight, Download } from 'lucide-react';
+import { TeamProjection, ModelMetadata, ActualTeamRecord } from '@/lib/types';
+import {
+  Trophy,
+  TrendingUp,
+  TrendingDown,
+  Filter,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  ShieldAlert,
+  Award,
+  BarChart2,
+  Table,
+  ArrowRight,
+  Download,
+  Activity,
+  Flame,
+  Snowflake,
+} from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { PlayoffContendersBoxWhisker } from '@/components/PlayoffContendersBoxWhisker';
 import { exportToCsv } from '@/lib/exportToCsv';
@@ -10,10 +27,14 @@ import { GlossaryTerm } from '@/components/GlossaryTerm';
 import { HowToRead } from '@/components/HowToRead';
 import { sortableTh } from '@/lib/a11y';
 
+export const WNBA_SEASON_GAMES = 44;
+
 interface StandingsClientProps {
   teams: TeamProjection[];
   metadata?: ModelMetadata;
+  actualRecords?: Record<string, ActualTeamRecord>;
   initialTab?: 'visualizer' | 'table';
+  initialMode?: 'projections' | 'reality';
 }
 
 export type StandingsSortField =
@@ -25,13 +46,70 @@ export type StandingsSortField =
   | 'win_pct'
   | 'percentile_range'
   | 'ensemble_playoff_prob'
-  | 'ensemble_title_prob';
+  | 'ensemble_title_prob'
+  | 'actual_record'
+  | 'actual_win_pct'
+  | 'current_pace'
+  | 'performance_delta'
+  | 'point_diff';
 
-export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initialTab = 'visualizer' }) => {
+export interface EnrichedWnbaTeam extends TeamProjection {
+  actual: ActualTeamRecord;
+  actual_gp: number;
+  actual_win_pct: number;
+  current_pace: number;
+  performance_delta: number;
+  point_diff: number;
+}
+
+export function enrichTeamWithActualRecord(
+  team: TeamProjection,
+  actualRecord?: ActualTeamRecord,
+): EnrichedWnbaTeam {
+  const actual: ActualTeamRecord = actualRecord ?? {
+    wins: 0,
+    losses: 0,
+    pointsFor: 0,
+    pointsAgainst: 0,
+  };
+  const actual_gp = actual.wins + actual.losses;
+  const actual_win_pct = actual_gp > 0 ? actual.wins / actual_gp : 0;
+  const current_pace =
+    actual_gp === 0
+      ? 0
+      : actual_gp === WNBA_SEASON_GAMES
+      ? actual.wins
+      : Number.isFinite(actual_win_pct)
+      ? actual_win_pct * WNBA_SEASON_GAMES
+      : 0;
+  const projMean = Number.isFinite(team.ensemble_mean_wins) ? team.ensemble_mean_wins : 0;
+  const performance_delta = current_pace - projMean;
+  const point_diff = actual.pointsFor - actual.pointsAgainst;
+
+  return {
+    ...team,
+    actual,
+    actual_gp,
+    actual_win_pct,
+    current_pace,
+    performance_delta,
+    point_diff,
+  };
+}
+
+export const StandingsClient: React.FC<StandingsClientProps> = ({
+  teams,
+  actualRecords = {},
+  initialTab = 'visualizer',
+  initialMode = 'projections',
+}) => {
   const [activeTab, setActiveTab] = useState<'visualizer' | 'table'>(initialTab);
+  const [tableMode, setTableMode] = useState<'projections' | 'reality'>(initialMode);
   const [selectedConference, setSelectedConference] = useState<'All' | 'East' | 'West'>('All');
   const [selectedDivision, setSelectedDivision] = useState<string>('All');
-  const [sortBy, setSortBy] = useState<StandingsSortField>('ensemble_mean_wins');
+  const [sortBy, setSortBy] = useState<StandingsSortField>(
+    initialMode === 'reality' ? 'performance_delta' : 'ensemble_mean_wins',
+  );
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
@@ -41,6 +119,15 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
         const tabParam = params.get('view') || params.get('tab');
         if (tabParam === 'table' || tabParam === 'visualizer') {
           setActiveTab(tabParam);
+        }
+        const modeParam = params.get('mode');
+        if (modeParam === 'reality' || modeParam === 'projections') {
+          setTableMode(modeParam);
+          setSortBy(modeParam === 'reality' ? 'performance_delta' : 'ensemble_mean_wins');
+          setSortOrder('desc');
+          if (modeParam === 'reality' && tabParam !== 'visualizer') {
+            setActiveTab('table');
+          }
         }
       } catch {
         // Safe fallback for restricted iframe/sandbox
@@ -52,13 +139,45 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
     setActiveTab(tab);
   };
 
+  const handleModeChange = (mode: 'projections' | 'reality') => {
+    setTableMode(mode);
+    if (mode === 'reality') {
+      setSortBy('performance_delta');
+      setSortOrder('desc');
+      if (activeTab === 'visualizer') {
+        setActiveTab('table');
+      }
+    } else {
+      setSortBy('ensemble_mean_wins');
+      setSortOrder('desc');
+    }
+  };
+
   const divisions = useMemo(() => {
     const set = new Set(teams.map((t) => t.division));
     return Array.from(set).sort();
   }, [teams]);
 
+  const enrichedTeams: EnrichedWnbaTeam[] = useMemo(() => {
+    return teams.map((team) => enrichTeamWithActualRecord(team, actualRecords[team.team]));
+  }, [teams, actualRecords]);
+
+  const topOverperformers = useMemo(() => {
+    return [...enrichedTeams]
+      .filter((t) => t.actual_gp > 0)
+      .sort((a, b) => b.performance_delta - a.performance_delta)
+      .slice(0, 3);
+  }, [enrichedTeams]);
+
+  const topUnderperformers = useMemo(() => {
+    return [...enrichedTeams]
+      .filter((t) => t.actual_gp > 0)
+      .sort((a, b) => a.performance_delta - b.performance_delta)
+      .slice(0, 3);
+  }, [enrichedTeams]);
+
   const filteredTeams = useMemo(() => {
-    return teams
+    return enrichedTeams
       .filter((t) => {
         if (selectedConference !== 'All' && t.conference !== selectedConference) return false;
         if (selectedDivision !== 'All' && t.division !== selectedDivision) return false;
@@ -78,6 +197,16 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
           const rangeA = a.ensemble_p90 - a.ensemble_p10;
           const rangeB = b.ensemble_p90 - b.ensemble_p10;
           cmp = rangeA - rangeB;
+        } else if (sortBy === 'actual_record') {
+          cmp = (a.actual.wins - a.actual.losses) - (b.actual.wins - b.actual.losses) || a.actual_win_pct - b.actual_win_pct;
+        } else if (sortBy === 'actual_win_pct') {
+          cmp = a.actual_win_pct - b.actual_win_pct;
+        } else if (sortBy === 'current_pace') {
+          cmp = a.current_pace - b.current_pace;
+        } else if (sortBy === 'performance_delta') {
+          cmp = a.performance_delta - b.performance_delta;
+        } else if (sortBy === 'point_diff') {
+          cmp = a.point_diff - b.point_diff;
         } else {
           const valA = (a[sortBy as keyof TeamProjection] as number) ?? 0;
           const valB = (b[sortBy as keyof TeamProjection] as number) ?? 0;
@@ -85,7 +214,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
         }
         return sortOrder === 'desc' ? -cmp : cmp;
       });
-  }, [teams, selectedConference, selectedDivision, sortBy, sortOrder]);
+  }, [enrichedTeams, selectedConference, selectedDivision, sortBy, sortOrder]);
 
   // Issue #118: at narrow (375px) viewports, 500-750px of this table was
   // off-screen with no signal that more columns existed. The scroll container
@@ -104,9 +233,43 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
     updateScrollState();
     window.addEventListener('resize', updateScrollState);
     return () => window.removeEventListener('resize', updateScrollState);
-  }, [updateScrollState, filteredTeams]);
+  }, [updateScrollState, filteredTeams, tableMode, activeTab]);
 
   const handleExportCsv = () => {
+    if (tableMode === 'reality') {
+      exportToCsv(
+        filteredTeams.map((t) => ({
+          team: t.team,
+          team_name: t.team_name,
+          conference: t.conference,
+          division: t.division,
+          actual_record: `${t.actual.wins}-${t.actual.losses}`,
+          actual_win_pct: (t.actual_win_pct * 100).toFixed(1) + '%',
+          points_for: t.actual.pointsFor,
+          points_against: t.actual.pointsAgainst,
+          point_diff: t.point_diff > 0 ? `+${t.point_diff}` : `${t.point_diff}`,
+          projected_wins: t.ensemble_mean_wins.toFixed(1),
+          current_pace_44g: t.current_pace.toFixed(1),
+          performance_delta: (t.performance_delta > 0 ? '+' : '') + t.performance_delta.toFixed(1),
+        })),
+        [
+          { key: 'team', label: 'Team' },
+          { key: 'team_name', label: 'Team Name' },
+          { key: 'conference', label: 'Conf' },
+          { key: 'division', label: 'Div' },
+          { key: 'actual_record', label: 'Actual Record' },
+          { key: 'actual_win_pct', label: 'Win %' },
+          { key: 'points_for', label: 'Points For' },
+          { key: 'points_against', label: 'Points Against' },
+          { key: 'point_diff', label: 'Point Diff' },
+          { key: 'projected_wins', label: 'Projected Wins (44G)' },
+          { key: 'current_pace_44g', label: '44G Win Pace' },
+          { key: 'performance_delta', label: 'Performance Delta' },
+        ],
+        'wnba-standings-vs-projections',
+      );
+      return;
+    }
     exportToCsv(
       filteredTeams as unknown as Record<string, unknown>[],
       [
@@ -299,10 +462,49 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
           </button>
         </div>
 
+        {/* Projections vs. Actual Mode Toggle Pill */}
+        <div
+          className="inline-flex rounded-lg bg-surface p-1 border border-slate-800 self-start sm:self-auto"
+          role="group"
+          aria-label="Table comparison mode"
+        >
+          <button
+            type="button"
+            id="mode-btn-projections"
+            aria-pressed={tableMode === 'projections'}
+            onClick={() => handleModeChange('projections')}
+            className={`cursor-pointer select-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+              tableMode === 'projections'
+                ? 'bg-accent-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Model Projections
+          </button>
+          <button
+            type="button"
+            id="mode-btn-reality"
+            aria-pressed={tableMode === 'reality'}
+            onClick={() => handleModeChange('reality')}
+            className={`cursor-pointer select-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+              tableMode === 'reality'
+                ? 'bg-accent-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Activity className="w-3.5 h-3.5 text-emerald-400 pointer-events-none" />
+            <span>Projections vs. Actual</span>
+          </button>
+        </div>
+
         <div className="text-xs text-slate-400 flex items-center gap-2 px-2">
           <span>Active View:</span>
           <span className="font-semibold text-slate-200">
-            {activeTab === 'visualizer' ? 'Playoff Contenders Distribution Snapshot' : 'All 15 WNBA Franchises (Sortable Metrics)'}
+            {activeTab === 'visualizer'
+              ? 'Playoff Contenders Distribution Snapshot'
+              : tableMode === 'reality'
+              ? 'Projections vs. Actual (44-Game Pace)'
+              : 'All 15 WNBA Franchises (Sortable Metrics)'}
           </span>
         </div>
       </div>
@@ -327,9 +529,96 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
       ) : (
         /* Tab 2: Full Standings Table */
         <div className="space-y-4">
+          {tableMode === 'reality' && topOverperformers.length > 0 && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="bg-surface-raised/60 border border-emerald-500/20 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                    <Flame className="w-4 h-4" />
+                    Beating Preseason Projection (44G Pace)
+                  </h3>
+                  <span className="text-[11px] text-slate-400 font-mono">Delta = Pace - Proj</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {topOverperformers.map((t, idx) => (
+                    <div
+                      key={t.team}
+                      className="bg-surface/70 border border-slate-800/90 rounded-xl p-3 flex flex-col justify-between hover:border-emerald-500/40 transition-colors shadow-sm"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[11px] font-mono font-bold text-slate-500 w-4">#{idx + 1}</span>
+                        <TeamLogo team={t.team} size="sm" />
+                        <div className="min-w-0">
+                          <span className="font-bold text-xs text-white block truncate">{t.team_name}</span>
+                          <span className="text-[11px] font-mono text-slate-400">
+                            {t.actual.wins}-{t.actual.losses} ({(t.actual_win_pct * 100).toFixed(0)}%)
+                          </span>
+                        </div>
+                      </div>
+                      <div className="pt-1.5 border-t border-slate-800/80 flex items-center justify-between font-mono text-xs">
+                        <span className="text-[11px] text-slate-400">Pace: {t.current_pace.toFixed(1)}W</span>
+                        <span className="font-bold text-emerald-400 flex items-center gap-0.5">
+                          <TrendingUp className="w-3 h-3" />+{t.performance_delta.toFixed(1)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-surface-raised/60 border border-rose-500/20 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
+                    <Snowflake className="w-4 h-4" />
+                    Falling Short of Projection (44G Pace)
+                  </h3>
+                  <span className="text-[11px] text-slate-400 font-mono">Delta = Pace - Proj</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {topUnderperformers.map((t, idx) => (
+                    <div
+                      key={t.team}
+                      className="bg-surface/70 border border-slate-800/90 rounded-xl p-3 flex flex-col justify-between hover:border-rose-500/40 transition-colors shadow-sm"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[11px] font-mono font-bold text-slate-500 w-4">#{idx + 1}</span>
+                        <TeamLogo team={t.team} size="sm" />
+                        <div className="min-w-0">
+                          <span className="font-bold text-xs text-white block truncate">{t.team_name}</span>
+                          <span className="text-[11px] font-mono text-slate-400">
+                            {t.actual.wins}-{t.actual.losses} ({(t.actual_win_pct * 100).toFixed(0)}%)
+                          </span>
+                        </div>
+                      </div>
+                      <div className="pt-1.5 border-t border-slate-800/80 flex items-center justify-between font-mono text-xs">
+                        <span className="text-[11px] text-slate-400">Pace: {t.current_pace.toFixed(1)}W</span>
+                        <span className="font-bold text-rose-400 flex items-center gap-0.5">
+                          <TrendingDown className="w-3 h-3" />
+                          {t.performance_delta.toFixed(1)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Filter and Control Bar */}
           <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-200">
+                  {tableMode === 'reality' ? 'Projections vs. Actual Table' : 'Model Projections Table'}
+                </span>
+                <span className="text-slate-500">&bull;</span>
+                <span className="text-xs text-slate-400 font-mono">
+                  {tableMode === 'reality' ? '44-Game Pace Benchmarking' : 'Ensemble Monte Carlo Projections'}
+                </span>
+              </div>
+
+              <div className="h-4 w-px bg-slate-800 hidden sm:block" />
+
               <div className="flex items-center gap-2 text-slate-400 text-sm font-medium">
                 <Filter className="w-4 h-4" />
                 <span>Filter By:</span>
@@ -340,6 +629,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                 {(['All', 'East', 'West'] as const).map((conf) => (
                   <button
                     key={conf}
+                    type="button"
                     onClick={() => setSelectedConference(conf)}
                     className={`cursor-pointer select-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
                       selectedConference === conf
@@ -347,7 +637,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
-                    {conf} {conf !== 'All' ? 'Conf' : 'Leagues'}
+                    {conf} {conf !== 'All' ? 'Conf' : 'League'}
                   </button>
                 ))}
               </div>
@@ -369,6 +659,34 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                   ))}
                 </select>
               </div>
+
+              {tableMode === 'reality' && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400">Sort:</span>
+                  <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800" role="group" aria-label="Quick sort controls">
+                    {(
+                      [
+                        { field: 'performance_delta', label: 'Delta' },
+                        { field: 'actual_win_pct', label: 'Win %' },
+                        { field: 'point_diff', label: 'Point Diff' },
+                      ] as const
+                    ).map((opt) => (
+                      <button
+                        key={opt.field}
+                        type="button"
+                        onClick={() => handleSort(opt.field)}
+                        className={`cursor-pointer select-none px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                          sortBy === opt.field
+                            ? 'bg-accent-600 text-white shadow-sm'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-3">
@@ -434,68 +752,147 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                         {renderSortIndicator('division')}
                       </div>
                     </th>
-                    <th
-                      {...sortableTh(sortBy === 'ensemble_mean_wins', sortOrder === 'asc', () => handleSort('ensemble_mean_wins'))}
-                      className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors group"
-                      title="Click to sort by projected ensemble wins"
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <GlossaryTerm
-                          termKey="ensembleWins"
-                          className={sortBy === 'ensemble_mean_wins' ? 'text-indigo-400 font-bold' : ''}
-                        />
-                        {renderSortIndicator('ensemble_mean_wins')}
-                      </div>
-                    </th>
-                    <th
-                      {...sortableTh(sortBy === 'win_pct', sortOrder === 'asc', () => handleSort('win_pct'))}
-                      className="py-3.5 px-3 cursor-pointer hover:text-white transition-colors text-right group hidden sm:table-cell"
-                      title="Click to sort by win percentage"
-                    >
-                      <div className="flex items-center justify-end gap-1.5">
-                        <span className={sortBy === 'win_pct' ? 'text-indigo-400 font-bold' : ''}>Win %</span>
-                        {renderSortIndicator('win_pct')}
-                      </div>
-                    </th>
-                    <th
-                      {...sortableTh(sortBy === 'percentile_range', sortOrder === 'asc', () => handleSort('percentile_range'))}
-                      className="py-3.5 px-4 min-w-[200px] cursor-pointer hover:text-white transition-colors group hidden sm:table-cell"
-                      title="Click to sort by distribution width (p90 - p10 variance)"
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <GlossaryTerm
-                          termKey="percentileRange"
-                          className={sortBy === 'percentile_range' ? 'text-indigo-400 font-bold' : ''}
-                        />
-                        {renderSortIndicator('percentile_range')}
-                      </div>
-                    </th>
-                    <th
-                      {...sortableTh(sortBy === 'ensemble_playoff_prob', sortOrder === 'asc', () => handleSort('ensemble_playoff_prob'))}
-                      className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors text-right group"
-                      title="Click to sort by playoff probability"
-                    >
-                      <div className="flex items-center justify-end gap-1.5">
-                        <GlossaryTerm
-                          termKey="playoffProb"
-                          className={sortBy === 'ensemble_playoff_prob' ? 'text-indigo-400 font-bold' : ''}
-                        />
-                        {renderSortIndicator('ensemble_playoff_prob')}
-                      </div>
-                    </th>
-                    <th
-                      {...sortableTh(sortBy === 'ensemble_title_prob', sortOrder === 'asc', () => handleSort('ensemble_title_prob'))}
-                      className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors text-right group"
-                      title="Click to sort by title probability"
-                    >
-                      <div className="flex items-center justify-end gap-1.5">
-                        <GlossaryTerm
-                          termKey="titleProb"
-                          className={sortBy === 'ensemble_title_prob' ? 'text-indigo-400 font-bold' : ''}
-                        />
-                        {renderSortIndicator('ensemble_title_prob')}
-                      </div>
-                    </th>
+                    {tableMode === 'reality' ? (
+                      <>
+                        <th
+                          {...sortableTh(sortBy === 'actual_record', sortOrder === 'asc', () => handleSort('actual_record'))}
+                          className="py-3.5 px-3 text-center cursor-pointer hover:text-white transition-colors group"
+                          title="Click to sort by actual record"
+                        >
+                          <div className="flex items-center justify-center gap-1.5">
+                            <span className={sortBy === 'actual_record' ? 'text-indigo-400 font-bold' : ''}>
+                              Actual Rec (W-L)
+                            </span>
+                            {renderSortIndicator('actual_record')}
+                          </div>
+                        </th>
+                        <th
+                          {...sortableTh(sortBy === 'actual_win_pct', sortOrder === 'asc', () => handleSort('actual_win_pct'))}
+                          className="py-3.5 px-3 cursor-pointer hover:text-white transition-colors text-right group"
+                          title="Click to sort by actual win percentage"
+                        >
+                          <div className="flex items-center justify-end gap-1.5">
+                            <span className={sortBy === 'actual_win_pct' ? 'text-indigo-400 font-bold' : ''}>
+                              Win %
+                            </span>
+                            {renderSortIndicator('actual_win_pct')}
+                          </div>
+                        </th>
+                        <th
+                          {...sortableTh(sortBy === 'point_diff', sortOrder === 'asc', () => handleSort('point_diff'))}
+                          className="py-3.5 px-3 cursor-pointer hover:text-white transition-colors text-right group"
+                          title="Click to sort by point differential"
+                        >
+                          <div className="flex items-center justify-end gap-1.5">
+                            <span className={sortBy === 'point_diff' ? 'text-indigo-400 font-bold' : ''}>
+                              Point Diff
+                            </span>
+                            {renderSortIndicator('point_diff')}
+                          </div>
+                        </th>
+                        <th
+                          {...sortableTh(sortBy === 'ensemble_mean_wins', sortOrder === 'asc', () => handleSort('ensemble_mean_wins'))}
+                          className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors text-right group"
+                          title="Click to sort by preseason projected wins (44G)"
+                        >
+                          <div className="flex items-center justify-end gap-1.5">
+                            <span className={sortBy === 'ensemble_mean_wins' ? 'text-indigo-400 font-bold' : ''}>
+                              Proj Wins (44G)
+                            </span>
+                            {renderSortIndicator('ensemble_mean_wins')}
+                          </div>
+                        </th>
+                        <th
+                          {...sortableTh(sortBy === 'current_pace', sortOrder === 'asc', () => handleSort('current_pace'))}
+                          className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors text-right group"
+                          title="Click to sort by current 44-game win pace"
+                        >
+                          <div className="flex items-center justify-end gap-1.5">
+                            <span className={sortBy === 'current_pace' ? 'text-indigo-400 font-bold' : ''}>
+                              44G Win Pace
+                            </span>
+                            {renderSortIndicator('current_pace')}
+                          </div>
+                        </th>
+                        <th
+                          {...sortableTh(sortBy === 'performance_delta', sortOrder === 'asc', () => handleSort('performance_delta'))}
+                          className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors text-right group"
+                          title="Click to sort by performance delta (44G Pace - Projected Wins)"
+                        >
+                          <div className="flex items-center justify-end gap-1.5">
+                            <span className={sortBy === 'performance_delta' ? 'text-indigo-400 font-bold' : ''}>
+                              Performance Delta
+                            </span>
+                            {renderSortIndicator('performance_delta')}
+                          </div>
+                        </th>
+                      </>
+                    ) : (
+                      <>
+                        <th
+                          {...sortableTh(sortBy === 'ensemble_mean_wins', sortOrder === 'asc', () => handleSort('ensemble_mean_wins'))}
+                          className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors group"
+                          title="Click to sort by projected ensemble wins"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <GlossaryTerm
+                              termKey="ensembleWins"
+                              className={sortBy === 'ensemble_mean_wins' ? 'text-indigo-400 font-bold' : ''}
+                            />
+                            {renderSortIndicator('ensemble_mean_wins')}
+                          </div>
+                        </th>
+                        <th
+                          {...sortableTh(sortBy === 'win_pct', sortOrder === 'asc', () => handleSort('win_pct'))}
+                          className="py-3.5 px-3 cursor-pointer hover:text-white transition-colors text-right group hidden sm:table-cell"
+                          title="Click to sort by win percentage"
+                        >
+                          <div className="flex items-center justify-end gap-1.5">
+                            <span className={sortBy === 'win_pct' ? 'text-indigo-400 font-bold' : ''}>Win %</span>
+                            {renderSortIndicator('win_pct')}
+                          </div>
+                        </th>
+                        <th
+                          {...sortableTh(sortBy === 'percentile_range', sortOrder === 'asc', () => handleSort('percentile_range'))}
+                          className="py-3.5 px-4 min-w-[200px] cursor-pointer hover:text-white transition-colors group hidden sm:table-cell"
+                          title="Click to sort by distribution width (p90 - p10 variance)"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <GlossaryTerm
+                              termKey="percentileRange"
+                              className={sortBy === 'percentile_range' ? 'text-indigo-400 font-bold' : ''}
+                            />
+                            {renderSortIndicator('percentile_range')}
+                          </div>
+                        </th>
+                        <th
+                          {...sortableTh(sortBy === 'ensemble_playoff_prob', sortOrder === 'asc', () => handleSort('ensemble_playoff_prob'))}
+                          className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors text-right group"
+                          title="Click to sort by playoff probability"
+                        >
+                          <div className="flex items-center justify-end gap-1.5">
+                            <GlossaryTerm
+                              termKey="playoffProb"
+                              className={sortBy === 'ensemble_playoff_prob' ? 'text-indigo-400 font-bold' : ''}
+                            />
+                            {renderSortIndicator('ensemble_playoff_prob')}
+                          </div>
+                        </th>
+                        <th
+                          {...sortableTh(sortBy === 'ensemble_title_prob', sortOrder === 'asc', () => handleSort('ensemble_title_prob'))}
+                          className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors text-right group"
+                          title="Click to sort by title probability"
+                        >
+                          <div className="flex items-center justify-end gap-1.5">
+                            <GlossaryTerm
+                              termKey="titleProb"
+                              className={sortBy === 'ensemble_title_prob' ? 'text-indigo-400 font-bold' : ''}
+                            />
+                            {renderSortIndicator('ensemble_title_prob')}
+                          </div>
+                        </th>
+                      </>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 font-sans">
@@ -549,62 +946,114 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
                           </span>
                         </td>
                         <td className="py-3 px-3 text-center text-xs text-slate-400 hidden sm:table-cell">{team.division}</td>
-                        <td className="py-3 px-4">
-                          <div className="font-bold text-white text-base">
-                            {team.ensemble_mean_wins.toFixed(1)}
-                          </div>
-                          <div className="text-xs text-slate-400 font-mono">
-                            SD: ±{team.ensemble_sd_wins.toFixed(1)}
-                          </div>
-                        </td>
-                        <td className="py-3 px-3 text-right font-mono font-medium text-slate-300 hidden sm:table-cell">
-                          {(team.win_pct * 100).toFixed(1)}%
-                        </td>
-                        <td className="py-3 px-4 hidden sm:table-cell">
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
-                              <span>p10: {team.ensemble_p10.toFixed(0)}</span>
-                              <span className="text-slate-300 font-semibold">{team.ensemble_mean_wins.toFixed(1)}</span>
-                              <span>p90: {team.ensemble_p90.toFixed(0)}</span>
-                            </div>
-                            <div className="relative w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
-                              {/* 10th to 90th percentile bar */}
-                              <div
-                                className="absolute top-0 bottom-0 bg-indigo-500/40 rounded-full"
-                                style={{ left: `${p10Pct}%`, width: `${barWidth}%` }}
-                              />
-                              {/* Mean dot marker */}
-                              <div
-                                className="absolute top-0 bottom-0 w-1.5 bg-amber-400 rounded-full shadow"
-                                style={{ left: `${medianPct}%` }}
-                              />
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <span
-                            className={`inline-block px-2.5 py-1 rounded-md text-xs font-bold font-mono ${
-                              isPlayoffLock
-                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                                : isPlayoffBubble
-                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                                : 'bg-slate-800 text-slate-400'
-                            }`}
-                          >
-                            {(team.ensemble_playoff_prob * 100).toFixed(1)}%
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <span
-                            className={`inline-block px-2 py-0.5 rounded text-xs font-bold font-mono ${
-                              team.ensemble_title_prob >= 0.05
-                                ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30'
-                                : 'text-slate-400'
-                            }`}
-                          >
-                            {(team.ensemble_title_prob * 100).toFixed(1)}%
-                          </span>
-                        </td>
+                        {tableMode === 'reality' ? (
+                          <>
+                            <td className="py-3 px-3 text-center font-mono font-bold text-white">
+                              {team.actual.wins}-{team.actual.losses}
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono font-medium text-slate-300">
+                              {(team.actual_win_pct * 100).toFixed(1)}%
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono font-bold">
+                              <span
+                                className={
+                                  team.point_diff > 0
+                                    ? 'text-cyan-400'
+                                    : team.point_diff < 0
+                                    ? 'text-amber-400'
+                                    : 'text-slate-400'
+                                }
+                              >
+                                {team.point_diff > 0 ? `+${team.point_diff}` : team.point_diff}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-right font-mono font-semibold text-slate-300">
+                              {team.ensemble_mean_wins.toFixed(1)}W
+                            </td>
+                            <td className="py-3 px-4 text-right font-mono font-bold text-white text-base">
+                              {team.current_pace.toFixed(1)}W
+                            </td>
+                            <td className="py-3 px-4 text-right font-mono font-bold">
+                              <span
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-mono font-bold ${
+                                  team.performance_delta > 0
+                                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                    : team.performance_delta < 0
+                                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                    : 'bg-slate-800 text-slate-400'
+                                }`}
+                              >
+                                {team.performance_delta > 0 ? (
+                                  <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                                ) : team.performance_delta < 0 ? (
+                                  <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
+                                ) : null}
+                                {team.performance_delta > 0
+                                  ? `+${team.performance_delta.toFixed(1)}`
+                                  : team.performance_delta.toFixed(1)}
+                              </span>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="py-3 px-4">
+                              <div className="font-bold text-white text-base">
+                                {team.ensemble_mean_wins.toFixed(1)}
+                              </div>
+                              <div className="text-xs text-slate-400 font-mono">
+                                SD: ±{team.ensemble_sd_wins.toFixed(1)}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono font-medium text-slate-300 hidden sm:table-cell">
+                              {(team.win_pct * 100).toFixed(1)}%
+                            </td>
+                            <td className="py-3 px-4 hidden sm:table-cell">
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                                  <span>p10: {team.ensemble_p10.toFixed(0)}</span>
+                                  <span className="text-slate-300 font-semibold">{team.ensemble_mean_wins.toFixed(1)}</span>
+                                  <span>p90: {team.ensemble_p90.toFixed(0)}</span>
+                                </div>
+                                <div className="relative w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                                  {/* 10th to 90th percentile bar */}
+                                  <div
+                                    className="absolute top-0 bottom-0 bg-indigo-500/40 rounded-full"
+                                    style={{ left: `${p10Pct}%`, width: `${barWidth}%` }}
+                                  />
+                                  {/* Mean dot marker */}
+                                  <div
+                                    className="absolute top-0 bottom-0 w-1.5 bg-amber-400 rounded-full shadow"
+                                    style={{ left: `${medianPct}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <span
+                                className={`inline-block px-2.5 py-1 rounded-md text-xs font-bold font-mono ${
+                                  isPlayoffLock
+                                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                    : isPlayoffBubble
+                                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                    : 'bg-slate-800 text-slate-400'
+                                }`}
+                              >
+                                {(team.ensemble_playoff_prob * 100).toFixed(1)}%
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <span
+                                className={`inline-block px-2 py-0.5 rounded text-xs font-bold font-mono ${
+                                  team.ensemble_title_prob >= 0.05
+                                    ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30'
+                                    : 'text-slate-400'
+                                }`}
+                              >
+                                {(team.ensemble_title_prob * 100).toFixed(1)}%
+                              </span>
+                            </td>
+                          </>
+                        )}
                       </tr>
                     );
                   })}

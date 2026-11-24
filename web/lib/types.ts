@@ -182,3 +182,10 @@ export interface ModelDiagnostics {
   accuracyDrift: AccuracyDrift[];
   residualDistribution: ResidualBucket[];
 }
+
+export interface ActualTeamRecord {
+  wins: number;
+  losses: number;
+  pointsFor: number;
+  pointsAgainst: number;
+}
