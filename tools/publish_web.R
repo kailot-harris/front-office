@@ -234,7 +234,7 @@ source("config.R")
   if (nzchar(up) && file.exists(file.path(up, ".gitconfig"))) {
     Sys.setenv(HOME = up)
   }
-  if (identical(args[1], "commit")) {
+  if (args[1] %in% c("commit", "rebase")) {
     user_name <- Sys.getenv("GIT_AUTHOR_NAME", Sys.getenv("GIT_COMMITTER_NAME", ""))
     user_email <- Sys.getenv("GIT_AUTHOR_EMAIL", Sys.getenv("GIT_COMMITTER_EMAIL", ""))
     if (!nzchar(user_name) || !nzchar(user_email)) {
@@ -267,6 +267,111 @@ source("config.R")
 }
 
 # ------------------------------------------------------------------------------
+# Push with fetch-rebase-retry. Shared by .pw_do_publish() and
+# .pw_promote_offseason_baseline().
+#
+# On 2026-11-24 a scheduled publish committed locally, then `git push origin
+# HEAD` was rejected ("fetch first") because PRs merged into main while the
+# pipeline ran. The local commit stayed behind, the checkout diverged from
+# origin, and the next run's push would have failed the same way. So, after
+# the publish commit:
+#   1. git fetch origin <branch>
+#   2. if origin/<branch> is not an ancestor of HEAD: git rebase origin/<branch>
+#      (publish commits only touch generated data; never a merge commit)
+#   3. push; if rejected, repeat 1-2 once and push once more
+# If a rebase cannot complete (conflict, or git refuses because tracked files
+# are modified outside the commit), or the second push is also rejected:
+# `git rebase --abort`, then `git reset --mixed origin/<branch>` -- the branch
+# is back in step with origin and the regenerated files stay in the working
+# tree (no stash, no reset --hard) -- and the step fails with a message saying so.
+# Each step is logged on its own line so pipeline_execution.log shows it.
+# ------------------------------------------------------------------------------
+.pw_push_with_rebase <- function(repo_root, branch = NULL, label = "MLB-Analytics") {
+  if (is.null(branch) || is.na(branch) || !nzchar(branch)) {
+    branch <- .pw_current_branch(repo_root)
+  }
+  if (is.na(branch)) {
+    stop("publish_web: cannot push: HEAD is detached or the repository has no branch.")
+  }
+  remote_ref <- paste0("origin/", branch)
+  steps <- list()
+  note <- function(step, res) {
+    steps[[length(steps) + 1L]] <<- list(label = step, ok = res$ok, out = res$out)
+    invisible(res)
+  }
+  sha_of <- function(ref) {
+    r <- .pw_git(repo_root, c("rev-parse", "--verify", "--quiet", ref))
+    if (r$ok && length(r$out)) r$out[1] else NA_character_
+  }
+  fail_back_to_origin <- function(reason, out) {
+    # A rebase in progress (conflict) is aborted; when none is in progress this
+    # just exits non-zero and changes nothing.
+    note("git rebase --abort", .pw_git(repo_root, c("rebase", "--abort")))
+    reset <- note(sprintf("git reset --mixed %s", remote_ref),
+                  .pw_git(repo_root, c("reset", "--mixed", "-q", remote_ref)))
+    tip <- sha_of(remote_ref)
+    msg <- if (reset$ok) {
+      sprintf(paste0("publish_web: the publish commit was NOT pushed (%s). The checkout is back in step ",
+                     "with %s (%s): the local publish commit was dropped with `git reset --mixed`, ",
+                     "and the regenerated files are still in the working tree for the next run."),
+              reason, remote_ref, tip)
+    } else {
+      sprintf(paste0("publish_web: the publish commit was NOT pushed (%s), and resetting the branch ",
+                     "to %s also failed, so the local branch may still hold the unpushed publish ",
+                     "commit. Inspect the checkout before the next run."),
+              reason, remote_ref)
+    }
+    log_error(msg, script = .PW_LOG_SCRIPT)
+    stop(paste(c(msg, out, if (!reset$ok) reset$out), collapse = "\n"), call. = FALSE)
+  }
+  sync_with_remote <- function() {
+    f <- note(sprintf("git fetch origin %s", branch),
+              .pw_git(repo_root, c("fetch", "origin",
+                                   sprintf("+refs/heads/%s:refs/remotes/%s", branch, remote_ref))))
+    if (!f$ok) {
+      stop(sprintf("publish_web: git fetch origin %s failed; nothing was pushed and the local publish commit is still on %s:\n%s",
+                   branch, branch, paste(f$out, collapse = "\n")), call. = FALSE)
+    }
+    tip <- sha_of(remote_ref)
+    log_info(sprintf("publish_web: fetched origin %s (%s at %s).", branch, remote_ref, tip),
+             script = .PW_LOG_SCRIPT)
+    anc <- .pw_git(repo_root, c("merge-base", "--is-ancestor", remote_ref, "HEAD"))
+    if (anc$ok) return(invisible(TRUE))
+    rb <- note(sprintf("git rebase %s", remote_ref),
+               .pw_git(repo_root, c("rebase", remote_ref)))
+    if (!rb$ok) {
+      fail_back_to_origin(sprintf("rebase onto %s at %s failed", remote_ref, tip), rb$out)
+    }
+    log_info(sprintf("publish_web: rebased the publish commit onto the remote tip %s (%s); HEAD is now %s.",
+                     remote_ref, tip, sha_of("HEAD")), script = .PW_LOG_SCRIPT)
+    invisible(TRUE)
+  }
+  push_once <- function() {
+    note(sprintf("git push origin HEAD (%s)", label),
+         .pw_git(repo_root, c("push", "origin", "HEAD")))
+  }
+
+  sync_with_remote()
+  p <- push_once()
+  if (!p$ok) {
+    log_warn(sprintf("publish_web: push to origin %s was rejected; fetching and rebasing once more before retrying.",
+                     branch), script = .PW_LOG_SCRIPT)
+    sync_with_remote()
+    p <- push_once()
+    if (!p$ok) {
+      # Refresh origin/<branch> so the reset below lands on the real remote tip.
+      note(sprintf("git fetch origin %s", branch),
+           .pw_git(repo_root, c("fetch", "origin",
+                                sprintf("+refs/heads/%s:refs/remotes/%s", branch, remote_ref))))
+      fail_back_to_origin(sprintf("push to origin %s was rejected twice", branch), p$out)
+    }
+  }
+  log_info(sprintf("publish_web: pushed %s to origin %s.", sha_of("HEAD"), branch),
+           script = .PW_LOG_SCRIPT)
+  steps
+}
+
+# ------------------------------------------------------------------------------
 # Off-season baseline promotion (blueprint section 2 & 7), called by
 # publish_web() only after a successful publish commit, only in offseason mode
 # and only without --allow-degraded. Copies <cache_root>/league_state_staged.json
@@ -274,7 +379,7 @@ source("config.R")
 # is this repo's tracked cache/ copy. Extracted so it can be tested against a
 # throwaway repo (tests/testthat/test-offseason-baseline-promotion.R).
 # ------------------------------------------------------------------------------
-.pw_promote_offseason_baseline <- function(repo_root, cache_root) {
+.pw_promote_offseason_baseline <- function(repo_root, cache_root, publish_branch = NULL) {
   staged_file <- file.path(cache_root, "league_state_staged.json")
   baseline_file <- file.path(cache_root, "league_state_baseline.json")
   if (file.exists(staged_file)) {
@@ -306,11 +411,13 @@ source("config.R")
       if (!staged_diff$ok) {  # --quiet exits 1 when there ARE staged changes
         c_res <- .pw_git(repo_root, c("commit", "-m", shQuote("Promote MLB offseason baseline after publish"),
                                       "--", baseline_rel))
-        p_res <- if (c_res$ok) .pw_git(repo_root, c("push", "origin", "HEAD")) else c_res
-        if (!c_res$ok || !p_res$ok) {
-          stop("publish_web: baseline commit or push failed; baseline is promoted on disk but NOT committed:\n",
-               paste(unique(c(c_res$out, p_res$out)), collapse = "\n"))
+        if (!c_res$ok) {
+          stop("publish_web: baseline commit failed; baseline is promoted on disk but NOT committed:\n",
+               paste(c_res$out, collapse = "\n"))
         }
+        # Same fetch-rebase-retry as the publish push; on failure it resets the
+        # branch to origin and leaves the promoted baseline in the working tree.
+        .pw_push_with_rebase(repo_root, publish_branch, label = "MLB-Analytics baseline")
         log_info("publish_web: committed and pushed promoted cache/league_state_baseline.json.",
                  script = .PW_LOG_SCRIPT)
       }
@@ -1309,8 +1416,10 @@ source("config.R")
 # nothing more. The deploy belongs to the aggregator's sync-sports.yml.
 # Assertion E guarantees HEAD is the branch sync-sports.yml pulls, so
 # `push origin HEAD` reaches the ref CI will actually read.
+# The push goes through .pw_push_with_rebase(): fetch, rebase onto
+# origin/<publish_branch> if it moved during the run, push, retry once.
 # ------------------------------------------------------------------------------
-.pw_do_publish <- function(repo_root, rel_paths, commit_message) {
+.pw_do_publish <- function(repo_root, rel_paths, commit_message, publish_branch = NULL) {
   steps <- list()
   record <- function(label, res) {
     steps[[length(steps) + 1L]] <<- list(label = label, ok = res$ok, out = res$out)
@@ -1341,9 +1450,11 @@ source("config.R")
          .pw_git(repo_root, c("add", "-A", "--", stage_paths)))
   record("git commit (MLB-Analytics)",
          .pw_git(repo_root, c("commit", "-m", shQuote(commit_message))))
-  record("git push origin HEAD (MLB-Analytics)",
-         .pw_git(repo_root, c("push", "origin", "HEAD")))
-  steps
+  # Fetch, rebase onto origin/<publish_branch> when main moved during the run,
+  # push, and retry once (.pw_push_with_rebase). Never merges, stashes or
+  # hard-resets; on failure the checkout is put back in step with origin.
+  push_steps <- .pw_push_with_rebase(repo_root, publish_branch, label = "MLB-Analytics")
+  c(steps, push_steps)
 }
 
 # ------------------------------------------------------------------------------
@@ -1611,14 +1722,14 @@ publish_web <- function(dry_run = TRUE,
     return(invisible(result))
   }
 
-  result$steps <- .pw_do_publish(repo_root, checks[[3]]$paths, commit_message)
+  result$steps <- .pw_do_publish(repo_root, checks[[3]]$paths, commit_message, publish_branch)
   result$published <- TRUE
   
   # Atomic Baseline Promotion (blueprint §2 & §7):
   # In offseason mode, promote cache/league_state_staged.json to cache/league_state_baseline.json
   # ONLY after successful git publish commit, and ONLY if NOT --allow-degraded
   if (identical(mode, "offseason") && !isTRUE(allow_degraded)) {
-    .pw_promote_offseason_baseline(repo_root, MLB_CACHE_ROOT)
+    .pw_promote_offseason_baseline(repo_root, MLB_CACHE_ROOT, publish_branch)
   }
 
   log_info(sprintf("publish_web: web artifacts committed and pushed to MLB-Analytics %s. The site changes when the aggregator's sync-sports.yml next pulls; this script does not deploy.",
