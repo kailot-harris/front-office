@@ -12,11 +12,17 @@ source("tools/publish_guard.R")
 
 ok("PIPELINE_OUTPUT_DIRS covers WEB_DATA_DIR and WEB_ANIM_DIR",
    setequal(PIPELINE_OUTPUT_DIRS, c(WEB_DATA_DIR, WEB_ANIM_DIR)))
+ok("PIPELINE_OUTPUT_FILES includes data/history/ratings_history.csv",
+   "data/history/ratings_history.csv" %in% gsub("\\\\", "/", PIPELINE_OUTPUT_FILES))
 
 # --- pure classifier ---------------------------------------------------------
 r <- classify_dirty_paths(c(" M web/public/data/a.json", "?? web/public/animations/x.json"),
                           PIPELINE_OUTPUT_DIRS)
 ok("output-only tree: nothing classified as other", length(r$other) == 0L && length(r$output) == 2L)
+r <- classify_dirty_paths(c(" M web/public/data/a.json", " M data/history/ratings_history.csv"),
+                          PIPELINE_OUTPUT_DIRS, PIPELINE_OUTPUT_FILES)
+ok("ratings_history.csv is classified as output (kept), not other",
+   length(r$other) == 0L && "data/history/ratings_history.csv" %in% r$output)
 r <- classify_dirty_paths(c(" M web/public/data/a.json", " M config.R", "?? docs/n.md"),
                           PIPELINE_OUTPUT_DIRS)
 ok("code/config/docs classified as other", setequal(r$other, c("config.R", "docs/n.md")))
@@ -49,13 +55,16 @@ run_cli <- function() {
 }
 writeLines('{"w":11}', file.path(tmp, "web/public/data/a.json"))
 writeLines("{}", file.path(tmp, "web/public/data/b.json"))
+dir.create(file.path(tmp, "data/history"), recursive = TRUE)
+writeLines("date,team,metric,value", file.path(tmp, "data/history/ratings_history.csv"))
 res <- run_cli()
-ok("CLI, output-only dirty tree: exit 0, nothing to stash, output kept",
-   res$rc == 0L && length(res$other) == 0L && length(res$output) == 2L)
+ok("CLI, output-only dirty tree (incl. ratings_history.csv): exit 0, nothing to stash, output kept",
+   res$rc == 0L && length(res$other) == 0L && length(res$output) == 3L &&
+     "data/history/ratings_history.csv" %in% res$output)
 writeLines("x <- 2", file.path(tmp, "code.R"))
 res <- run_cli()
 ok("CLI, tracked code file modified: it is listed for stashing", res$rc == 0L && identical(res$other, "code.R"))
-ok("CLI, output files still listed as kept", length(res$output) == 2L)
+ok("CLI, output files still listed as kept", length(res$output) == 3L)
 unlink(tmp, recursive = TRUE)
 
 if (failures > 0L) { cat(sprintf("%d failure(s)\n", failures)); quit(status = 1L) }

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { StandingsDataset, TeamStanding } from '@/lib/types';
+import { NflActualTeamRecord, StandingsDataset, TeamStanding } from '@/lib/types';
 import {
   Trophy,
   Filter,
@@ -24,11 +24,11 @@ import {
 import { TeamLogo } from '@/components/TeamLogo';
 import { WinDistributionBoxWhisker } from '@/components/WinDistributionBoxWhisker';
 import { exportToCsv } from '@/lib/exportToCsv';
-import { NFL_ACTUAL_TEAM_RECORDS, NflActualTeamRecord } from '@/lib/actualRecords';
 import { activateOnKey, ariaSort, tablistKeys } from '@/lib/a11y';
 
 interface StandingsClientProps {
   dataset: StandingsDataset;
+  actualRecords?: Record<string, NflActualTeamRecord>;
   initialTab?: 'visualizer' | 'table' | 'divisions';
 }
 
@@ -59,7 +59,11 @@ export interface EnrichedNflTeam extends TeamStanding {
   actual_pt_diff: number;
 }
 
-export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initialTab = 'visualizer' }) => {
+export const StandingsClient: React.FC<StandingsClientProps> = ({
+  dataset,
+  actualRecords = {},
+  initialTab = 'visualizer',
+}) => {
   const [activeTab, setActiveTab] = useState<'visualizer' | 'table' | 'divisions'>(initialTab);
   const [selectedConference, setSelectedConference] = useState<'All' | 'AFC' | 'NFC'>('All');
   const [selectedDivision, setSelectedDivision] = useState<string>('All');
@@ -118,18 +122,23 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
   // Enrich teams with actual record and win pace (17 games)
   const enrichedTeams: EnrichedNflTeam[] = useMemo(() => {
     return teams.map((team) => {
-      const actual = NFL_ACTUAL_TEAM_RECORDS[team.team] || {
+      const actual = actualRecords[team.team] ?? {
         wins: 0,
         losses: 0,
         ties: 0,
-        pointsFor: team.points_for,
-        pointsAgainst: team.points_against,
+        pointsFor: Number.isFinite(team.points_for) ? team.points_for : 0,
+        pointsAgainst: Number.isFinite(team.points_against) ? team.points_against : 0,
       };
       const actual_gp = actual.wins + actual.losses + actual.ties;
       const actual_win_pct = actual_gp > 0 ? (actual.wins + 0.5 * actual.ties) / actual_gp : 0;
-      const current_pace = actual_win_pct * 17;
-      const performance_delta = current_pace - team.projected_wins;
-      const actual_pt_diff = actual.pointsFor - actual.pointsAgainst;
+      const current_pace = actual_gp > 0 && Number.isFinite(actual_win_pct) ? actual_win_pct * 17 : 0;
+      const projectedWins = Number.isFinite(team.projected_wins) ? team.projected_wins : 0;
+      const performance_delta = Number.isFinite(current_pace - projectedWins)
+        ? current_pace - projectedWins
+        : 0;
+      const actual_pt_diff = Number.isFinite(actual.pointsFor - actual.pointsAgainst)
+        ? actual.pointsFor - actual.pointsAgainst
+        : 0;
 
       return {
         ...team,
@@ -141,7 +150,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
         actual_pt_diff,
       };
     });
-  }, [teams]);
+  }, [teams, actualRecords]);
 
   // Overperformer & Underperformer callouts
   const topOverperformers = useMemo(() => {
@@ -247,7 +256,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ dataset, initi
           points_for: t.actual.pointsFor,
           points_against: t.actual.pointsAgainst,
           point_diff: t.actual_pt_diff > 0 ? `+${t.actual_pt_diff}` : `${t.actual_pt_diff}`,
-          projected_wins: t.projected_wins.toFixed(1),
+          projected_wins: (Number.isFinite(t.projected_wins) ? t.projected_wins : 0).toFixed(1),
           current_pace_17g: t.current_pace.toFixed(1),
           performance_delta: (t.performance_delta > 0 ? '+' : '') + t.performance_delta.toFixed(1),
         })),

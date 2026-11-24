@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Metadata } from 'next';
-import { getStandingsData } from '@/lib/data';
+import { getMatchupsData, getStandingsData } from '@/lib/data';
+import { deriveActualTeamRecords } from '@/lib/standingsRecords';
 import { StandingsClient } from '@/components/StandingsClient';
 import { Swords, Activity, Award } from 'lucide-react';
 import Link from 'next/link';
@@ -15,6 +16,7 @@ export const metadata: Metadata = {
 
 export default function HomePage() {
   const dataset = getStandingsData();
+  const actualRecords = deriveActualTeamRecords(getMatchupsData());
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -118,7 +120,7 @@ export default function HomePage() {
       </div>
 
       {/* Standings Interactive Client Dashboard */}
-      <StandingsClient dataset={dataset} initialTab="visualizer" />
+      <StandingsClient dataset={dataset} actualRecords={actualRecords} initialTab="visualizer" />
     </div>
   );
 }

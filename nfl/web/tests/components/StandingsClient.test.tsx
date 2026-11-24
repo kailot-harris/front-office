@@ -10,16 +10,21 @@
  * An unscoped `getByText` throws "found multiple elements" instead of testing
  * what it looks like it tests.
  */
-import { describe, expect, it } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { StandingsClient } from '../../components/StandingsClient';
-import { standings } from '../helpers/datasets';
+import { matchups, standings } from '../helpers/datasets';
+import { deriveActualTeamRecords } from '../../lib/standingsRecords';
+import * as exportCsvMod from '../../lib/exportToCsv';
 
 const dataset = standings();
+const actualRecords = deriveActualTeamRecords(matchups());
 const TEAM_NAMES = new Set(dataset.teams.map((t) => t.team_name));
 
 function renderTable() {
-  const { container } = render(<StandingsClient dataset={dataset} initialTab="table" />);
+  const { container } = render(
+    <StandingsClient dataset={dataset} actualRecords={actualRecords} initialTab="table" />,
+  );
   const table = container.querySelector('table');
   if (!table) throw new Error('table view rendered without a <table>');
   return { container, table: table as HTMLTableElement };
@@ -257,13 +262,13 @@ describe('StandingsClient resilience', () => {
 });
 
 describe('StandingsClient Projections vs. Reality tracker', () => {
-  it('renders overperformer and underperformer callouts banner', () => {
-    render(<StandingsClient dataset={dataset} />);
+  it('renders overperformer and underperformer callouts banner with derived records', () => {
+    render(<StandingsClient dataset={dataset} actualRecords={actualRecords} />);
     expect(screen.getByText(/league overperformers/i)).toBeInTheDocument();
     expect(screen.getByText(/league underperformers/i)).toBeInTheDocument();
   });
 
-  it('toggles Projections vs. Reality sub-view in table and renders delta headers', () => {
+  it('toggles Projections vs. Reality sub-view in table and renders derived W-L-T, PF, PA without NaN/undefined', () => {
     const { container } = renderTable();
     const realityBtn = screen.getByRole('tab', { name: /projections vs\. reality/i });
     expect(realityBtn).toBeInTheDocument();
@@ -272,16 +277,65 @@ describe('StandingsClient Projections vs. Reality tracker', () => {
     expect(screen.getByText(/actual record \(w-l-t\)/i)).toBeInTheDocument();
     expect(screen.getByText(/current win pace/i)).toBeInTheDocument();
     expect(screen.getByText(/performance delta/i)).toBeInTheDocument();
+
+    const sea = actualRecords.SEA;
+    expect(sea).toBeDefined();
+    expect(container.textContent).toContain(`${sea.wins}-${sea.losses}-${sea.ties}`);
     expect(container.textContent).not.toMatch(/NaN|undefined/);
   });
 
   it('updates 8 Divisions view when Projections vs. Reality mode is toggled', () => {
-    const { container } = render(<StandingsClient dataset={dataset} initialTab="divisions" />);
+    const { container } = render(
+      <StandingsClient dataset={dataset} actualRecords={actualRecords} initialTab="divisions" />,
+    );
     const realityBtn = screen.getByRole('tab', { name: /projections vs\. reality/i });
     fireEvent.click(realityBtn);
 
     expect(screen.getByText(/benchmarked against 17-game pace/i)).toBeInTheDocument();
     expect(container.textContent).toMatch(/pace/i);
     expect(container.textContent).not.toMatch(/NaN|undefined/);
+  });
+
+  it('keeps pace, delta, and CSV export finite when actualRecords is empty', () => {
+    const exportSpy = vi.spyOn(exportCsvMod, 'exportToCsv').mockImplementation(() => {});
+    const { container } = render(
+      <StandingsClient dataset={dataset} actualRecords={{}} initialTab="table" />,
+    );
+    fireEvent.click(screen.getByRole('tab', { name: /projections vs\. reality/i }));
+    expect(container.textContent).not.toMatch(/NaN|undefined/);
+
+    const exportBtn = screen.getByRole('button', { name: /export standings table as csv/i });
+    fireEvent.click(exportBtn);
+    expect(exportSpy).toHaveBeenCalledTimes(1);
+    const rows = exportSpy.mock.calls[0][0] as Array<Record<string, unknown>>;
+    expect(rows).toHaveLength(32);
+    for (const row of rows) {
+      for (const val of Object.values(row)) {
+        expect(String(val)).not.toMatch(/NaN|undefined/);
+      }
+    }
+    exportSpy.mockRestore();
+  });
+
+  it('exports finite derived records in reality mode CSV without NaN/undefined', () => {
+    const exportSpy = vi.spyOn(exportCsvMod, 'exportToCsv').mockImplementation(() => {});
+    renderTable();
+    fireEvent.click(screen.getByRole('tab', { name: /projections vs\. reality/i }));
+    fireEvent.click(screen.getByRole('button', { name: /export standings table as csv/i }));
+
+    expect(exportSpy).toHaveBeenCalledTimes(1);
+    const rows = exportSpy.mock.calls[0][0] as Array<Record<string, unknown>>;
+    expect(rows).toHaveLength(32);
+    const seaRow = rows.find((r) => r.team === 'SEA');
+    const sea = actualRecords.SEA;
+    expect(seaRow?.actual_record).toBe(`${sea.wins}-${sea.losses}-${sea.ties}`);
+    expect(seaRow?.points_for).toBe(sea.pointsFor);
+    expect(seaRow?.points_against).toBe(sea.pointsAgainst);
+    for (const row of rows) {
+      for (const val of Object.values(row)) {
+        expect(String(val)).not.toMatch(/NaN|undefined/);
+      }
+    }
+    exportSpy.mockRestore();
   });
 });
