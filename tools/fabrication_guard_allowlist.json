@@ -175,6 +175,258 @@
       "rule": "hardcoded_metric_vector",
       "pattern": "c\\(2L, 3L, 5L\\)",
       "justification": "ESPN season-type codes (2 regular season, 3 postseason, 5 play-in) selecting the prior season's games that seed the Elo carry-over."
+    },
+    {
+      "file": "mlb/config.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\((?:5, 4, 3|3, 2, 1)\\)",
+      "justification": "Standard 3-year Marcel batter (5/4/3) and pitcher (3/2/1) recency projection weights in MLB_MARCEL_WEIGHTS."
+    },
+    {
+      "file": "mlb/mlb_marcel_baseline.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\((?:5, 4, 3|3, 2, 1)\\)",
+      "justification": "Standard 3-year Marcel batter (5/4/3) and pitcher (3/2/1) recency projection weight fallbacks."
+    },
+    {
+      "file": "mlb/mlb_marcel_baseline.R",
+      "rule": "affine_clamp_formula",
+      "pattern": "pmax\\((?:0\\.22, pmin\\(0\\.48, raw_obp|1\\.80, pmin\\(7\\.50, raw_era)",
+      "justification": "Physical MLB OBP [0.220, 0.480] and ERA [1.80, 7.50] projection bounds on age-adjusted Marcel empirical averages."
+    },
+    {
+      "file": "mlb/mlb_stats_sync.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(2024, 2025, 2026\\)",
+      "justification": "Default 3-season historical window vector for FanGraphs stats sync."
+    },
+    {
+      "file": "mlb/mlb_postseason_simulator.R",
+      "rule": "unreviewed_rng",
+      "pattern": "runif\\(1\\)",
+      "justification": "Seeded (set.seed(season * 1000 + 42)) 10,000-iteration MLB postseason bracket Monte Carlo simulator."
+    },
+    {
+      "file": "mlb/mlb_series_simulator.R",
+      "rule": "unreviewed_rng",
+      "pattern": "runif\\(1\\)",
+      "justification": "Seeded (set.seed(1234 + ...)) MLB best-of-N playoff series Monte Carlo simulator."
+    },
+    {
+      "file": "mlb/tools/offseason/check_spring_training_trigger.R",
+      "rule": "player_name_override",
+      "pattern": "grepl\\(\"(?:Spring|Exhibition)\", s_desc",
+      "justification": "Matches MLB schedule game-type descriptions ('Spring', 'Exhibition') for spring training detection, not player names."
+    },
+    {
+      "file": "mlb/tools/offseason/check_spring_training_trigger.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(\\s*108, 109, 110",
+      "justification": "Official 30-team MLB Stats API franchise IDs used to filter Cactus/Grapefruit League spring training schedules."
+    },
+    {
+      "file": "mlb/tools/postseason_feed.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(F = 1L, D = 2L, L = 3L\\)",
+      "justification": "MLB postseason round sort-order map (Wild Card=F, Division=D, League Championship=L)."
+    },
+    {
+      "file": "mlb/tools/postseason_feed.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(2L, 3L, 4L, 4L\\)",
+      "justification": "Official MLB postseason series wins-to-advance thresholds (WC=2, DS=3, LCS=4, WS=4)."
+    },
+    {
+      "file": "nba/playoff_simulator.R",
+      "rule": "unreviewed_rng",
+      "pattern": "runif\\(1\\)",
+      "justification": "Seeded (set.seed(42 + ...)) 10,000-trial NBA playoff series Monte Carlo simulator."
+    },
+    {
+      "file": "nba/playoff_simulator.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(36\\.5, 35\\.0, 34\\.0, 32\\.5, 30\\.5, 25\\.5, 23\\.5, 22\\.5\\)",
+      "justification": "Standard 8-man NBA 48-minute regulation playoff rotation minute template (sums to 240 team minutes)."
+    },
+    {
+      "file": "nba/roster_bottom_up_engine.R",
+      "rule": "affine_clamp_formula",
+      "pattern": "pmax\\(-5\\.0, pmin\\(12\\.0, 0\\.50 \\* centered_box \\+ 0\\.50 \\* centered_pm\\)\\)",
+      "justification": "50/50 box-score and shrinkage-adjusted empirical plus-minus BPM fusion bounded to [-5.0, 12.0]."
+    },
+    {
+      "file": "nba/season_simulator.R",
+      "rule": "unreviewed_rng",
+      "pattern": "(?:runif\\(|rbinom\\(|rnorm\\(|sample\\()",
+      "justification": "Seeded (set.seed(SIM_SEED)) 1,000-season NBA regular-season and player-availability Monte Carlo simulator."
+    },
+    {
+      "file": "nba/season_simulator.R",
+      "rule": "player_name_override",
+      "pattern": "grepl\\(\"SYNTHETIC\", src, ignore\\.case = TRUE\\)",
+      "justification": "Provenance guard checking whether data_source contains 'SYNTHETIC', not a player-name override."
+    },
+    {
+      "file": "nba/season_simulator.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "tibble::tribble\\(\\s*~team",
+      "justification": "Canonical 30-team NBA franchise metadata and arena coordinate (lat/lon/tz/alt) lookup tables."
+    },
+    {
+      "file": "nba/season_simulator.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\((?:36, 34, 32|25, 20, 16|7, 8, 5|6, 4, 4|34, 32, 30)",
+      "justification": "NBA 10-man rotation minute allocation and historical starter/bench box-score prior templates."
+    },
+    {
+      "file": "nba/tools/backfill_week1_predictions.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(bottom_up = 0\\.35, rapm = 0\\.25, shot_fatigue = 0\\.20, embeddings = 0\\.20\\)",
+      "justification": "Documented 4-model NBA ensemble blend weights (35% bottom-up, 25% RAPM, 20% shot/fatigue, 20% embeddings)."
+    },
+    {
+      "file": "nba/tools/plot_today_predictions.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(0, 25, 50, 75, 100\\)",
+      "justification": "Standard 0-100% chart axis break ticks for daily win-probability plots."
+    },
+    {
+      "file": "nba/tools/publish_web.R",
+      "rule": "player_name_override",
+      "pattern": "grep\\(\"TEST SUITE SUMMARY\"",
+      "justification": "Parses pre-publish test runner stdout header ('TEST SUITE SUMMARY'), not a player name."
+    },
+    {
+      "file": "nfl/fatigue_engine.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\((?:33\\.5276|-112\\.2626|-7, -5|1132, 1050|37\\.7516|-122\\.2005|-8, -8|10, 20)",
+      "justification": "Fixed physical NFL stadium geographic coordinates (latitude, longitude, UTC offset, elevation in feet)."
+    },
+    {
+      "file": "nfl/playoff_odds_engine.R",
+      "rule": "unreviewed_rng",
+      "pattern": "runif\\(1\\)",
+      "justification": "Seeded NFL postseason bracket Monte Carlo simulator."
+    },
+    {
+      "file": "nfl/playoff_simulator.R",
+      "rule": "unreviewed_rng",
+      "pattern": "runif\\(1\\)",
+      "justification": "Seeded NFL playoff matchup Monte Carlo simulator."
+    },
+    {
+      "file": "nfl/tools/refresh_live_results.R",
+      "rule": "affine_clamp_formula",
+      "pattern": "pmin\\(pmax\\(p, clamp\\), 1 - clamp\\)",
+      "justification": "Symmetric probability epsilon clip [clamp, 1 - clamp] preventing infinite log-loss on 0/1 probabilities."
+    },
+    {
+      "file": "wnba/fatigue_travel_engine.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\((?:33\\.6404|-84\\.4415|-5, -6|1010, 597|0, 1, 0, 2)",
+      "justification": "Fixed physical WNBA arena geographic coordinates (latitude, longitude, UTC offset, elevation) and rest-day bucket thresholds."
+    },
+    {
+      "file": "wnba/playoff_simulator.R",
+      "rule": "unreviewed_rng",
+      "pattern": "runif\\(1\\)",
+      "justification": "Seeded (set.seed(WNBA_PLAYOFF_SIM_SEED + matchup_offset)) WNBA playoff series Monte Carlo simulator."
+    },
+    {
+      "file": "wnba/playoff_simulator.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\((?:\\s*\"Minnesota Lynx\" = 2\\.2|12\\.14, 12\\.09, 6\\.0, 3\\.0)",
+      "justification": "WNBA team home-court advantage and playoff-round baseline calibration constants."
+    },
+    {
+      "file": "wnba/rapm_engine.R",
+      "rule": "unreviewed_rng",
+      "pattern": "sample\\(rep_len\\(seq_len\\(k\\), n_poss\\)\\)",
+      "justification": "Seeded (set.seed(seed)) k-fold cross-validation fold assignment for Ridge RAPM lambda selection."
+    },
+    {
+      "file": "wnba/rapm_engine.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(250, 500, 750",
+      "justification": "L2 Ridge regression regularization lambda search grid for cross-validated RAPM fitting."
+    },
+    {
+      "file": "wnba/roster_bottom_up_engine.R",
+      "rule": "affine_clamp_formula",
+      "pattern": "pmax\\((?:-5\\.0, pmin\\(12\\.0|-2\\.5, pmin\\(6\\.0)",
+      "justification": "50/50 box-score and shrinkage-adjusted empirical plus-minus BPM fusion and offense/defense split bounded to [-5, 12] / [-2.5, 6]."
+    },
+    {
+      "file": "mlb/mlb_series_simulator.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(1, 2, 3(?:, 4, 1(?:, 2, 3)?)?\\)",
+      "justification": "MLB postseason series starting-pitcher rotation slot order templates for Best-of-3, Best-of-5, and Best-of-7 series."
+    },
+    {
+      "file": "nba/rapm_engine.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(250, 500, 1000, 2000, 3000, 5000, 8000, 12000, 20000\\)",
+      "justification": "L2 Ridge regression regularization lambda search grid for cross-validated RAPM fitting."
+    },
+    {
+      "file": "nba/rapm_engine.R",
+      "rule": "unreviewed_rng",
+      "pattern": "sample\\(rep_len\\(seq_len\\(k\\), dm\\$n_possessions\\)\\)",
+      "justification": "K-fold cross-validation fold assignment permutation in RAPM Ridge regularization tuning."
+    },
+    {
+      "file": "nba/season_simulator.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(\\s*\"Out\" = 0\\.45, \"Doubtful\" = 0\\.25",
+      "justification": "NBA injury-report status expected availability penalty weights applied to real injury-cache records."
+    },
+    {
+      "file": "nba/shot_quality_engine.R",
+      "rule": "affine_clamp_formula",
+      "pattern": "pmax\\(0, pmin\\(47, coordinate_y_raw \\+ 4\\.0\\)\\)",
+      "justification": "Physical NBA half-court y-coordinate boundary clamp ([0, 47] ft from baseline to half-court)."
+    }
+  ],
+  "exclusions": [
+    {
+      "file": "mlb/tests/testthat/test-cbt-payroll.R",
+      "justification": "Automated testthat unit test writing CBT payroll fixture payloads into isolated temporary directories."
+    },
+    {
+      "file": "mlb/tests/testthat/test-mlb-ingest.R",
+      "justification": "Automated testthat unit test writing synthetic fixture payloads into isolated temporary directories."
+    },
+    {
+      "file": "mlb/tests/testthat/test-mlb-spatial-stage.R",
+      "justification": "Automated testthat unit test writing spatial fixture payloads into isolated temporary directories."
+    },
+    {
+      "file": "mlb/tools/offseason/test_dag_end_to_end.R",
+      "justification": "Automated offseason DAG end-to-end test harness creating temporary test fixtures."
+    },
+    {
+      "file": "nba/tests/test_build_game_details.R",
+      "justification": "Automated unit test suite writing mock game-details JSON fixtures into isolated temporary directories."
+    },
+    {
+      "file": "nfl/tests/test_coaching_dataset.R",
+      "justification": "Automated unit test suite writing mock coaching JSON fixtures into isolated temporary directories."
+    },
+    {
+      "file": "nfl/tests/test_data_manifest_and_lag_gate.R",
+      "justification": "Automated unit test suite writing mock manifest JSON fixtures into isolated temporary directories."
+    },
+    {
+      "file": "nfl/tests/test_manifest_lifecycle_gate.R",
+      "justification": "Automated unit test suite writing mock lifecycle JSON fixtures into isolated temporary directories."
+    },
+    {
+      "file": "nfl/tests/test_pure_functions.R",
+      "justification": "Automated unit test suite testing pure helper functions with mock JSON fixtures in temporary directories."
+    },
+    {
+      "file": "wnba/tests/unit/test_landing_digest.R",
+      "justification": "Automated unit test suite writing mock landing-digest JSON fixtures into isolated temporary directories."
     }
   ]
 }

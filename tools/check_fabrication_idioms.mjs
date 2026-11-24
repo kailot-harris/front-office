@@ -1,11 +1,19 @@
 #!/usr/bin/env node
 /**
- * Static veracity guard for R pipeline builders and exporters (front-office#108).
+ * Static veracity guard for R pipeline builders, stage scripts, and web data
+ * writers (front-office#108, front-office#228).
  *
- * Scans recursive `build_*.R` and `export_*.R` scripts under this repo's four
- * read-only sport subtree mirrors (`mlb/`, `nba/`, `nfl/`, `wnba/`, skipping
- * `node_modules`, `.git`, `renv`, and `archive`) for four classes of synthetic
- * data fabrication idioms:
+ * Scans R scripts under this repo's four read-only sport subtree mirrors
+ * (`mlb/`, `nba/`, `nfl/`, `wnba/`, skipping `node_modules`, `.git`, `renv`,
+ * and `archive`) selected by behavior:
+ *   1. `published_writer`: writes via `write_json(`, `writeLines(`, or
+ *      `saveRDS(` in a file referencing `WEB_DATA_DIR`, `WEB_JSON_*`, or
+ *      `web/public/data`.
+ *   2. `pipeline_stage`: any R script sourced or run by `run_full_pipeline.R`
+ *      (including via `pipeline_stages.R`).
+ *   3. `build_or_export_floor`: any `build_*.R` or `export_*.R` filename floor.
+ *
+ * Checks for four classes of synthetic data fabrication idioms:
  *   1. `unreviewed_rng`: RNG calls (`runif(`, `rnorm(`, `sample(`, etc.) outside
  *      reviewed allow-list entries (which must also carry `set.seed(` in-file).
  *   2. `player_name_override`: Player-name literal conditional overrides
@@ -16,6 +24,9 @@
  *      nonparametric `percent_rank(` scalers).
  *   4. `hardcoded_metric_vector`: Hard-coded `tribble(` tables or numeric
  *      vector literals `c(num, num, num, ...)` (outside `%in% c(...)` filters).
+ *
+ * Files may be excluded only via explicit reason-annotated entries in
+ * `exclusions` inside `tools/fabrication_guard_allowlist.json`.
  *
  * R `#` comments are stripped in-place (preserving line numbers and `#` inside
  * quoted strings) so explanatory comments never false-trigger.
@@ -45,7 +56,10 @@ const DEFAULT_ALLOWLIST = join(__dirname, 'fabrication_guard_allowlist.json');
 
 export const SPORTS = ['mlb', 'nba', 'nfl', 'wnba'];
 export const SKIP_DIRS = new Set(['node_modules', '.git', 'renv', 'archive']);
-export const TARGET_FILE_RE = /^(build_|export_).*\.R$/;
+export const TARGET_FILE_RE = /^(build_|export_).*\.R$/i;
+export const WRITER_CALL_RE = /(?<![A-Za-z0-9_.])(write_json|writeLines|saveRDS)\s*\(/;
+export const PUBLISHED_TARGET_RE = /\bWEB_DATA_DIR\b|\bWEB_JSON_[A-Z0-9_]+\b|web[/\\]+public[/\\]+data|file\.path\([^)]*['"]web['"][^)]*['"]public['"][^)]*['"]data['"]/i;
+const R_SCRIPT_REF_RE = /['"]([A-Za-z0-9_./-]+\.R)['"]/g;
 
 export const RULES = {
   UNREVIEWED_RNG: 'unreviewed_rng',
@@ -427,7 +441,7 @@ export function loadAllowlist(allowlistPath) {
     throw new Error(`Allow-list at ${allowlistPath} must contain an 'entries' array.`);
   }
 
-  return rawEntries.map((entry, idx) => {
+  const entries = rawEntries.map((entry, idx) => {
     if (!entry || typeof entry !== 'object') {
       throw new Error(`Allow-list entry #${idx} must be an object.`);
     }
@@ -458,6 +472,26 @@ export function loadAllowlist(allowlistPath) {
 
     return { file, rule, pattern, justification, regex };
   });
+
+  const rawExclusions = Array.isArray(parsed?.exclusions) ? parsed.exclusions : [];
+  const exclusions = rawExclusions.map((excl, idx) => {
+    if (!excl || typeof excl !== 'object') {
+      throw new Error(`Allow-list exclusion #${idx} must be an object.`);
+    }
+    const file = typeof excl.file === 'string' ? excl.file.replace(/\\/g, '/').trim() : '';
+    const justification = typeof excl.justification === 'string' ? excl.justification.trim() : '';
+
+    if (!file || file.includes('*')) {
+      throw new Error(`Allow-list exclusion #${idx} must specify an exact relative 'file' path (no wildcards).`);
+    }
+    if (justification.length < 15 || /[\r\n]/.test(justification) || /^(todo|tbd|fixme)$/i.test(justification)) {
+      throw new Error(`Allow-list exclusion #${idx} (${file}) must include a concrete one-line 'justification'.`);
+    }
+
+    return { file, justification };
+  });
+
+  return { entries, exclusions };
 }
 
 /** Scans a single R file and returns raw (pre-allowlist) findings plus seed status. */
@@ -477,34 +511,95 @@ export function scanFile(absPath, relPath) {
   return { findings, hasSetSeed };
 }
 
-function collectTargetFiles(rootDir) {
-  const collected = [];
+function collectPipelineStageRefs(rootDir, sport, sportFileSet) {
+  const stageRefs = new Set();
+  const pipelineFiles = [`${sport}/run_full_pipeline.R`];
+  const registryPath = `${sport}/pipeline_stages.R`;
+  if (sportFileSet.has(registryPath)) {
+    pipelineFiles.push(registryPath);
+  }
 
-  function walk(dir) {
-    let entries;
+  for (const relPipeline of pipelineFiles) {
+    if (!sportFileSet.has(relPipeline)) continue;
+    const absPipeline = join(rootDir, relPipeline);
+    let stripped;
     try {
-      entries = readdirSync(dir, { withFileTypes: true });
+      stripped = stripRCommentsPreserveLines(readFileSync(absPipeline, 'utf8'));
     } catch {
-      return;
+      continue;
     }
-    for (const entry of entries) {
-      if (SKIP_DIRS.has(entry.name)) continue;
-      if (entry.isSymbolicLink()) continue;
-      const fullPath = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        walk(fullPath);
-      } else if (entry.isFile() && TARGET_FILE_RE.test(entry.name)) {
-        collected.push({
-          absPath: fullPath,
-          relPath: relative(rootDir, fullPath).replace(/\\/g, '/'),
-        });
+    for (const m of stripped.matchAll(R_SCRIPT_REF_RE)) {
+      const candidate = `${sport}/${m[1].replace(/^\.\//, '')}`;
+      if (sportFileSet.has(candidate)) {
+        stageRefs.add(candidate);
       }
     }
   }
 
+  return stageRefs;
+}
+
+function collectTargetFiles(rootDir) {
+  const collected = [];
+
   for (const sport of SPORTS) {
     const sportDir = join(rootDir, sport);
-    if (existsSync(sportDir)) walk(sportDir);
+    if (!existsSync(sportDir)) continue;
+
+    const allSportRFiles = [];
+    function walk(dir) {
+      let entries;
+      try {
+        entries = readdirSync(dir, { withFileTypes: true });
+      } catch {
+        return;
+      }
+      for (const entry of entries) {
+        if (SKIP_DIRS.has(entry.name)) continue;
+        if (entry.isSymbolicLink()) continue;
+        const fullPath = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(fullPath);
+        } else if (entry.isFile() && /\.R$/i.test(entry.name)) {
+          allSportRFiles.push({
+            name: entry.name,
+            absPath: fullPath,
+            relPath: relative(rootDir, fullPath).replace(/\\/g, '/'),
+          });
+        }
+      }
+    }
+
+    walk(sportDir);
+    const sportFileSet = new Set(allSportRFiles.map((f) => f.relPath));
+    const stageRefs = collectPipelineStageRefs(rootDir, sport, sportFileSet);
+
+    for (const file of allSportRFiles) {
+      const reasons = [];
+      if (TARGET_FILE_RE.test(file.name)) {
+        reasons.push('build_or_export_floor');
+      }
+      if (stageRefs.has(file.relPath)) {
+        reasons.push('pipeline_stage');
+      }
+      let raw;
+      try {
+        raw = readFileSync(file.absPath, 'utf8');
+      } catch {
+        raw = '';
+      }
+      const stripped = stripRCommentsPreserveLines(raw);
+      if (WRITER_CALL_RE.test(stripped) && PUBLISHED_TARGET_RE.test(stripped)) {
+        reasons.push('published_writer');
+      }
+      if (reasons.length > 0) {
+        collected.push({
+          absPath: file.absPath,
+          relPath: file.relPath,
+          reasons,
+        });
+      }
+    }
   }
 
   collected.sort((a, b) => a.relPath.localeCompare(b.relPath));
@@ -513,17 +608,27 @@ function collectTargetFiles(rootDir) {
 
 /** Scans the target tree and applies the reviewed allow-list. */
 export function scanRepository({ rootDir = DEFAULT_ROOT, allowlistPath = DEFAULT_ALLOWLIST } = {}) {
-  const allowlist = loadAllowlist(allowlistPath);
+  const { entries: allowlist, exclusions } = loadAllowlist(allowlistPath);
+  const exclusionMap = new Map(exclusions.map((e) => [e.file, e]));
   const files = collectTargetFiles(rootDir);
 
   if (files.length === 0) {
-    throw new Error(`No build_*.R or export_*.R files found under ${SPORTS.join('/, ')}/ in ${rootDir}`);
+    throw new Error(`No target R files found under ${SPORTS.join('/, ')}/ in ${rootDir}`);
   }
 
   const violations = [];
+  const scannedFiles = [];
+  const excludedFiles = [];
   let allowlistedHits = 0;
 
-  for (const { absPath, relPath } of files) {
+  for (const { absPath, relPath, reasons } of files) {
+    const excluded = exclusionMap.get(relPath);
+    if (excluded) {
+      excludedFiles.push({ file: relPath, reasons, justification: excluded.justification });
+      continue;
+    }
+
+    scannedFiles.push({ file: relPath, reasons });
     const { findings, hasSetSeed } = scanFile(absPath, relPath);
     for (const finding of findings) {
       const matchedAllow = allowlist.find(
@@ -549,7 +654,9 @@ export function scanRepository({ rootDir = DEFAULT_ROOT, allowlistPath = DEFAULT
   }
 
   return {
-    filesScanned: files.length,
+    filesScanned: scannedFiles.length,
+    scannedFiles,
+    excludedFiles,
     allowlistEntries: allowlist.length,
     allowlistedHits,
     violations,
@@ -592,6 +699,13 @@ function main() {
     process.exit(1);
   }
 
+  for (const f of report.scannedFiles) {
+    console.log(`  [SCAN] ${f.file} (reasons: ${f.reasons.join(', ')})`);
+  }
+  for (const ex of report.excludedFiles) {
+    console.log(`  [EXCLUDED] ${ex.file} (reasons: ${ex.reasons.join(', ')}; justification: ${ex.justification})`);
+  }
+
   if (report.violations.length > 0) {
     console.error(
       `check_fabrication_idioms: FAILED -- ${report.violations.length} unreviewed fabrication idiom(s) detected across ${report.filesScanned} file(s):`
@@ -608,7 +722,7 @@ function main() {
   }
 
   console.log(
-    `check_fabrication_idioms: OK -- scanned ${report.filesScanned} R file(s) across ${SPORTS.length} sports (${report.allowlistedHits} allow-listed hit(s), 0 violations)`
+    `check_fabrication_idioms: OK -- scanned ${report.filesScanned} R file(s) across ${SPORTS.length} sports (${report.excludedFiles.length} excluded, ${report.allowlistedHits} allow-listed hit(s), 0 violations)`
   );
 }
 

@@ -269,6 +269,112 @@ test('skips archive/ and renv/ directories and non-builder R files', () => {
   );
 });
 
+test('flags (exit 1) non-build_ writer to web/public/data with runif(', () => {
+  withTempWorkspace(
+    {
+      'nba/publish_custom_metrics.R': [
+        'payload <- list(score = runif(5))',
+        'jsonlite::write_json(payload, "web/public/data/custom.json")',
+        '',
+      ].join('\n'),
+    },
+    (root, allowPath) => {
+      const res = runGuard({ rootDir: root, allowlistPath: allowPath });
+      assert.equal(res.status, 1);
+      assert.match(res.output, /\[SCAN\] nba\/publish_custom_metrics\.R \(reasons: published_writer\)/);
+      assert.match(res.output, /nba\/publish_custom_metrics\.R:1 \[unreviewed_rng\]/);
+    }
+  );
+});
+
+test('scans (exit 1) pipeline stage referenced by run_full_pipeline.R', () => {
+  withTempWorkspace(
+    {
+      'nba/run_full_pipeline.R': [
+        'run_stage("custom_engine.R", "Run custom engine")',
+        '',
+      ].join('\n'),
+      'nba/custom_engine.R': [
+        'val <- rnorm(10)',
+        '',
+      ].join('\n'),
+    },
+    (root, allowPath) => {
+      const res = runGuard({ rootDir: root, allowlistPath: allowPath });
+      assert.equal(res.status, 1);
+      assert.match(res.output, /\[SCAN\] nba\/custom_engine\.R \(reasons: pipeline_stage\)/);
+      assert.match(res.output, /nba\/custom_engine\.R:1 \[unreviewed_rng\]/);
+    }
+  );
+});
+
+test('does not scan research script outside published path or pipeline', () => {
+  withTempWorkspace(
+    {
+      'nba/build_ok.R': 'x <- 1 + 1\n',
+      'nba/research/backtest_experiment.R': [
+        'sim <- runif(100)',
+        'jsonlite::write_json(list(sim = sim), "cache/research_backtest.json")',
+        '',
+      ].join('\n'),
+    },
+    (root, allowPath) => {
+      const res = runGuard({ rootDir: root, allowlistPath: allowPath });
+      assert.equal(res.status, 0, `Expected pass, got:\n${res.output}`);
+      assert.match(res.output, /\[SCAN\] nba\/build_ok\.R \(reasons: build_or_export_floor\)/);
+      assert.doesNotMatch(res.output, /backtest_experiment\.R/);
+      assert.match(res.output, /scanned 1 R file\(s\)/);
+    }
+  );
+});
+
+test('excluded file requires concrete allowlist justification and passes when justified', () => {
+  const files = {
+    'nba/build_ok.R': 'x <- 1 + 1\n',
+    'nba/tests/test_mock_writer.R': [
+      'sim <- runif(3)',
+      'jsonlite::write_json(list(sim = sim), file.path(WEB_DATA_DIR, "mock.json"))',
+      '',
+    ].join('\n'),
+  };
+
+  const missingJustAllowlist = JSON.stringify(
+    {
+      schema_version: '1.0',
+      entries: [],
+      exclusions: [{ file: 'nba/tests/test_mock_writer.R', justification: 'TODO' }],
+    },
+    null,
+    2
+  );
+  withTempWorkspace(files, (root, allowPath) => {
+    const res = runGuard({ rootDir: root, allowlistPath: allowPath });
+    assert.equal(res.status, 1);
+    assert.match(res.output, /Allow-list exclusion #0 .* must include a concrete one-line 'justification'/);
+  }, missingJustAllowlist);
+
+  const validJustAllowlist = JSON.stringify(
+    {
+      schema_version: '1.0',
+      entries: [],
+      exclusions: [
+        {
+          file: 'nba/tests/test_mock_writer.R',
+          justification: 'Unit test fixture writing mock JSON to an isolated temp WEB_DATA_DIR.',
+        },
+      ],
+    },
+    null,
+    2
+  );
+  withTempWorkspace(files, (root, allowPath) => {
+    const res = runGuard({ rootDir: root, allowlistPath: allowPath });
+    assert.equal(res.status, 0, `Expected pass, got:\n${res.output}`);
+    assert.match(res.output, /\[EXCLUDED\] nba\/tests\/test_mock_writer\.R/);
+    assert.match(res.output, /1 excluded/);
+  }, validJustAllowlist);
+});
+
 let passed = 0;
 for (const { name, fn } of tests) {
   try {
