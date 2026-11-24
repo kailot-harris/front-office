@@ -217,7 +217,7 @@ if (file.exists(file.path("tools", "write_data_manifest.R"))) {
   if (nzchar(up) && file.exists(file.path(up, ".gitconfig"))) {
     Sys.setenv(HOME = up)
   }
-  if (identical(args[1], "commit")) {
+  if (args[1] %in% c("commit", "rebase")) {
     user_name <- Sys.getenv("GIT_AUTHOR_NAME", Sys.getenv("GIT_COMMITTER_NAME", ""))
     user_email <- Sys.getenv("GIT_AUTHOR_EMAIL", Sys.getenv("GIT_COMMITTER_EMAIL", ""))
     if (!nzchar(user_name) || !nzchar(user_email)) {
@@ -901,7 +901,7 @@ if (file.exists(file.path("tools", "write_data_manifest.R"))) {
 # Assertion E guarantees HEAD is the branch sync-sports.yml pulls, so `push
 # origin HEAD` reaches the ref that CI will actually read.
 # ------------------------------------------------------------------------------
-.pw_do_publish <- function(repo_root, commit_message) {
+.pw_do_publish <- function(repo_root, commit_message, publish_branch = "main") {
   steps <- list()
   record <- function(label, res) {
     steps[[length(steps) + 1L]] <<- list(label = label, ok = res$ok, out = res$out)
@@ -918,9 +918,82 @@ if (file.exists(file.path("tools", "write_data_manifest.R"))) {
     record("git add data/history/ratings_history.csv", .pw_git(repo_root, c("add", "--", hist)))
   record("git commit (NFL_analytics)",
          .pw_git(repo_root, c("commit", "-m", shQuote(commit_message))))
-  record("git push origin HEAD (NFL_analytics)",
-         .pw_git(repo_root, c("push", "origin", "HEAD")))
-  steps
+  c(steps, .pw_push_with_rebase(repo_root, publish_branch))
+}
+
+# ------------------------------------------------------------------------------
+# Push that survives commits landing on the publish branch mid-run.
+# 2026-11-24: a run committed its publish, then `push origin HEAD` was rejected
+# ("fetch first") because PRs merged into main during the run; the local commit
+# stayed behind and the checkout diverged. Now: fetch, rebase the publish commit
+# onto origin/<branch> (publish commits only touch generated data, so never a
+# merge commit), push; on rejection fetch + rebase + push exactly once more.
+# On a rebase conflict or a second rejection: `rebase --abort`, then
+# `reset --mixed origin/<branch>` (moves the branch back, leaves every
+# working-tree file alone; never --hard, never stash), and fail loudly. No local
+# commit is ever left behind; the regenerated files stay in the working tree.
+# ------------------------------------------------------------------------------
+.pw_push_log <- function(msg) {
+  if (exists("log_info", mode = "function")) {
+    tryCatch(log_info(msg), error = function(e) cat(msg, "\n", sep = ""))
+  } else cat(msg, "\n", sep = "")
+}
+
+.pw_push_with_rebase <- function(repo_root, publish_branch) {
+  steps <- list()
+  remote_ref <- paste0("origin/", publish_branch)
+  add <- function(label, res) {
+    steps[[length(steps) + 1L]] <<- list(label = label, ok = res$ok, out = res$out)
+    res
+  }
+  sha <- function(ref) {
+    r <- .pw_git(repo_root, c("rev-parse", ref))
+    if (r$ok && length(r$out)) r$out[1] else NA_character_
+  }
+  roll_back <- function(why, detail) {
+    add("git rebase --abort (NFL_analytics)", .pw_git(repo_root, c("rebase", "--abort")))
+    reset <- add(sprintf("git reset --mixed %s (NFL_analytics)", remote_ref),
+                 .pw_git(repo_root, c("reset", "--mixed", "-q", remote_ref)))
+    msg <- sprintf(paste0(
+      "publish_web: %s. The publish commit was NOT pushed. %s ",
+      "The regenerated files are still in the working tree for the next run.\n%s"),
+      why,
+      if (reset$ok) sprintf("The checkout is back in step with %s (%s); no local commit is left behind.",
+                            remote_ref, sha("HEAD"))
+      else sprintf("WARNING: resetting the branch to %s also failed - fix the checkout by hand.\n%s",
+                   remote_ref, paste(reset$out, collapse = "\n")),
+      paste(detail, collapse = "\n"))
+    .pw_push_log(msg)
+    stop(msg, call. = FALSE)
+  }
+  sync <- function() {
+    f <- add(sprintf("git fetch origin %s (NFL_analytics)", publish_branch),
+             .pw_git(repo_root, c("fetch", "origin", publish_branch)))
+    if (!f$ok) roll_back(sprintf("git fetch origin %s failed", publish_branch), f$out)
+    .pw_push_log(sprintf("publish_web: fetched origin %s (remote tip %s).", publish_branch, sha(remote_ref)))
+    anc <- .pw_git(repo_root, c("merge-base", "--is-ancestor", remote_ref, "HEAD"))
+    if (anc$ok) {
+      .pw_push_log(sprintf("publish_web: %s is already an ancestor of HEAD; no rebase needed.", remote_ref))
+      return(invisible(TRUE))
+    }
+    rb <- add(sprintf("git rebase %s (NFL_analytics)", remote_ref),
+              .pw_git(repo_root, c("rebase", remote_ref)))
+    if (!rb$ok) roll_back(sprintf("rebasing the publish commit onto %s hit a conflict", remote_ref), rb$out)
+    .pw_push_log(sprintf("publish_web: rebased the publish commit onto the remote tip %s (%s).",
+                         remote_ref, sha(remote_ref)))
+    invisible(TRUE)
+  }
+  for (attempt in 1:2) {
+    sync()
+    p <- add(sprintf("git push origin HEAD (NFL_analytics, attempt %d)", attempt),
+             .pw_git(repo_root, c("push", "origin", "HEAD")))
+    if (p$ok) {
+      .pw_push_log(sprintf("publish_web: pushed %s to origin %s.", sha("HEAD"), publish_branch))
+      return(steps)
+    }
+    .pw_push_log(sprintf("publish_web: push attempt %d rejected:\n%s", attempt, paste(p$out, collapse = "\n")))
+  }
+  roll_back("the push was rejected twice", p$out)
 }
 
 # ------------------------------------------------------------------------------
@@ -1129,7 +1202,7 @@ publish_web <- function(dry_run = TRUE,
     return(invisible(result))
   }
 
-  result$steps <- .pw_do_publish(repo_root, commit_message)
+  result$steps <- .pw_do_publish(repo_root, commit_message, publish_branch)
   result$published <- TRUE
   log_info(sprintf("publish_web: web artifacts committed and pushed to NFL_analytics %s. The site changes when the aggregator's sync-sports.yml next pulls; this script no longer deploys.",
                    publish_branch))
