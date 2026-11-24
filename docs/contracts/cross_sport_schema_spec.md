@@ -603,3 +603,39 @@ A dataset whose content is genuinely not game-dated (profiles, indexes, metadata
 5. **Static declaration:** static/archived datasets must set `static: true` with a non-empty `static_reason`; they are exempt from rules 2–4, but the UI must visibly label them as static/archived rather than presenting them as live.
 
 Acceptance (FO#191): a payload whose latest content game date is old but whose file/stamp is brand new **fails** the gate in each sport's test suite.
+
+### 8.6 Lifecycle classification & off-season scoping
+
+> Refs `front-office#225`.
+
+Off-season, a sport's season-final files legitimately stop advancing. Checking them against a live schedule would either fail correct data or tempt a check to be loosened until it passes. The lifecycle field scopes each check to the files it genuinely applies to; the intent is correct scoping, never making checks pass.
+
+**`lifecycle` field.** Every `datasets` entry carries `lifecycle`, one of:
+
+| Value | Meaning |
+|---|---|
+| `live` | Expected to track the schedule or be rebuilt regularly. |
+| `season_final` | Complete for a finished season and frozen; not expected to change until thawed. |
+| `archived` | Belongs to a prior season, retained for reference only. |
+
+Classification is assigned from the sport's `config.R`. The off-season live set is the list `WEB_DATA_FILES_OFFSEASON`; files in it are `live`, and every other published file is classified `season_final` or `archived`.
+
+`season_final` entries additionally carry:
+
+| Field | Type | Rules |
+|---|---|---|
+| `season` | integer or string | Season the file is final for. |
+| `final_through_date` | string | `YYYY-MM-DD` of the season's last scheduled game (playoffs included) present in the payload. |
+| `frozen_sha256` | string | Hex sha256 of the payload bytes at freeze time. |
+| `frozen_at` | string | UTC ISO-8601 `%Y-%m-%dT%H:%M:%SZ` of the freeze. |
+
+**Off-season mode.**
+
+1. Assertion F (payload provenance) and assertion I (manifest completeness and schedule lag, 8.5) run in full on `live` files only.
+2. `season_final` files are checked by content hash: the current sha256 must equal `frozen_sha256`. A mismatch fails.
+3. A file with no `lifecycle` fails. Unclassified files are never skipped.
+4. `archived` files are not checked for freshness and the UI must label them as archived (as for static datasets in 8.5 rule 5).
+
+**In-season mode is unchanged:** F and I apply to every file under the rules in 8.5.
+
+**Freeze / thaw contract.** `tools/freeze_season.R --season <yyyy>` verifies that each of the season's files reaches the season's last scheduled game (playoffs included). It **refuses** any incomplete file: it records no hash and exits non-zero. For files that pass, it sets `lifecycle: season_final` and records `season`, `final_through_date`, `frozen_sha256` and `frozen_at`. `tools/freeze_season.R --thaw` moves the new season's files to `live` and the previous season's files to `archived`.
