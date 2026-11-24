@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-11-06T19:49:32Z",
+  "generated_at": "2026-11-24T03:32:19Z",
   "season": 2026,
-  "generatedAt": "2026-10-25 10:06:10.200389",
+  "generatedAt": "2026-11-23 22:31:40.612059",
   "sourceNote": "Walk-forward series forecasts, replayed from the games available at each point.",
-  "provenance": "RECONSTRUCTION, not an archived forecast. Computed 2026-10-25. The model never published a Finals prediction before the series began — when its last forecast was saved on 2026-10-04, both semi-finals were still in progress, so this matchup did not yet exist. Each row below is a replay that sees only the 2026 games finished before its own cutoff date, so none of them can peek at the result it is predicting.",
+  "provenance": "RECONSTRUCTION, not an archived forecast. Computed 2026-11-23. The model never published a Finals prediction before the series began — when its last forecast was saved on 2026-10-04, both semi-finals were still in progress, so this matchup did not yet exist. Each row below is a replay that sees only the 2026 games finished before its own cutoff date, so none of them can peek at the result it is predicting.",
   "matchup": {
     "teamHigh": "Golden State Valkyries",
     "teamHighAbbr": "GS",
@@ -37,6 +37,27 @@
       "gameDate": "2026-10-24",
       "scoreHigh": 67,
       "scoreLow": 62,
+      "highWon": true
+    },
+    {
+      "game": 5,
+      "gameDate": "2026-10-26",
+      "scoreHigh": 64,
+      "scoreLow": 55,
+      "highWon": true
+    },
+    {
+      "game": 6,
+      "gameDate": "2026-10-29",
+      "scoreHigh": 69,
+      "scoreLow": 80,
+      "highWon": false
+    },
+    {
+      "game": 7,
+      "gameDate": "2026-10-31",
+      "scoreHigh": 68,
+      "scoreLow": 63,
       "highWon": true
     }
   ],
@@ -179,7 +200,7 @@
     },
     {
       "label": "after G4",
-      "cutoffDate": "2026-10-25",
+      "cutoffDate": "2026-10-26",
       "gamesPlayed": 4,
       "stateHigh": 2,
       "stateLow": 2,
@@ -204,6 +225,58 @@
       ],
       "pHighSeriesFromZero": 0.442317166720151,
       "pHighSeriesRegularSeasonOnly": 0.540037054975135
+    },
+    {
+      "label": "after G5",
+      "cutoffDate": "2026-10-29",
+      "gamesPlayed": 5,
+      "stateHigh": 3,
+      "stateLow": 2,
+      "nGamesHigh": 55,
+      "nGamesLow": 54,
+      "netRawHigh": 6.01818181818182,
+      "netRawLow": 6.88888888888889,
+      "netAdjHigh": 7.58384848484849,
+      "netAdjLow": 8.50938888888889,
+      "pHighSeries": 0.727966187303341,
+      "pLowSeries": 0.272033812696659,
+      "expectedLength": 6.593880511377,
+      "lengthDistribution": [
+        {
+          "length": 6,
+          "probability": 0.406119488622998
+        },
+        {
+          "length": 7,
+          "probability": 0.593880511377002
+        }
+      ],
+      "pHighSeriesFromZero": 0.464175617315833,
+      "pHighSeriesRegularSeasonOnly": 0.75818432526926
+    },
+    {
+      "label": "after G6",
+      "cutoffDate": "2026-10-31",
+      "gamesPlayed": 6,
+      "stateHigh": 3,
+      "stateLow": 3,
+      "nGamesHigh": 56,
+      "nGamesLow": 55,
+      "netRawHigh": 5.71428571428571,
+      "netRawLow": 6.96363636363636,
+      "netAdjHigh": 7.27995238095238,
+      "netAdjLow": 8.58413636363636,
+      "pHighSeries": 0.531194382823199,
+      "pLowSeries": 0.468805617176801,
+      "expectedLength": 7,
+      "lengthDistribution": [
+        {
+          "length": 7,
+          "probability": 1
+        }
+      ],
+      "pHighSeriesFromZero": 0.44086747620029,
+      "pHighSeriesRegularSeasonOnly": 0.571619548023211
     }
   ]
 }

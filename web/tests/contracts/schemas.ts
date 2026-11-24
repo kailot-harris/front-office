@@ -884,9 +884,22 @@ export const FinalsSeriesBacktestSetSchema = z
   })
   // There is exactly one information set per decision point: before G1, then one
   // after each played game. A mismatch means a cutoff was dropped or duplicated.
-  .refine((s) => s.infoSets.length === 0 || s.infoSets.length === s.games.length + 1, {
-    message: 'infoSets must number one more than the games played',
-  })
+  // Once a team reaches 4 wins in games[] the series is decided and there is no
+  // decision point after the deciding game (stateHigh/stateLow cap at 3 above), so
+  // a decided series ships exactly one information set per game instead.
+  .refine(
+    (s) => {
+      if (s.infoSets.length === 0) return true;
+      const highWins = s.games.filter((g) => g.highWon).length;
+      const lowWins = s.games.length - highWins;
+      const decided = highWins >= 4 || lowWins >= 4;
+      return s.infoSets.length === (decided ? s.games.length : s.games.length + 1);
+    },
+    {
+      message:
+        'infoSets must number one more than the games played (or equal the games played once the series is decided)',
+    }
+  )
   // A reconstruction that does not say it is one is the single worst failure mode
   // this artifact has, so an empty provenance string is a schema error.
   .refine((s) => s.infoSets.length === 0 || s.provenance.trim().length > 0, {
