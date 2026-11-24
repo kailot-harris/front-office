@@ -93,6 +93,14 @@
 #      generated_at ([UNDATED]). Live runs refresh the manifest first; dry
 #      runs never write it.
 #
+#   L  data-file lifecycle + frozen-file integrity (NBA_analytics#235) - every
+#      top-level payload in web/public/data/ (excluding data_manifest.json)
+#      carries a valid `lifecycle` in c("live", "season_final", "archived") in
+#      data_manifest.json; any missing or unknown lifecycle fails. Any
+#      `season_final` entry must also carry season, final_through_date,
+#      frozen_sha256 and frozen_at, and its bytes must still match
+#      frozen_sha256. In season, every file is `live`; A-H are unchanged.
+#
 #      KNOWN GAP, reported rather than silently tolerated: only 2 of NBA's 12
 #      published payloads carry a `generated_at` at all. F names the other ten
 #      in its detail lines rather than implying it has checked them. Stamping
@@ -832,6 +840,157 @@ if (!dir.exists(WEB_MEDIA_DIR)) dir.create(WEB_MEDIA_DIR, recursive = TRUE)
 }
 
 # ------------------------------------------------------------------------------
+# ASSERTION L - data-file lifecycle + frozen-file integrity (NBA_analytics#235).
+#
+# Every top-level web/public/data/*.json (excluding data_manifest.json) must
+# have a manifest entry with a valid `lifecycle` in WEB_DATA_LIFECYCLES
+# ("live", "season_final", "archived"). Missing or unknown lifecycle FAILS.
+# Any `season_final` entry must carry season, final_through_date, frozen_sha256
+# and frozen_at, and the file's current CRLF-normalised sha256 must match
+# frozen_sha256.
+# ------------------------------------------------------------------------------
+.pw_valid_lifecycles <- function() {
+  if (exists("WEB_DATA_LIFECYCLES")) WEB_DATA_LIFECYCLES else c("live", "season_final", "archived")
+}
+
+.pw_lifecycle_sha256 <- function(path) {
+  if (exists("nba_lifecycle_sha256", mode = "function")) {
+    return(nba_lifecycle_sha256(path))
+  }
+  if (!file.exists(path)) return(NA_character_)
+  sz <- file.info(path)$size
+  b <- if (is.na(sz) || sz == 0) raw(0) else readBin(path, "raw", n = sz)
+  cr <- which(b == as.raw(13L))
+  if (length(cr)) {
+    crlf <- cr[cr < length(b) & b[pmin(cr + 1L, length(b))] == as.raw(10L)]
+    if (length(crlf)) b <- b[-crlf]
+  }
+  unname(as.character(tools::sha256sum(bytes = b)))
+}
+
+.pw_l_result <- function(pass, summary, detail, extra = list()) {
+  c(list(id = "L", name = "data-file lifecycle + frozen-file integrity (NBA#235)",
+         pass = pass, fatal = TRUE, summary = summary, detail = detail), extra)
+}
+
+.assert_lifecycle <- function(web_data_dir = WEB_DATA_DIR,
+                              manifest = NULL,
+                              expected = NULL) {
+  if (is.null(manifest)) {
+    mpath <- file.path(web_data_dir, .PW_MANIFEST_FILE)
+    if (!file.exists(mpath)) {
+      return(.pw_l_result(FALSE, sprintf("%s is absent", .PW_MANIFEST_FILE),
+                          "    [BLOCK]   run `Rscript tools/write_data_manifest.R`",
+                          list(problems = sprintf("%s is absent", .PW_MANIFEST_FILE), failing = character(0))))
+    }
+    manifest <- tryCatch(jsonlite::fromJSON(mpath, simplifyVector = FALSE), error = function(e) e)
+    if (inherits(manifest, "error")) {
+      msg <- conditionMessage(manifest)
+      return(.pw_l_result(FALSE, sprintf("%s does not parse as a manifest", .PW_MANIFEST_FILE),
+                          paste("    [BLOCK]  ", msg),
+                          list(problems = msg, failing = character(0))))
+    }
+  }
+  if (!is.list(manifest) || !is.list(manifest$datasets)) {
+    return(.pw_l_result(FALSE, sprintf("%s does not parse as a manifest", .PW_MANIFEST_FILE),
+                        "    [BLOCK]   no datasets object",
+                        list(problems = "no datasets object", failing = character(0))))
+  }
+
+  on_disk <- setdiff(sort(list.files(web_data_dir, pattern = "\\.json$")), .PW_MANIFEST_FILE)
+  valid_lc <- .pw_valid_lifecycles()
+  exp <- if (is.function(expected)) expected(on_disk) else NULL
+
+  problems <- character(0)
+  failing <- character(0)
+  lines <- character(0)
+  counts <- stats::setNames(integer(length(valid_lc)), valid_lc)
+
+  for (f in on_disk) {
+    e <- manifest$datasets[[f]]
+    if (is.null(e) || !is.list(e)) {
+      failing <- c(failing, f)
+      problems <- c(problems, sprintf("%s not listed in %s", f, .PW_MANIFEST_FILE))
+      lines <- c(lines, sprintf("    %-14s %-36s not listed in %s", "[MISSING]", f, .PW_MANIFEST_FILE))
+      next
+    }
+    lc <- e$lifecycle
+    if (is.null(lc) || (is.character(lc) && length(lc) == 1L && (is.na(lc) || !nzchar(trimws(lc))))) {
+      failing <- c(failing, f)
+      problems <- c(problems, sprintf("%s has no lifecycle", f))
+      lines <- c(lines, sprintf("    %-14s %-36s missing lifecycle", "[NO LIFECYCLE]", f))
+      next
+    }
+    if (!is.character(lc) || length(lc) != 1L || !(lc %in% valid_lc)) {
+      lc_str <- paste(as.character(lc), collapse = ",")
+      failing <- c(failing, f)
+      problems <- c(problems, sprintf("%s unknown lifecycle '%s'", f, lc_str))
+      lines <- c(lines, sprintf("    %-14s %-36s unknown lifecycle '%s'", "[FAIL]", f, lc_str))
+      next
+    }
+    if (!is.null(exp)) {
+      want <- exp[[f]]$lifecycle
+      if (!identical(as.character(if (is.null(want)) "<none>" else want), lc)) {
+        failing <- c(failing, f)
+        problems <- c(problems, sprintf("%s lifecycle %s != config %s", f, lc, if (is.null(want)) "<none>" else want))
+        lines <- c(lines, sprintf("    %-14s %-36s manifest says %s, config assigns %s",
+                                  "[FAIL]", f, lc, if (is.null(want)) "<none>" else want))
+        next
+      }
+    }
+    counts[[lc]] <- counts[[lc]] + 1L
+    if (!identical(lc, "season_final")) {
+      lines <- c(lines, sprintf("    %-14s %s", sprintf("[%s]", toupper(lc)), f))
+      next
+    }
+    req_fields <- c("season", "final_through_date", "frozen_sha256", "frozen_at")
+    miss <- Filter(function(k) {
+      v <- e[[k]]
+      is.null(v) || length(v) != 1L || is.na(v) || !nzchar(trimws(as.character(v)))
+    }, req_fields)
+    if (length(miss)) {
+      failing <- c(failing, f)
+      problems <- c(problems, sprintf("%s season_final missing %s", f, paste(miss, collapse = ", ")))
+      lines <- c(lines, sprintf("    %-14s %-36s season_final without %s", "[FAIL]", f, paste(miss, collapse = ", ")))
+      next
+    }
+    if (!grepl("^[0-9a-f]{64}$", as.character(e$frozen_sha256))) {
+      failing <- c(failing, f)
+      problems <- c(problems, sprintf("%s invalid frozen_sha256", f))
+      lines <- c(lines, sprintf("    %-14s %-36s frozen_sha256 not 64-char hex", "[FAIL]", f))
+      next
+    }
+    if (!is.null(exp) && !is.null(exp[[f]]$frozen_sha256) &&
+        !identical(as.character(exp[[f]]$frozen_sha256), as.character(e$frozen_sha256))) {
+      failing <- c(failing, f)
+      problems <- c(problems, sprintf("%s frozen_sha256 disagrees with registry", f))
+      lines <- c(lines, sprintf("    %-14s %-36s manifest frozen_sha256 differs from expected", "[FAIL]", f))
+      next
+    }
+    actual <- .pw_lifecycle_sha256(file.path(web_data_dir, f))
+    if (!identical(actual, as.character(e$frozen_sha256))) {
+      failing <- c(failing, f)
+      problems <- c(problems, sprintf("%s changed since frozen", f))
+      lines <- c(lines, sprintf("    %-14s %-36s season %s frozen at %s, hash now %s (frozen %s)",
+                                "[CHANGED]", f, as.character(e$season), as.character(e$frozen_at),
+                                substr(actual, 1L, 12L), substr(as.character(e$frozen_sha256), 1L, 12L)))
+      next
+    }
+    lines <- c(lines, sprintf("    %-14s %-36s season %s, hash matches frozen %s",
+                              "[SEASON_FINAL]", f, as.character(e$season), as.character(e$frozen_at)))
+  }
+
+  pass <- length(problems) == 0L
+  summary <- if (pass) {
+    sprintf("%d file(s): %d live, %d season_final (hash verified), %d archived",
+            length(on_disk), counts[["live"]], counts[["season_final"]], counts[["archived"]])
+  } else {
+    sprintf("%d problem(s): %s", length(problems), paste(problems, collapse = "; "))
+  }
+  .pw_l_result(pass, summary, lines, list(problems = problems, failing = failing, counts = counts))
+}
+
+# ------------------------------------------------------------------------------
 # Commit / push sequence. ONLY reached when dry_run = FALSE and every fatal
 # assertion passed. Commits the published tree and pushes NBA_analytics --
 # nothing more. The deploy belongs to the aggregator's sync-sports.yml.
@@ -1282,7 +1441,8 @@ publish_web <- function(dry_run = TRUE,
     .assert_log_scan(log_lines, fail_on_exporter_warnings),
     .assert_payload_provenance(run_start),
     .assert_web_contracts(skip_contracts),
-    .assert_manifest_and_coverage(WEB_DATA_DIR, schedule_path = CACHE_MATCHUPS_SCHEDULE(season))
+    .assert_manifest_and_coverage(WEB_DATA_DIR, schedule_path = CACHE_MATCHUPS_SCHEDULE(season)),
+    .assert_lifecycle(WEB_DATA_DIR)
   )
 
   passed  <- vapply(checks, function(ch) isTRUE(ch$pass), logical(1))
@@ -1346,6 +1506,7 @@ publish_web <- function(dry_run = TRUE,
     synced_media = synced_media,
     contracts_pass = isTRUE(checks[[7]]$pass),
     manifest_pass = isTRUE(checks[[8]]$pass),
+    lifecycle_pass = isTRUE(checks[[9]]$pass),
     checks = checks, published = FALSE, steps = list()
   )
 

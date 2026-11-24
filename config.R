@@ -220,3 +220,36 @@ CACHE_COACHING_JSON    <- WEB_JSON_COACHING_METRICS
 CACHE_CBA_JSON         <- WEB_JSON_CBA_CAP_SHEET
 CACHE_MATCHUPS_JSON    <- WEB_JSON_MATCHUPS_SLATES
 CACHE_PLAYOFF_MATCHUPS <- WEB_JSON_PLAYOFF_SERIES_MATCHUPS
+
+# ---------------------------------------------------------------------------
+# Data-file lifecycle (NBA_analytics#235, shared four-sport design)
+# ---------------------------------------------------------------------------
+# Every top-level web/public/data/*.json entry in data_manifest.json carries
+# `lifecycle`, one of WEB_DATA_LIFECYCLES ("live", "season_final", "archived").
+# In season, every published payload is "live"; freeze and off-season scoping
+# arrive at season end via the shared freeze_season.R design.
+WEB_DATA_LIFECYCLES <- c("live", "season_final", "archived")
+
+# Lifecycle per file name: a named list mapping basename -> list(lifecycle = "live")
+# for every file in season.
+nba_data_lifecycle <- function(files) {
+  files <- basename(files)
+  out <- lapply(files, function(f) list(lifecycle = "live"))
+  names(out) <- files
+  out
+}
+
+# Content hash used for frozen_sha256: sha256 of the file's bytes with CRLF
+# normalised to LF, so a checkout with a different core.autocrlf does not read
+# as a changed file.
+nba_lifecycle_sha256 <- function(path) {
+  if (!file.exists(path)) return(NA_character_)
+  sz <- file.info(path)$size
+  b <- if (is.na(sz) || sz == 0) raw(0) else readBin(path, "raw", n = sz)
+  cr <- which(b == as.raw(13L))
+  if (length(cr)) {
+    crlf <- cr[cr < length(b) & b[pmin(cr + 1L, length(b))] == as.raw(10L)]
+    if (length(crlf)) b <- b[-crlf]
+  }
+  unname(as.character(tools::sha256sum(bytes = b)))
+}
