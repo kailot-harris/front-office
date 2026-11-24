@@ -85,9 +85,22 @@ source("playoff_simulator.R")
 #
 # Returns NULL (and logs an error) if required caches are missing, mirroring
 # run_playoff_simulator()'s non-stop()ping error contract. Returns a character vector of
-# length 14 on success.
+# length 14 on success. Pass `seed` to seed a standalone single trial deterministically
+# (restoring .Random.seed on exit); leave NULL when called inside a Monte Carlo loop.
 # ------------------------------------------------------------------------------------------
-.simulate_one_season <- function() {
+.simulate_one_season <- function(seed = NULL) {
+  if (!is.null(seed)) {
+    had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    if (had_seed) old_seed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    on.exit({
+      if (had_seed) {
+        assign(".Random.seed", old_seed, envir = .GlobalEnv)
+      } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+        rm(".Random.seed", envir = .GlobalEnv)
+      }
+    }, add = TRUE)
+    set.seed(seed)
+  }
   if (!file.exists(CACHE_TEAM_RATINGS)) {
     log_error("CACHE_TEAM_RATINGS does not exist - run_team_ratings() must run before .simulate_one_season().",
               call = ".simulate_one_season()")
@@ -179,9 +192,22 @@ source("playoff_simulator.R")
 # required cache is missing) aborts the whole run immediately (log + return FALSE) rather than
 # silently skipping that trial and undercounting.
 # ------------------------------------------------------------------------------------------
-run_playoff_odds_engine <- function() {
+run_playoff_odds_engine <- function(seed = 42L) {
   log_info(sprintf("Starting NFL playoff odds engine (%d season simulations)...", N_SEASON_SIMULATIONS),
             call = "run_playoff_odds_engine()")
+
+  if (!is.null(seed)) {
+    had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    if (had_seed) old_seed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    on.exit({
+      if (had_seed) {
+        assign(".Random.seed", old_seed, envir = .GlobalEnv)
+      } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+        rm(".Random.seed", envir = .GlobalEnv)
+      }
+    }, add = TRUE)
+    set.seed(seed)
+  }
 
   result <- tryCatch({
     team_abbrs <- names(NFL_TEAMS)

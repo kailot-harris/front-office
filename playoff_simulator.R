@@ -140,9 +140,23 @@ source("nfl_tiebreakers.R")
 # ------------------------------------------------------------------------------------------
 # .simulate_bracket(): runs N_SIMULATIONS full brackets (both conferences + Super Bowl),
 # tracking each team's count of Wild Card / Divisional / Conference Championship / Super Bowl
-# wins. Returns a named list of count vectors keyed by team abbreviation.
+# wins. Uses a deterministic RNG seed (default 42L) and restores .Random.seed on exit so
+# repeated runs are reproducible without mutating the caller's global RNG stream.
+# Returns a named list of count vectors keyed by team abbreviation.
 # ------------------------------------------------------------------------------------------
-.simulate_bracket <- function(seed_tables, n_sims) {
+.simulate_bracket <- function(seed_tables, n_sims, seed = 42L) {
+  if (!is.null(seed)) {
+    had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    if (had_seed) old_seed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    on.exit({
+      if (had_seed) {
+        assign(".Random.seed", old_seed, envir = .GlobalEnv)
+      } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+        rm(".Random.seed", envir = .GlobalEnv)
+      }
+    }, add = TRUE)
+    set.seed(seed)
+  }
   all_teams <- unlist(lapply(seed_tables, function(x) x$team), use.names = FALSE)
   mk_counts <- function() setNames(integer(length(all_teams)), all_teams)
 
@@ -214,7 +228,7 @@ source("nfl_tiebreakers.R")
 # failure (mirrors run_team_ratings()'s non-stop()ping contract for run_full_pipeline.R's
 # run_stage()).
 # ------------------------------------------------------------------------------------------
-run_playoff_simulator <- function() {
+run_playoff_simulator <- function(seed = 42L) {
   log_info("Starting NFL playoff bracket simulator...")
 
   result <- tryCatch({
@@ -280,7 +294,7 @@ run_playoff_simulator <- function() {
 
     # ---- Monte Carlo simulate the full reseeding bracket ----
     seed_tables <- list(AFC = afc_seeds, NFC = nfc_seeds)
-    sim_counts  <- .simulate_bracket(seed_tables, N_SIMULATIONS)
+    sim_counts  <- .simulate_bracket(seed_tables, N_SIMULATIONS, seed = seed)
 
     field <- field |>
       mutate(
