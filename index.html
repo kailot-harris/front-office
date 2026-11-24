@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Front Office — NFL, NBA, WNBA &amp; MLB Probabilistic Analytics</title>
-  <meta name="description" data-count="all" data-count-attr="content" content="56 interactive analytics modules across the NFL, NBA, WNBA and MLB: season simulations, cap sheets, player projections, clutch indexes and playoff simulators." />
+  <meta name="description" data-count="all" data-count-attr="content" content="57 interactive analytics modules across the NFL, NBA, WNBA and MLB: season simulations, cap sheets, player projections, clutch indexes and playoff simulators." />
   <meta name="theme-color" content="#f3fafa" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#041313" media="(prefers-color-scheme: dark)" />
   <link rel="stylesheet" href="assets/fonts/fonts.css" />
@@ -26,14 +26,14 @@
   <meta property="og:site_name" content="Front Office" />
   <meta property="og:url" content="https://kailot-harris.github.io/front-office/" />
   <meta property="og:title" content="Front Office — Multi-Sport Probabilistic Engine" />
-  <meta property="og:description" data-count="all" data-count-attr="content" content="56 interactive analytics modules across the NFL, NBA, WNBA and MLB: season simulations, cap sheets, player projections and playoff simulators." />
+  <meta property="og:description" data-count="all" data-count-attr="content" content="57 interactive analytics modules across the NFL, NBA, WNBA and MLB: season simulations, cap sheets, player projections and playoff simulators." />
   <meta property="og:image" content="https://kailot-harris.github.io/front-office/assets/social/og-card.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Front Office: multi-sport probabilistic engine covering the NFL, NBA, WNBA and MLB" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Front Office — Multi-Sport Probabilistic Engine" />
-  <meta name="twitter:description" data-count="all" data-count-attr="content" content="56 interactive analytics modules across the NFL, NBA, WNBA and MLB." />
+  <meta name="twitter:description" data-count="all" data-count-attr="content" content="57 interactive analytics modules across the NFL, NBA, WNBA and MLB." />
   <meta name="twitter:image" content="https://kailot-harris.github.io/front-office/assets/social/og-card.png" />
   <style>
     :root {
@@ -647,7 +647,7 @@
     <div class="nav-column">
       <div class="module-filter" role="search">
         <label class="sr-only" for="module-filter">Filter modules across all four leagues</label>
-        <input id="module-filter" data-count="all" data-count-attr="placeholder" type="search" placeholder="Filter 56 modules&hellip;" autocomplete="off" spellcheck="false" aria-describedby="filter-status" />
+        <input id="module-filter" data-count="all" data-count-attr="placeholder" type="search" placeholder="Filter 57 modules&hellip;" autocomplete="off" spellcheck="false" aria-describedby="filter-status" />
         <kbd aria-hidden="true">/</kbd>
       </div>
       <p id="filter-status" class="filter-status" role="status" aria-live="polite"></p>
@@ -689,7 +689,7 @@
             <img class="favicon" src="nba/icon.png" alt="" width="20" height="20" loading="lazy" decoding="async" />
             <span class="sport-pip" aria-hidden="true"></span>
             <span>NBA</span>
-            <span class="card-count" data-count="nba" data-count-attr="aria-label" aria-label="14 modules">(14)</span>
+            <span class="card-count" data-count="nba" data-count-attr="aria-label" aria-label="15 modules">(15)</span>
             <span class="chevron" aria-hidden="true">&#9656;</span>
           </div>
           <div class="card-rail" aria-hidden="true"></div>
@@ -698,6 +698,7 @@
         <ul class="tab-list" id="modules-nba">
           <li><a href="nba/">Season Standings</a></li>
           <li><a href="nba/matchups/">Matchups</a></li>
+          <li><a href="nba/momentum/">Momentum Board</a></li>
           <li><a href="nba/playoffs/">Playoff Simulator</a></li>
           <li><a href="nba/cap-sheet/">Payroll &amp; Cap</a></li>
           <li><a href="nba/coaches/">Coaching Staffs</a></li>
@@ -972,7 +973,8 @@
     })();
 
     (function initLeagueCards() {
-      var nav = document.querySelector('nav');
+      // The page also has the site header's <nav>, so target the module list by its label.
+      var nav = document.querySelector('nav[aria-label="Leagues and modules"]');
       var cards = Array.prototype.slice.call(nav.querySelectorAll('.card'));
       var input = document.getElementById('module-filter');
       var status = document.getElementById('filter-status');
