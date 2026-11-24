@@ -195,7 +195,8 @@ source("config.R")
   if (nzchar(up) && file.exists(file.path(up, ".gitconfig"))) {
     Sys.setenv(HOME = up)
   }
-  if (identical(args[1], "commit")) {
+  # rebase rewrites commits, so it needs a committer identity too.
+  if (length(args) && args[1] %in% c("commit", "rebase")) {
     user_name <- Sys.getenv("GIT_AUTHOR_NAME", Sys.getenv("GIT_COMMITTER_NAME", ""))
     user_email <- Sys.getenv("GIT_AUTHOR_EMAIL", Sys.getenv("GIT_COMMITTER_EMAIL", ""))
     if (!nzchar(user_name) || !nzchar(user_email)) {
@@ -879,21 +880,118 @@ source("config.R")
 # Commit / push sequence. ONLY reached when dry_run = FALSE and every fatal
 # assertion passed. Commits the published trees and pushes WNBA_analytics --
 # nothing more. The deploy belongs to the aggregator's sync-sports.yml.
+#
+# The pipeline runs for a long time, and commits (dependency PRs, fixes) can land
+# on origin/<publish_branch> while it does. A plain `git push` is then rejected
+# ("fetch first") and the publish commit stays behind locally, so the checkout
+# diverges and the next run's push fails too. So after the commit the push step:
+#   1. fetches origin/<branch>;
+#   2. rebases the publish commit onto it when origin/<branch> is not already an
+#      ancestor of HEAD (publish commits only touch generated data, so a rebase
+#      is right; a merge commit is never created);
+#   3. pushes; on a rejection it repeats 1-2 once and pushes once more.
+# On a rebase conflict or a second rejection it runs `git rebase --abort`, then
+# `git reset --mixed origin/<branch>`: the branch is back in step with origin and
+# the regenerated files stay in the working tree for the next run. It never
+# runs `reset --hard`, `git stash` or `git merge`.
 # ------------------------------------------------------------------------------
-.pw_do_publish <- function(repo_root, rel_paths, commit_message) {
+.pw_rev <- function(repo_root, ref) {
+  r <- .pw_git(repo_root, c("rev-parse", "--verify", "--quiet", ref))
+  if (r$ok && length(r$out)) r$out[1] else NA_character_
+}
+
+.pw_unwind_publish_commit <- function(repo_root, branch, reason, detail = character(0)) {
+  abort <- character(0)
+  git_dir <- .pw_git(repo_root, c("rev-parse", "--git-dir"))
+  in_rebase <- git_dir$ok && length(git_dir$out) && {
+    gd <- git_dir$out[1]
+    if (!grepl("^([A-Za-z]:)?/", gd)) gd <- file.path(repo_root, gd)
+    dir.exists(file.path(gd, "rebase-merge")) || dir.exists(file.path(gd, "rebase-apply"))
+  }
+  if (isTRUE(in_rebase)) {
+    ab <- .pw_git(repo_root, c("rebase", "--abort"))
+    abort <- c("git rebase --abort:", ab$out)
+    log_info("publish_web: rebase aborted.", script = .PW_LOG_SCRIPT)
+  }
+  target <- paste0("origin/", branch)
+  rs <- .pw_git(repo_root, c("reset", "--mixed", "--quiet", target))
+  tip <- .pw_rev(repo_root, "HEAD")
+  msg <- if (rs$ok) {
+    sprintf(paste0(
+      "publish_web: the publish commit was NOT pushed (%s). The checkout is back in step with %s ",
+      "(local %s reset to %s; no local commit is left behind). The regenerated files are still in ",
+      "the working tree for the next run."),
+      reason, target, branch, substr(tip, 1, 12))
+  } else {
+    sprintf(paste0(
+      "publish_web: the publish commit was NOT pushed (%s), and `git reset --mixed %s` also failed, ",
+      "so the local publish commit may still be on %s. Reset it by hand before the next run."),
+      reason, target, branch)
+  }
+  log_warn(msg, script = .PW_LOG_SCRIPT)
+  stop(paste(c(msg, detail, abort, if (!rs$ok) rs$out), collapse = "\n"), call. = FALSE)
+}
+
+# Fetch origin/<branch> and rebase HEAD onto it when needed. Returns invisibly;
+# stops via .pw_unwind_publish_commit() on a fetch failure or rebase conflict.
+.pw_fetch_and_rebase <- function(repo_root, branch, record) {
+  target <- paste0("origin/", branch)
+  # Explicit refspec so origin/<branch> is updated even with a narrow fetch config.
+  f <- .pw_git(repo_root, c("fetch", "origin",
+                            sprintf("+refs/heads/%s:refs/remotes/origin/%s", branch, branch)))
+  record(sprintf("git fetch origin %s", branch), f, fatal = FALSE)
+  if (!f$ok) .pw_unwind_publish_commit(repo_root, branch, sprintf("git fetch origin %s failed", branch), f$out)
+  remote_tip <- .pw_rev(repo_root, target)
+  log_info(sprintf("publish_web: fetched %s (remote tip %s).", target, substr(remote_tip, 1, 12)),
+           script = .PW_LOG_SCRIPT)
+  anc <- .pw_git(repo_root, c("merge-base", "--is-ancestor", target, "HEAD"))
+  if (anc$ok) {
+    log_info(sprintf("publish_web: %s is already an ancestor of HEAD; no rebase needed.", target),
+             script = .PW_LOG_SCRIPT)
+    return(invisible(TRUE))
+  }
+  rb <- .pw_git(repo_root, c("rebase", target))
+  record(sprintf("git rebase %s", target), rb, fatal = FALSE)
+  if (!rb$ok) {
+    .pw_unwind_publish_commit(repo_root, branch,
+      sprintf("rebase onto %s (%s) conflicted", target, substr(remote_tip, 1, 12)), rb$out)
+  }
+  log_info(sprintf("publish_web: rebased the publish commit onto the remote tip %s (%s); HEAD is now %s.",
+                   target, remote_tip, .pw_rev(repo_root, "HEAD")), script = .PW_LOG_SCRIPT)
+  invisible(TRUE)
+}
+
+# Push HEAD after syncing with origin/<branch>; one retry on rejection.
+.pw_sync_and_push <- function(repo_root, branch, record) {
+  for (attempt in 1:2) {
+    .pw_fetch_and_rebase(repo_root, branch, record)
+    p <- .pw_git(repo_root, c("push", "origin", "HEAD"))
+    record(sprintf("git push origin HEAD (WNBA_analytics, attempt %d)", attempt), p, fatal = FALSE)
+    if (p$ok) {
+      log_info(sprintf("publish_web: pushed %s to origin/%s.", .pw_rev(repo_root, "HEAD"), branch),
+               script = .PW_LOG_SCRIPT)
+      return(invisible(TRUE))
+    }
+    log_warn(sprintf("publish_web: git push attempt %d rejected: %s", attempt,
+                     paste(p$out, collapse = " | ")), script = .PW_LOG_SCRIPT)
+  }
+  .pw_unwind_publish_commit(repo_root, branch, "git push was rejected twice", p$out)
+}
+
+.pw_do_publish <- function(repo_root, rel_paths, commit_message, publish_branch = NULL) {
+  if (is.null(publish_branch)) publish_branch <- .pw_current_branch(repo_root)
   steps <- list()
-  record <- function(label, res) {
+  record <- function(label, res, fatal = TRUE) {
     steps[[length(steps) + 1L]] <<- list(label = label, ok = res$ok, out = res$out)
-    if (!res$ok) stop(sprintf("publish_web: step failed: %s\n%s", label,
-                              paste(res$out, collapse = "\n")))
+    if (fatal && !res$ok) stop(sprintf("publish_web: step failed: %s\n%s", label,
+                                       paste(res$out, collapse = "\n")))
     invisible(TRUE)
   }
   record("git add web/public/{data,media}",
          .pw_git(repo_root, c("add", "--", rel_paths)))
   record("git commit (WNBA_analytics)",
          .pw_git(repo_root, c("commit", "-m", shQuote(commit_message))))
-  record("git push origin HEAD (WNBA_analytics)",
-         .pw_git(repo_root, c("push", "origin", "HEAD")))
+  .pw_sync_and_push(repo_root, publish_branch, record)
   steps
 }
 
@@ -1470,7 +1568,7 @@ publish_web <- function(dry_run = TRUE,
     return(invisible(result))
   }
 
-  result$steps <- .pw_do_publish(repo_root, checks[[3]]$paths, commit_message)
+  result$steps <- .pw_do_publish(repo_root, checks[[3]]$paths, commit_message, publish_branch)
   result$published <- TRUE
   
   # Atomic Baseline Promotion (Blueprint §2 & §7): S_staged -> S_baseline only after commit succeeds
@@ -1498,11 +1596,14 @@ publish_web <- function(dry_run = TRUE,
           }
           if (!dirty$ok) {  # --quiet exits 1 when there ARE staged changes
             c_res <- .pw_git(repo_root, c("commit", "-m", shQuote("Promote WNBA offseason baseline after publish"), "--", state_paths))
-            p_res <- if (c_res$ok) .pw_git(repo_root, c("push", "origin", "HEAD")) else c_res
-            if (!c_res$ok || !p_res$ok) {
-              stop("publish_web: baseline/manifest commit or push failed; baseline is promoted on disk but NOT committed:\n",
-                   paste(c(c_res$out, p_res$out), collapse = "\n"))
+            if (!c_res$ok) {
+              stop("publish_web: baseline/manifest commit failed; baseline is promoted on disk but NOT committed:\n",
+                   paste(c_res$out, collapse = "\n"))
             }
+            # Same fetch/rebase/retry push as the publish commit; on failure it
+            # resets the branch to origin and leaves the promoted files on disk.
+            .pw_sync_and_push(repo_root, publish_branch,
+                              function(label, res, fatal = FALSE) invisible(TRUE))
             log_info("publish_web: committed and pushed promoted baseline + ingestion manifest.", script = .PW_LOG_SCRIPT)
           }
         }
