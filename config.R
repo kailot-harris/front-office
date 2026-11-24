@@ -849,6 +849,38 @@ WEB_DATA_FILES <- c(
 )
 
 # ------------------------------------------------------------------------------------------
+# Data-file lifecycle (NFL_analytics#214, shared four-sport design)
+# ------------------------------------------------------------------------------------------
+# Every top-level web/public/data/*.json entry in data_manifest.json carries a
+# `lifecycle` field in WEB_DATA_LIFECYCLES. In season, every file is "live";
+# freeze/off-season scoping (season_final / archived) arrives at season end via
+# the shared design. tools/publish_web.R's assertion L fails on any file with a
+# missing or unknown lifecycle.
+WEB_DATA_LIFECYCLES <- c("live", "season_final", "archived")
+
+# Lifecycle per file name: a named list, file -> list(lifecycle, ...).
+nfl_data_lifecycle <- function(files) {
+  files <- basename(files)
+  out <- lapply(files, function(f) list(lifecycle = "live"))
+  names(out) <- files
+  out
+}
+
+# Content hash used for frozen_sha256: sha256 of the file's bytes with CRLF normalised to
+# LF, so a checkout with a different core.autocrlf does not read as a changed file.
+nfl_lifecycle_sha256 <- function(path) {
+  if (!file.exists(path)) return(NA_character_)
+  sz <- file.info(path)$size
+  b <- if (is.na(sz) || sz == 0) raw(0) else readBin(path, "raw", n = sz)
+  cr <- which(b == as.raw(13L))
+  if (length(cr)) {
+    crlf <- cr[cr < length(b) & b[pmin(cr + 1L, length(b))] == as.raw(10L)]
+    if (length(crlf)) b <- b[-crlf]
+  }
+  unname(as.character(tools::sha256sum(bytes = b)))
+}
+
+# ------------------------------------------------------------------------------------------
 # API Throttling & Rate-Limiting (sport-agnostic starting defaults)
 # ------------------------------------------------------------------------------------------
 RATE_LIMIT_SLEEP_SEC <- 1.5
