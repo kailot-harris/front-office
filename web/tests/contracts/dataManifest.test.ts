@@ -21,8 +21,22 @@ const DatasetEntrySchema = z
     static: z.boolean(),
     static_reason: z.string().min(1).optional(),
     lag_days: z.number().int().optional(),
+    lifecycle: z.enum(['live', 'season_final', 'archived']).optional(),
+    season: z.union([z.number().int(), z.string().min(1)]).optional(),
+    final_through_date: IsoDate.optional(),
+    frozen_sha256: z.string().regex(/^[0-9a-f]{64}$/).optional(),
+    frozen_at: UtcIso.optional(),
   })
   .strict()
+  .refine(
+    (e) =>
+      e.lifecycle !== 'season_final' ||
+      (e.season !== undefined &&
+        e.final_through_date !== undefined &&
+        e.frozen_sha256 !== undefined &&
+        e.frozen_at !== undefined),
+    { message: 'season_final entries require season, final_through_date, frozen_sha256, and frozen_at' }
+  )
   .refine(
     (e) =>
       e.through_date_source === 'not_game_dated'
@@ -81,5 +95,52 @@ describe('data_manifest.json contract', () => {
     };
     expect(DataManifestSchema.safeParse(bad3).success).toBe(false);
     expect(DataManifestSchema.safeParse(bad4).success).toBe(false);
+  });
+
+  it('validates optional lifecycle values and requires season_final fields when lifecycle is season_final', () => {
+    const base = {
+      schema_version: 1 as const,
+      sport: 'wnba' as const,
+      generated_at: '2026-11-24T00:00:00Z',
+      schedule_through_date: '2026-10-31',
+      datasets: [
+        {
+          file: 'matchups_slates.json',
+          generated_at: '2026-11-01T00:00:00Z',
+          stamp_source: 'manifest:content_hash',
+          content_sha256: 'e'.repeat(64),
+          through_date: '2026-10-31',
+          through_date_source: 'payload:schedule[].date',
+          coverage_note: null as string | null,
+          builder: 'tools/write_data_manifest.R',
+          static: false,
+        } as Record<string, unknown>,
+      ],
+    };
+
+    expect(DataManifestSchema.safeParse(base).success).toBe(true);
+
+    for (const lc of ['live', 'archived']) {
+      const ok = structuredClone(base);
+      ok.datasets[0].lifecycle = lc;
+      expect(DataManifestSchema.safeParse(ok).success).toBe(true);
+    }
+
+    const badLc = structuredClone(base);
+    badLc.datasets[0].lifecycle = 'stale';
+    expect(DataManifestSchema.safeParse(badLc).success).toBe(false);
+
+    const incompleteFrozen = structuredClone(base);
+    incompleteFrozen.datasets[0].lifecycle = 'season_final';
+    incompleteFrozen.datasets[0].season = 2026;
+    expect(DataManifestSchema.safeParse(incompleteFrozen).success).toBe(false);
+
+    const fullFrozen = structuredClone(base);
+    fullFrozen.datasets[0].lifecycle = 'season_final';
+    fullFrozen.datasets[0].season = 2026;
+    fullFrozen.datasets[0].final_through_date = '2026-10-31';
+    fullFrozen.datasets[0].frozen_sha256 = 'a'.repeat(64);
+    fullFrozen.datasets[0].frozen_at = '2026-11-24T04:00:00Z';
+    expect(DataManifestSchema.safeParse(fullFrozen).success).toBe(true);
   });
 });
