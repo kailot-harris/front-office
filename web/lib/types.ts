@@ -33,6 +33,14 @@ export interface TeamStanding {
   super_bowl_prob: number;
 }
 
+export interface NflActualTeamRecord {
+  wins: number;
+  losses: number;
+  ties: number;
+  pointsFor: number;
+  pointsAgainst: number;
+}
+
 export interface StandingsDataset {
   season: number;
   generated_at: string;
