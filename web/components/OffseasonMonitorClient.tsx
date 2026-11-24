@@ -243,7 +243,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                 <span>2026–2027 Off-Season Dynamics Monitor</span>
               </span>
               <span className="text-xs text-slate-400 font-mono">
-                Phase: <span className="text-slate-200 font-semibold">{dataset.activePhase}</span>
+                Offseason stage: <span className="text-slate-200 font-semibold">{dataset.activePhase}</span>
               </span>
             </div>
 
