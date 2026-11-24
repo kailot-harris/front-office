@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-11-23T09:27:14Z",
+  "generated_at": "2026-11-24T05:09:49Z",
   "sport": "nfl",
   "endpoint": "game_detail",
   "season": 2026,
@@ -41,8 +41,8 @@
       {
         "key": "epa_per_play",
         "label": "EPA / Play",
-        "away_value": 0.031,
-        "home_value": 0.025,
+        "away_value": 0.024,
+        "home_value": 0.011,
         "unit": "epa",
         "higher_is_better": true,
         "description": "Expected Points Added per offensive play"
@@ -51,7 +51,7 @@
         "key": "success_rate",
         "label": "Success Rate",
         "away_value": 49.1,
-        "home_value": 41.7,
+        "home_value": 39.3,
         "unit": "pct",
         "higher_is_better": true,
         "description": "Percentage of plays with positive Expected Points Added"
@@ -59,8 +59,8 @@
       {
         "key": "dropback_epa",
         "label": "Dropback EPA",
-        "away_value": 0.251,
-        "home_value": 0.175,
+        "away_value": 0.241,
+        "home_value": 0.146,
         "unit": "epa",
         "higher_is_better": true,
         "description": "Expected Points Added per dropback pass play"
@@ -68,8 +68,8 @@
       {
         "key": "rush_epa",
         "label": "Rush EPA",
-        "away_value": -0.287,
-        "home_value": -0.105,
+        "away_value": -0.289,
+        "home_value": -0.106,
         "unit": "epa",
         "higher_is_better": true,
         "description": "Expected Points Added per rushing play"
@@ -95,8 +95,8 @@
       {
         "key": "early_down_epa",
         "label": "Early Down EPA",
-        "away_value": -0.118,
-        "home_value": 0.094,
+        "away_value": -0.112,
+        "home_value": 0.09,
         "unit": "epa",
         "higher_is_better": true,
         "description": "Expected Points Added on 1st and 2nd downs"
@@ -105,7 +105,7 @@
         "key": "late_down_success_rate",
         "label": "Late Down Success Rate",
         "away_value": 56.7,
-        "home_value": 40.9,
+        "home_value": 31.8,
         "unit": "pct",
         "higher_is_better": true,
         "description": "Percentage of 3rd and 4th down plays converted successfully"
@@ -251,7 +251,7 @@
           "passing_interceptions": 0,
           "sacks_suffered": 2,
           "sack_yards_lost": -21,
-          "passing_epa": 9.39,
+          "passing_epa": 8.53,
           "passing_cpoe": -0.25,
           "carries": 5,
           "rushing_yards": 27,
@@ -259,7 +259,7 @@
           "rushing_fumbles": 0,
           "rushing_fumbles_lost": 0,
           "rushing_first_downs": 2,
-          "rushing_epa": 3.36
+          "rushing_epa": 3.55
         },
         {
           "playerId": "00-0032424",
@@ -347,7 +347,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 0,
-          "receiving_epa": -2.87
+          "receiving_epa": -3.02
         },
         {
           "playerId": "00-0036587",
@@ -378,7 +378,7 @@
           "rushing_fumbles": 0,
           "rushing_fumbles_lost": 0,
           "rushing_first_downs": 1,
-          "rushing_epa": -2.11,
+          "rushing_epa": -2.19,
           "receptions": 1,
           "targets": 1,
           "receiving_yards": 5,
@@ -386,7 +386,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 0,
-          "receiving_epa": 0.1
+          "receiving_epa": 0.06
         },
         {
           "playerId": "00-0036996",
@@ -450,7 +450,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 6,
-          "receiving_epa": 9.26
+          "receiving_epa": 8.6
         },
         {
           "playerId": "00-0038094",
@@ -530,7 +530,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 7,
-          "receiving_epa": 2.58
+          "receiving_epa": 3.22
         },
         {
           "playerId": "00-0039384",
@@ -545,7 +545,7 @@
           "rushing_fumbles": 0,
           "rushing_fumbles_lost": 0,
           "rushing_first_downs": 0,
-          "rushing_epa": -1.43,
+          "rushing_epa": -1.35,
           "receptions": 2,
           "targets": 3,
           "receiving_yards": 25,
@@ -553,7 +553,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 1,
-          "receiving_epa": 2.06
+          "receiving_epa": 1.92
         },
         {
           "playerId": "00-0039821",
@@ -585,7 +585,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 2,
-          "receiving_epa": 2.2,
+          "receiving_epa": 1.97,
           "def_tackles_solo": 1,
           "def_tackle_assists": 0,
           "def_tackles_for_loss": 0,
@@ -624,7 +624,7 @@
           "rushing_fumbles": 0,
           "rushing_fumbles_lost": 0,
           "rushing_first_downs": 0,
-          "rushing_epa": -2.22
+          "rushing_epa": -2.04
         },
         {
           "playerId": "00-0040181",
@@ -711,7 +711,7 @@
           "rushing_fumbles": 1,
           "rushing_fumbles_lost": 1,
           "rushing_first_downs": 4,
-          "rushing_epa": -2.19,
+          "rushing_epa": -2.08,
           "receptions": 2,
           "targets": 3,
           "receiving_yards": 12,
@@ -719,7 +719,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 0,
-          "receiving_epa": 1.21
+          "receiving_epa": 1.02
         },
         {
           "playerId": "00-0041042",
@@ -735,7 +735,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 1,
-          "receiving_epa": 1.43
+          "receiving_epa": 1.41
         },
         {
           "playerId": "00-0041145",
@@ -821,7 +821,7 @@
           "rushing_fumbles": 0,
           "rushing_fumbles_lost": 0,
           "rushing_first_downs": 0,
-          "rushing_epa": -1.81,
+          "rushing_epa": -1.74,
           "receptions": 1,
           "targets": 1,
           "receiving_yards": 15,
@@ -829,7 +829,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 1,
-          "receiving_epa": 1.29
+          "receiving_epa": 1.23
         },
         {
           "playerId": "00-0033918",
@@ -973,7 +973,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 3,
-          "receiving_epa": 2.94
+          "receiving_epa": 2.93
         },
         {
           "playerId": "00-0036260",
@@ -1037,7 +1037,7 @@
           "receiving_fumbles": 1,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 0,
-          "receiving_epa": -1.23
+          "receiving_epa": -1.59
         },
         {
           "playerId": "00-0036628",
@@ -1053,7 +1053,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 0,
-          "receiving_epa": -0.55
+          "receiving_epa": -0.46
         },
         {
           "playerId": "00-0036940",
@@ -1092,7 +1092,7 @@
           "rushing_fumbles": 0,
           "rushing_fumbles_lost": 0,
           "rushing_first_downs": 0,
-          "rushing_epa": -1.66,
+          "rushing_epa": -1.78,
           "receptions": 1,
           "targets": 1,
           "receiving_yards": 2,
@@ -1100,7 +1100,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 0,
-          "receiving_epa": -0.52
+          "receiving_epa": -0.48
         },
         {
           "playerId": "00-0037742",
@@ -1116,7 +1116,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 2,
-          "receiving_epa": -0.98
+          "receiving_epa": -0.78
         },
         {
           "playerId": "00-0037809",
@@ -1132,7 +1132,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 3,
-          "receiving_epa": 2.51
+          "receiving_epa": 2.18
         },
         {
           "playerId": "00-0039149",
@@ -1228,7 +1228,7 @@
           "passing_interceptions": 0,
           "sacks_suffered": 5,
           "sack_yards_lost": -23,
-          "passing_epa": -2.39,
+          "passing_epa": -3.01,
           "passing_cpoe": 8.08,
           "carries": 9,
           "rushing_yards": 103,
@@ -1236,7 +1236,7 @@
           "rushing_fumbles": 0,
           "rushing_fumbles_lost": 0,
           "rushing_first_downs": 4,
-          "rushing_epa": 8.65
+          "rushing_epa": 8.06
         },
         {
           "playerId": "00-0039912",
@@ -1275,7 +1275,7 @@
           "rushing_fumbles": 0,
           "rushing_fumbles_lost": 0,
           "rushing_first_downs": 4,
-          "rushing_epa": 2.9
+          "rushing_epa": 3.05
         },
         {
           "playerId": "00-0040501",
@@ -1323,7 +1323,7 @@
           "receiving_fumbles": 0,
           "receiving_fumbles_lost": 0,
           "receiving_first_downs": 2,
-          "receiving_epa": 2.18
+          "receiving_epa": 2.14
         },
         {
           "playerId": "00-0041074",
@@ -1509,8 +1509,8 @@
       "secondary_model": {
         "model_id": "xgboost_feature_fusion_v1",
         "model_label": "Secondary Model (XGBoost TreeSHAP)",
-        "model_win_prob": 0.711,
-        "logit": 0.8988,
+        "model_win_prob": 0.709,
+        "logit": 0.8914,
         "base_value": 0.2498,
         "factors": [
           {
@@ -1528,20 +1528,20 @@
           {
             "feature": "diff_pass_epa",
             "label": "Passing EPA Differential",
-            "value": -0.036,
-            "shap_value": -0.037
+            "value": -0.037,
+            "shap_value": -0.0233
           },
           {
             "feature": "diff_rush_epa",
             "label": "Rushing EPA Differential",
-            "value": 0.044,
-            "shap_value": 0.0462
+            "value": 0.067,
+            "shap_value": 0.0227
           },
           {
             "feature": "diff_cpoe",
             "label": "Completion % Over Expected Differential",
             "value": 7.31,
-            "shap_value": 0.7009
+            "shap_value": 0.7032
           },
           {
             "feature": "gp_avg",
@@ -1593,9 +1593,9 @@
           "metric_key": "epa_per_play",
           "metric_label": "EPA / Play",
           "team_abbr": "NYG",
-          "entering_baseline": -0.025,
-          "realized_value": 0.031,
-          "delta": 0.056,
+          "entering_baseline": -0.028,
+          "realized_value": 0.024,
+          "delta": 0.052,
           "prior_games_n": 4,
           "is_low_sample": false
         },
@@ -1603,9 +1603,9 @@
           "metric_key": "success_rate",
           "metric_label": "Success Rate",
           "team_abbr": "NYG",
-          "entering_baseline": 41.182,
+          "entering_baseline": 42.393,
           "realized_value": 49.091,
-          "delta": 7.909,
+          "delta": 6.698,
           "prior_games_n": 4,
           "is_low_sample": false
         },
@@ -1613,9 +1613,9 @@
           "metric_key": "dropback_epa",
           "metric_label": "Dropback EPA",
           "team_abbr": "NYG",
-          "entering_baseline": 0.065,
-          "realized_value": 0.251,
-          "delta": 0.186,
+          "entering_baseline": 0.046,
+          "realized_value": 0.241,
+          "delta": 0.195,
           "prior_games_n": 4,
           "is_low_sample": false
         },
@@ -1623,9 +1623,9 @@
           "metric_key": "rush_epa",
           "metric_label": "Rush EPA",
           "team_abbr": "NYG",
-          "entering_baseline": -0.081,
-          "realized_value": -0.287,
-          "delta": -0.206,
+          "entering_baseline": -0.075,
+          "realized_value": -0.289,
+          "delta": -0.214,
           "prior_games_n": 4,
           "is_low_sample": false
         },
@@ -1643,9 +1643,9 @@
           "metric_key": "epa_per_play",
           "metric_label": "EPA / Play",
           "team_abbr": "WAS",
-          "entering_baseline": -0.056,
-          "realized_value": 0.025,
-          "delta": 0.08,
+          "entering_baseline": -0.052,
+          "realized_value": 0.011,
+          "delta": 0.064,
           "prior_games_n": 4,
           "is_low_sample": false
         },
@@ -1653,9 +1653,9 @@
           "metric_key": "success_rate",
           "metric_label": "Success Rate",
           "team_abbr": "WAS",
-          "entering_baseline": 40.663,
-          "realized_value": 41.667,
-          "delta": 1.003,
+          "entering_baseline": 41.495,
+          "realized_value": 39.286,
+          "delta": -2.21,
           "prior_games_n": 4,
           "is_low_sample": false
         },
@@ -1663,9 +1663,9 @@
           "metric_key": "dropback_epa",
           "metric_label": "Dropback EPA",
           "team_abbr": "WAS",
-          "entering_baseline": 0.042,
-          "realized_value": 0.175,
-          "delta": 0.133,
+          "entering_baseline": 0.031,
+          "realized_value": 0.146,
+          "delta": 0.115,
           "prior_games_n": 4,
           "is_low_sample": false
         },
@@ -1673,9 +1673,9 @@
           "metric_key": "rush_epa",
           "metric_label": "Rush EPA",
           "team_abbr": "WAS",
-          "entering_baseline": -0.141,
-          "realized_value": -0.105,
-          "delta": 0.036,
+          "entering_baseline": -0.123,
+          "realized_value": -0.106,
+          "delta": 0.017,
           "prior_games_n": 4,
           "is_low_sample": false
         },
