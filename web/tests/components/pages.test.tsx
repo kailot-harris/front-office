@@ -60,13 +60,14 @@ describe('Sidebar navigation', () => {
     '/player-dna',
     '/defense',
     '/clutch',
+    '/momentum',
     '/shots',
     '/coaches',
     '/playoffs',
     '/diagnostics',
   ];
 
-  it('links to all 12 primary routes', () => {
+  it('links to all primary routes', () => {
     const { container } = render(<Sidebar />);
     const hrefs = Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href'));
     for (const r of ROUTES) {

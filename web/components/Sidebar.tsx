@@ -23,6 +23,7 @@ import {
   Dna,
   Flame,
   CalendarDays,
+  TrendingUp,
   Film,
   ArrowLeft,
 } from 'lucide-react';
@@ -139,6 +140,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore, seaso
       badge: 'Weekly Grid',
       icon: CalendarDays,
       desc: 'Per-game picks, scores & grades',
+    },
+    {
+      href: '/momentum',
+      label: 'Momentum Board',
+      badge: '5 / 10 / 18 Games',
+      icon: TrendingUp,
+      desc: 'Who is trending up or down',
     },
     {
       href: '/playoffs',
