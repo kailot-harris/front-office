@@ -128,11 +128,6 @@ message(">>> [RAPM] Initializing Possession-Level ORAPM/DRAPM Ridge Regression E
 
 .coalesce_null <- function(a, b) if (is.null(a)) b else a
 
-# Synthetic possessions are opt-in only. Without real data this engine fails loudly
-# rather than writing invented ratings: season_simulator.R weights total_rapm into
-# Variant 2 of the ensemble at 25%.
-ALLOW_SYNTHETIC_RAPM <- isTRUE(as.logical(Sys.getenv("ALLOW_SYNTHETIC_RAPM", "FALSE")))
-
 # Target season in hoopR END-year numbering (2026 === the 2025-26 season). See the
 # SEASON NUMBERING note above before changing this.
 RAPM_SEASON <- as.integer(Sys.getenv("RAPM_SEASON", "2026"))
@@ -686,72 +681,6 @@ estimate_rapm_from_possessions <- function(cache, lambda = RAPM_LAMBDA, source_t
 }
 
 # ------------------------------------------------------------------------------
-# Synthetic possessions (opt-in only -- see ALLOW_SYNTHETIC_RAPM).
-# Generates a fake possession table in the real loader's schema and runs it through
-# the SAME estimator, so the output columns and sign conventions cannot drift apart
-# from the real path. The old engine kept a second hand-written estimator here, and
-# that is how the rapm_home/rapm_away sign error stayed hidden: the generator used the
-# same inverted convention as the fit, so the synthetic output looked self-consistent.
-# ------------------------------------------------------------------------------
-estimate_rapm_synthetic <- function(lambda = RAPM_LAMBDA) {
-  message(">>> [WARN] Using SYNTHETIC_FALLBACK: generating a fake possession table.")
-
-  teams <- c("ATL", "BOS", "NOP", "CHI", "CLE", "DAL", "DEN", "DET", "GSW", "HOU",
-             "IND", "LAC", "LAL", "MIA", "MIL", "MIN", "BKN", "NYK", "ORL", "PHI",
-             "PHX", "POR", "SAC", "SAS", "OKC", "UTA", "WAS", "TOR", "MEM", "CHA")
-  team_ids <- as.character(1610612737:(1610612737 + length(teams) - 1))
-  team_map <- setNames(teams, team_ids)
-
-  players_per_team <- 12
-  n_players  <- length(teams) * players_per_team
-  player_ids <- 900000 + seq_len(n_players)
-
-  set.seed(42)
-  n_poss   <- 60000
-  true_off <- rnorm(n_players, 0, 0.022)
-  true_def <- rnorm(n_players, 0, 0.019)
-
-  off_t <- sample(seq_along(teams), n_poss, replace = TRUE)
-  def_t <- ((off_t - 1 + sample(1:29, n_poss, replace = TRUE)) %% 30) + 1
-
-  pick5 <- function(ti) as.integer((ti - 1) * players_per_team + sample(players_per_team, 5))
-  off_idx <- t(vapply(off_t, pick5, integer(5)))
-  def_idx <- t(vapply(def_t, pick5, integer(5)))
-
-  lat <- rowSums(matrix(true_off[off_idx], ncol = 5)) -
-         rowSums(matrix(true_def[def_idx], ncol = 5))
-  pts <- pmax(0, pmin(8, round(rnorm(n_poss, mean = 1.13 + lat, sd = 1.2))))
-
-  poss <- tibble(
-    game_id             = sprintf("002%08d", rep(seq_len(ceiling(n_poss / 200)),
-                                                 each = 200)[seq_len(n_poss)]),
-    season              = RAPM_SEASON,
-    offense_team_id     = team_ids[off_t],
-    defense_team_id     = team_ids[def_t],
-    points              = pts,
-    count_as_possession = TRUE
-  )
-  for (k in 1:5) {
-    poss[[paste0("off_player_", k)]] <- player_ids[off_idx[, k]]
-    poss[[paste0("def_player_", k)]] <- player_ids[def_idx[, k]]
-  }
-
-  cache <- list(
-    possessions  = poss,
-    team_map     = team_map,
-    full_names   = tibble(
-      player_id   = as.character(player_ids),
-      player_name = paste0(rep(teams, each = players_per_team), "_P",
-                           rep(seq_len(players_per_team), times = length(teams)))),
-    surnames     = tibble(player_id = character(0), surname = character(0)),
-    season       = RAPM_SEASON,
-    season_label = season_label_for(RAPM_SEASON)
-  )
-
-  estimate_rapm_from_possessions(cache, lambda = lambda, source_tag = "SYNTHETIC_FALLBACK")
-}
-
-# ------------------------------------------------------------------------------
 # Entry point
 # ------------------------------------------------------------------------------
 estimate_rapm_ratings <- function(lambda = RAPM_LAMBDA, season = RAPM_SEASON,
@@ -771,11 +700,9 @@ estimate_rapm_ratings <- function(lambda = RAPM_LAMBDA, season = RAPM_SEASON,
     "No real possession data for the %s season. Refusing to write synthetic RAPM ratings: ",
     "season_simulator.R weights total_rapm into Variant 2 of the ensemble as if it were ",
     "observed. Point RAPM_SEASON at a published season (load_nba_stats_possessions has no ",
-    "table for a season still in progress) or set ALLOW_SYNTHETIC_RAPM=TRUE for offline testing."),
+    "table for a season still in progress)."),
     season_label_for(season))
-  if (!ALLOW_SYNTHETIC_RAPM) stop(msg)
-  message(">>> [WARN] ", msg)
-  estimate_rapm_synthetic(lambda)
+  stop(msg)
 }
 
 if (!interactive()) {
