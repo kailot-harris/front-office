@@ -22,8 +22,10 @@
 #'
 #' @param status_z Character vector: the NUL-split fields of the -z output.
 #' @param output_dirs Repo-relative output directories.
+#' @param output_files Optional repo-relative output file paths (e.g. tracked
+#'   history CSVs outside `output_dirs`).
 #' @return list(output = chr, other = chr)
-classify_dirty_paths <- function(status_z, output_dirs) {
+classify_dirty_paths <- function(status_z, output_dirs, output_files = character(0)) {
   status_z <- status_z[nzchar(status_z)]
   paths <- character(0)
   i <- 1L
@@ -42,7 +44,10 @@ classify_dirty_paths <- function(status_z, output_dirs) {
   }
   paths <- unique(gsub("\\\\", "/", paths))
   prefixes <- paste0(sub("/+$", "", gsub("\\\\", "/", output_dirs)), "/")
-  is_output <- vapply(paths, function(p) any(startsWith(p, prefixes)), logical(1))
+  files_norm <- sub("^/+", "", gsub("\\\\", "/", output_files))
+  is_output <- vapply(paths, function(p) {
+    any(startsWith(p, prefixes)) || (p %in% files_norm)
+  }, logical(1))
   list(output = paths[is_output], other = paths[!is_output])
 }
 
@@ -82,8 +87,9 @@ if (sys.nframe() == 0L && !interactive()) {
     quit(status = 2L)
   }
   source("config.R")
+  out_files <- if (exists("PIPELINE_OUTPUT_FILES")) PIPELINE_OUTPUT_FILES else character(0)
   res <- tryCatch(
-    classify_dirty_paths(guard_status_fields(getwd()), PIPELINE_OUTPUT_DIRS),
+    classify_dirty_paths(guard_status_fields(getwd()), PIPELINE_OUTPUT_DIRS, out_files),
     error = function(e) { cat("[publish_guard] ERROR:", conditionMessage(e), "\n"); NULL }
   )
   if (is.null(res)) quit(status = 1L)

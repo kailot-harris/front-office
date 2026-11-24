@@ -812,6 +812,12 @@ MEDIA_GIF_MAX_AGE_DAYS <- 8
 # tools/publish_guard.R (called by schedule_publish.bat) uses it to leave these paths
 # alone when it stashes unrelated dirty files. Both read this vector so they cannot drift.
 PIPELINE_OUTPUT_DIRS <- c(WEB_DATA_DIR, WEB_ANIM_DIR)
+
+# PIPELINE_OUTPUT_FILES: individual tracked files outside PIPELINE_OUTPUT_DIRS that
+# the daily pipeline updates and tools/publish_web.R commits (e.g. ratings history for
+# landing_digest.json movers, NFL_analytics#185). tools/publish_guard.R keeps these
+# alongside PIPELINE_OUTPUT_DIRS so schedule_publish.bat does not stash them.
+PIPELINE_OUTPUT_FILES <- c(file.path("data", "history", "ratings_history.csv"))
 WEB_GAMES_DIR    <- file.path(WEB_DATA_DIR, "games")
 WEB_ATTRIBUTION_DIR <- file.path(WEB_DATA_DIR, "week_attribution")
 
