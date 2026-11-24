@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "game_id": "401910323",
-  "generated_at": "2026-11-23T14:03:24Z",
+  "generated_at": "2026-11-24T05:14:51Z",
   "data": {
     "projection_basis": "primary_ensemble",
     "predicted_margin": -3.78,
@@ -17,8 +17,8 @@
       {
         "key": "rapm",
         "label": "Regularized APM",
-        "points": -1.78,
-        "detail": "25% RAPM blend (MIL -4.17 vs DEN +2.94)"
+        "points": -1.77,
+        "detail": "25% RAPM blend (MIL -4.17 vs DEN +2.93)"
       },
       {
         "key": "shot_fatigue",
@@ -43,6 +43,12 @@
         "label": "Schedule & travel",
         "points": 2.04,
         "detail": "DEN fatigue 2.29 minus MIL fatigue 0.25"
+      },
+      {
+        "key": "rounding",
+        "label": "Component rounding",
+        "points": -0.01,
+        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,

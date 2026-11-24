@@ -1,9 +1,9 @@
 {
   "schema_version": "1.0",
   "game_id": "401909319",
-  "generated_at": "2026-11-23T14:03:24Z",
+  "generated_at": "2026-11-24T05:14:51Z",
   "data": {
-    "projection_basis": "primary_ensemble",
+    "projection_basis": "logged_model_margin",
     "predicted_margin": 0.51,
     "predicted_home_win_prob": 0.5168,
     "sigma_game": 12.1235,
@@ -12,37 +12,37 @@
         "key": "bottom_up",
         "label": "Bottom-up BPM",
         "points": -1.34,
-        "detail": "35% BPM blend (NYK +4.41 vs CLE +8.25)"
+        "detail": "Logged pregame 35% BPM blend differential"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
         "points": 0.08,
-        "detail": "25% RAPM blend (NYK +2.47 vs CLE +2.14)"
+        "detail": "Logged pregame 25% RAPM blend differential"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": -0.57,
-        "detail": "20% Shot/Fatigue blend (NYK +5.24 vs CLE +8.07)"
+        "detail": "Logged pregame 20% Shot/Fatigue blend differential"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
         "points": -0.71,
-        "detail": "20% Embeddings blend (NYK +4.43 vs CLE +7.98)"
+        "detail": "Logged pregame 20% Embeddings blend differential"
       },
       {
         "key": "home_court",
         "label": "Home court advantage",
         "points": 2.4,
-        "detail": "NYK home-court constant (+2.40 pts)"
+        "detail": "Logged pregame home-court constant"
       },
       {
         "key": "schedule",
         "label": "Schedule & travel",
         "points": 0.64,
-        "detail": "CLE fatigue 0.64 minus NYK fatigue 0.00"
+        "detail": "Logged pregame schedule & travel drag differential"
       },
       {
         "key": "rounding",
@@ -52,7 +52,12 @@
       }
     ],
     "schedule_context_available": true,
-    "logged_forecast": null,
+    "logged_forecast": {
+      "prediction_timestamp": "2026-11-24T05:14:09Z",
+      "log_source": "LOGGED_PREGAME",
+      "brier_component": null,
+      "log_loss_component": null
+    },
     "entering_baselines": null,
     "xgboost_shap": {
       "model_id": "xgboost_feature_fusion_v1",

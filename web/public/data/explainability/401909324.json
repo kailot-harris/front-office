@@ -1,52 +1,57 @@
 {
   "schema_version": "1.0",
   "game_id": "401909324",
-  "generated_at": "2026-11-23T14:03:24Z",
+  "generated_at": "2026-11-24T05:14:51Z",
   "data": {
-    "projection_basis": "primary_ensemble",
-    "predicted_margin": 14.42,
-    "predicted_home_win_prob": 0.8843,
-    "sigma_game": 12.0498,
+    "projection_basis": "logged_model_margin",
+    "predicted_margin": 14.39,
+    "predicted_home_win_prob": 0.8838,
+    "sigma_game": 12.0509,
     "margin_waterfall": [
       {
         "key": "bottom_up",
         "label": "Bottom-up BPM",
         "points": 4.66,
-        "detail": "35% BPM blend (GSW +6.46 vs SAC -6.85)"
+        "detail": "Logged pregame 35% BPM blend differential"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
-        "points": 2.08,
-        "detail": "25% RAPM blend (GSW +0.75 vs SAC -7.58)"
+        "points": 2.05,
+        "detail": "Logged pregame 25% RAPM blend differential"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": 2.56,
-        "detail": "20% Shot/Fatigue blend (GSW +5.54 vs SAC -7.24)"
+        "detail": "Logged pregame 20% Shot/Fatigue blend differential"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
         "points": 2.69,
-        "detail": "20% Embeddings blend (GSW +6.67 vs SAC -6.79)"
+        "detail": "Logged pregame 20% Embeddings blend differential"
       },
       {
         "key": "home_court",
         "label": "Home court advantage",
         "points": 2.4,
-        "detail": "GSW home-court constant (+2.40 pts)"
+        "detail": "Logged pregame home-court constant"
       },
       {
         "key": "schedule",
         "label": "Schedule & travel",
         "points": 0.03,
-        "detail": "SAC fatigue 0.03 minus GSW fatigue 0.00"
+        "detail": "Logged pregame schedule & travel drag differential"
       }
     ],
     "schedule_context_available": true,
-    "logged_forecast": null,
+    "logged_forecast": {
+      "prediction_timestamp": "2026-11-24T05:14:09Z",
+      "log_source": "LOGGED_PREGAME",
+      "brier_component": null,
+      "log_loss_component": null
+    },
     "entering_baselines": null,
     "xgboost_shap": {
       "model_id": "xgboost_feature_fusion_v1",
