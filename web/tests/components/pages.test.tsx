@@ -10,6 +10,7 @@
 import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import CoachingClient from '../../components/CoachingClient';
+import { servedRoutes } from '../helpers/app-routes';
 import SalaryCapClient from '../../components/SalaryCapClient';
 import GalleryClient from '../../components/GalleryClient';
 import DiagnosticsClient from '../../components/DiagnosticsClient';
@@ -79,21 +80,8 @@ describe('TeamLogo', () => {
 // ------------------------------------------------------------------ Sidebar ---
 
 describe('Sidebar', () => {
-  const ROUTES = [
-    '/',
-    '/matchups',
-    '/teams',
-    '/coaches',
-    '/cap-sheet',
-    '/playoffs',
-    '/players',
-    '/passing',
-    '/player-dna',
-    '/clutch',
-    '/variants',
-    '/diagnostics',
-    '/gallery',
-  ];
+  // #82: every real page under app/ (forwarding stubs excluded), read from disk.
+  const ROUTES = servedRoutes();
 
   it('links to every route the app actually serves', () => {
     const { container } = render(<Sidebar />);

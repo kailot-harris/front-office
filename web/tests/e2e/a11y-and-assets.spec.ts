@@ -174,6 +174,8 @@ test.describe('responsive layout', () => {
     { name: 'desktop', width: 1680, height: 1050 },
   ]) {
     test(`every route renders at ${size.name} without clipping the body`, async ({ page }) => {
+      // One test walks every route: scale the budget with the table (#82 added three).
+      test.setTimeout(ROUTES.length * 8_000);
       await page.setViewportSize({ width: size.width, height: size.height });
       for (const route of ROUTES) {
         await page.goto(route.path, { waitUntil: 'domcontentloaded' });
@@ -189,6 +191,7 @@ test.describe('responsive layout', () => {
 
 test.describe('document metadata', () => {
   test('every route has a unique title and a meta description', async ({ page }) => {
+    test.setTimeout(ROUTES.length * 8_000);
     const titles = new Map<string, string>();
     for (const route of ROUTES) {
       await page.goto(route.path, { waitUntil: 'domcontentloaded' });
