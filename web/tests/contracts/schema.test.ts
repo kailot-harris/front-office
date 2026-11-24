@@ -13,6 +13,7 @@ import {
   LEAGUE,
   loadAllDatasets,
   readPlayerShotFile,
+  readJsonFile,
 } from '../helpers/datasets';
 import {
   TeamProjectionSchema,
@@ -34,6 +35,7 @@ import {
   ShotsMetadataSchema,
   PlayerShotDataSchema,
   MatchupsDatasetSchema,
+  MomentumMethodologySchema,
 } from './schemas';
 
 function formatIssues(issues: z.ZodIssue[], max = 8): string {
@@ -155,6 +157,10 @@ describe('Strict Zod schema contracts against public/data/*.json', () => {
   it('shots_index.json matches PlayerCatalogEntrySchema', () => {
     expect(d.shotsIndex.length).toBeGreaterThanOrEqual(200);
     assertValid(z.array(PlayerCatalogEntrySchema), d.shotsIndex, 'shots_index.json');
+  });
+
+  it('momentum_methodology.json matches MomentumMethodologySchema', () => {
+    assertValid(MomentumMethodologySchema, readJsonFile('momentum_methodology.json'), 'momentum_methodology.json');
   });
 
   it('shots_metadata.json matches ShotsMetadataSchema', () => {

@@ -96,6 +96,14 @@ export const ROUTES: RouteSpec[] = [
     expectsSearch: false,
   },
   {
+    path: '/momentum/methodology',
+    title: 'Momentum Board Methodology',
+    heading: 'Momentum Board: methodology',
+    // study.title and a measure name, both read from momentum_methodology.json.
+    dataMarkers: ['NBA momentum measures study', 'Kalman slope'],
+    expectsSearch: false,
+  },
+  {
     path: '/playoffs',
     title: '7-Game Playoff Series',
     heading: '7-Game Playoff Series Matchup Simulator',

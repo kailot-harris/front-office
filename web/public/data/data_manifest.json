@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "sport": "nba",
-  "generated_at": "2026-11-24T06:43:12Z",
-  "schedule_through_date": "2026-11-22",
+  "generated_at": "2026-11-24T18:33:10Z",
+  "schedule_through_date": "2026-11-23",
   "datasets": {
     "cba_cap_sheet.json": {
       "generated_at": "2026-11-24T05:13:45Z",
@@ -15,7 +15,8 @@
       "builder": "build_cba_cap_dataset.R",
       "max_lag_days": 2,
       "static": false,
-      "static_reason": null
+      "static_reason": null,
+      "lifecycle": "live"
     },
     "clutch_leverage_metrics.json": {
       "generated_at": "2026-11-24T05:13:54Z",
@@ -28,7 +29,8 @@
       "builder": "build_clutch_dataset.R",
       "max_lag_days": 2,
       "static": false,
-      "static_reason": null
+      "static_reason": null,
+      "lifecycle": "live"
     },
     "coaching_metrics.json": {
       "generated_at": "2026-11-24T05:13:26Z",
@@ -41,7 +43,8 @@
       "builder": "build_coaching_dataset.R",
       "max_lag_days": 2,
       "static": false,
-      "static_reason": null
+      "static_reason": null,
+      "lifecycle": "live"
     },
     "defensive_metrics.json": {
       "generated_at": "2026-11-24T05:13:46Z",
@@ -54,7 +57,8 @@
       "builder": "build_defense_dataset.R",
       "max_lag_days": 2,
       "static": false,
-      "static_reason": null
+      "static_reason": null,
+      "lifecycle": "live"
     },
     "landing_digest.json": {
       "generated_at": "2026-11-24T05:16:34Z",
@@ -67,7 +71,8 @@
       "builder": "build_landing_digest.R",
       "max_lag_days": 2,
       "static": false,
-      "static_reason": null
+      "static_reason": null,
+      "lifecycle": "live"
     },
     "matchups_slates.json": {
       "generated_at": "2026-11-24T05:16:34Z",
@@ -80,20 +85,36 @@
       "builder": "build_matchups_dataset.R",
       "max_lag_days": 2,
       "static": false,
-      "static_reason": null
+      "static_reason": null,
+      "lifecycle": "live"
     },
     "momentum_board.json": {
-      "generated_at": "2026-11-24T06:43:11Z",
+      "generated_at": "2026-11-24T08:05:31Z",
       "through_date": "2026-11-22",
       "through_date_source": "payload:through_date",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "969435920208aade730e43c322637a4b202a0160a05c5206914ea9216f402fdf",
+      "content_sha256": "78bab66b7874b9d37ee511b4597743fc37495f17df092a1987cd23171ebd6ccf",
       "coverage_note": null,
       "source_season": "2026-27",
       "builder": "build_momentum_dataset.R",
       "max_lag_days": 2,
       "static": false,
-      "static_reason": null
+      "static_reason": null,
+      "lifecycle": "live"
+    },
+    "momentum_methodology.json": {
+      "generated_at": "2026-11-24T18:33:10Z",
+      "through_date": null,
+      "through_date_source": "static",
+      "stamp_source": "manifest:content_hash",
+      "content_sha256": "853afbac5ed0ecd324d9e491353391b8e9b34509e20dee7866ca904f283fbcee",
+      "coverage_note": null,
+      "source_season": "2026-27",
+      "builder": "publish_momentum_methodology.R",
+      "max_lag_days": 0,
+      "static": true,
+      "static_reason": "Frozen momentum measures study results (study run date and source commit inside the file); copied by tools/publish_momentum_methodology.R only when the study is re-run, never by the daily pipeline.",
+      "lifecycle": "live"
     },
     "offseason_draft.json": {
       "generated_at": "2026-11-20T15:43:45Z",
@@ -106,7 +127,8 @@
       "builder": "build_offseason_dataset.R",
       "max_lag_days": 0,
       "static": true,
-      "static_reason": "Static 2026 off-season draft snapshot (labeled in the UI per NBA#193); not refreshed in-season."
+      "static_reason": "Static 2026 off-season draft snapshot (labeled in the UI per NBA#193); not refreshed in-season.",
+      "lifecycle": "live"
     },
     "offseason_teams.json": {
       "generated_at": "2026-11-24T05:16:15Z",
@@ -119,7 +141,8 @@
       "builder": "build_offseason_dataset.R",
       "max_lag_days": 0,
       "static": true,
-      "static_reason": "2026 off-season team-moves snapshot (labeled in the UI per NBA#193): the move set is frozen; only its baseline wins are re-derived per run, so it carries no game-date coverage."
+      "static_reason": "2026 off-season team-moves snapshot (labeled in the UI per NBA#193): the move set is frozen; only its baseline wins are re-derived per run, so it carries no game-date coverage.",
+      "lifecycle": "live"
     },
     "offseason_transactions.json": {
       "generated_at": "2026-11-20T15:43:45Z",
@@ -132,7 +155,8 @@
       "builder": "build_offseason_dataset.R",
       "max_lag_days": 0,
       "static": true,
-      "static_reason": "Hand-curated 2026 off-season transaction catalog; an input to build_offseason_dataset.R, not a per-run output."
+      "static_reason": "Hand-curated 2026 off-season transaction catalog; an input to build_offseason_dataset.R, not a per-run output.",
+      "lifecycle": "live"
     },
     "player_dna_profiles.json": {
       "generated_at": "2026-11-24T05:13:49Z",
@@ -145,7 +169,8 @@
       "builder": "build_player_dna_dataset.R",
       "max_lag_days": 2,
       "static": false,
-      "static_reason": null
+      "static_reason": null,
+      "lifecycle": "live"
     },
     "playoff_series_matchups.json": {
       "generated_at": "2026-11-24T05:14:03Z",
@@ -158,7 +183,8 @@
       "builder": "playoff_simulator.R",
       "max_lag_days": 2,
       "static": false,
-      "static_reason": null
+      "static_reason": null,
+      "lifecycle": "live"
     },
     "projections_diagnostics.json": {
       "generated_at": "2026-11-24T05:14:09Z",
@@ -171,7 +197,8 @@
       "builder": "accuracy_governance.R",
       "max_lag_days": 2,
       "static": false,
-      "static_reason": null
+      "static_reason": null,
+      "lifecycle": "live"
     },
     "projections_models_metadata.json": {
       "generated_at": "2026-11-24T05:13:25Z",
@@ -184,7 +211,8 @@
       "builder": "season_simulator.R",
       "max_lag_days": 2,
       "static": false,
-      "static_reason": null
+      "static_reason": null,
+      "lifecycle": "live"
     },
     "projections_season_players.json": {
       "generated_at": "2026-11-24T05:16:15Z",
@@ -197,7 +225,8 @@
       "builder": "season_simulator.R",
       "max_lag_days": 10,
       "static": false,
-      "static_reason": null
+      "static_reason": null,
+      "lifecycle": "live"
     },
     "projections_season_teams.json": {
       "generated_at": "2026-11-24T05:16:15Z",
@@ -210,7 +239,8 @@
       "builder": "season_simulator.R",
       "max_lag_days": 10,
       "static": false,
-      "static_reason": null
+      "static_reason": null,
+      "lifecycle": "live"
     },
     "shots_index.json": {
       "generated_at": "2026-11-24T05:16:15Z",
@@ -223,7 +253,8 @@
       "builder": "build_shot_chart_dataset.R",
       "max_lag_days": 2,
       "static": false,
-      "static_reason": null
+      "static_reason": null,
+      "lifecycle": "live"
     },
     "shots_metadata.json": {
       "generated_at": "2026-11-24T05:13:57Z",
@@ -236,7 +267,8 @@
       "builder": "build_shot_chart_dataset.R",
       "max_lag_days": 2,
       "static": false,
-      "static_reason": null
+      "static_reason": null,
+      "lifecycle": "live"
     },
     "visual_media_index.json": {
       "generated_at": "2026-11-24T05:15:20Z",
@@ -249,7 +281,8 @@
       "builder": "export_visual_media_index.R",
       "max_lag_days": 2,
       "static": false,
-      "static_reason": null
+      "static_reason": null,
+      "lifecycle": "live"
     }
   }
 }

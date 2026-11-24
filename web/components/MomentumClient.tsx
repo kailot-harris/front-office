@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useId, useState } from 'react';
+import Link from 'next/link';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { InfoTip } from '@/components/InfoTip';
@@ -684,6 +685,7 @@ const MethodsPanel: React.FC<{ methods: MomentumMethods }> = ({ methods }) => {
           <p>Values that cannot be computed are shown as missing, with the reason. Nothing is imputed or synthesised.</p>
         </div>
       )}
+      <p className="px-4 pb-3 text-xs"><Link href="/momentum/methodology" className="inline-flex min-h-6 items-center text-indigo-300 underline underline-offset-2 hover:text-indigo-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">Full methodology and everything we tested</Link></p>
     </section>
   );
 };

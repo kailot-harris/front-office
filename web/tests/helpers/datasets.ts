@@ -116,6 +116,9 @@ export const EXPECTED_DATA_FILES = [
   'visual_media_index.json',
   // Momentum Board data layer (NBA_analytics#237); the /momentum page is #238.
   'momentum_board.json',
+  // Frozen momentum measures study results behind /momentum/methodology
+  // (tools/publish_momentum_methodology.R; static in data_manifest.json).
+  'momentum_methodology.json',
 ] as const;
 export type DataFileName = (typeof EXPECTED_DATA_FILES)[number];
 

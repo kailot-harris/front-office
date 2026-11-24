@@ -290,3 +290,11 @@ describe('MomentumClient: tooltips, methods panel, language', () => {
     expect(screen.getByText(/unavailable/i)).toBeInTheDocument();
   });
 });
+
+describe('MomentumClient: methodology link', () => {
+  it('links to the methodology page through next/link (basePath-relative href)', () => {
+    render(<MomentumClient data={DATA} />);
+    const link = screen.getByRole('link', { name: 'Full methodology and everything we tested' });
+    expect(link).toHaveAttribute('href', '/momentum/methodology');
+  });
+});
