@@ -89,6 +89,13 @@ export const ROUTES: RouteSpec[] = [
     expectsSearch: true,
   },
   {
+    path: '/momentum',
+    title: 'Momentum Board',
+    heading: 'Momentum Board',
+    dataMarkers: ['How this is calculated', 'Games in window'],
+    expectsSearch: false,
+  },
+  {
     path: '/playoffs',
     title: '7-Game Playoff Series',
     heading: '7-Game Playoff Series Matchup Simulator',

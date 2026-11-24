@@ -4,9 +4,10 @@
 #
 # Writes web/public/data/data_manifest.json: one sidecar entry per top-level
 # web/public/data/*.json payload saying WHEN it was generated, WHICH game date
-# its content actually runs through, which builder writes it and how far it may
+# its content actually runs through, which builder writes it, how far it may
 # trail the schedule before the publish gate (tools/publish_web.R assertion H)
-# blocks.
+# blocks, and its `lifecycle` (NBA_analytics#235: "live" for every file in
+# season; verified by publish_web.R assertion L).
 #
 # Usage:
 #   Rscript tools/write_data_manifest.R            # writes the manifest
@@ -62,6 +63,7 @@ DM_SPEC <- list(
   "landing_digest.json"              = list(builder = "build_landing_digest.R", max_lag_days = 2L,
     coverage_note = "No final game in the digest's yesterday list (off day or off-season)."),
   "matchups_slates.json"             = list(builder = "build_matchups_dataset.R",   max_lag_days = 2L),
+  "momentum_board.json"              = list(builder = "build_momentum_dataset.R",   max_lag_days = 2L),
   "visual_media_index.json"          = list(builder = "export_visual_media_index.R", max_lag_days = 2L,
     coverage_note = "Media inventory (per-item build stamps); content carries no game date."),
   "player_dna_profiles.json"         = list(builder = "build_player_dna_dataset.R", max_lag_days = 2L),
@@ -97,6 +99,7 @@ DM_COVERAGE <- list(
   "defensive_metrics.json"       = .dm_date_field("throughDate"),
   "player_dna_profiles.json"     = .dm_date_field("throughDate"),
   "shots_metadata.json"          = .dm_date_field("through_date"),
+  "momentum_board.json"          = .dm_date_field("through_date"),
   "landing_digest.json" = function(j) {
     # Latest FINAL game in yesterday[]: never generated_at or slate_date.
     d <- vapply(j$yesterday %||% list(), function(g)
@@ -116,6 +119,22 @@ DM_COVERAGE <- list(
 
 DM_SOURCE_SEASON <- "2026-27"
 DM_FILE_NAME <- "data_manifest.json"
+DM_LIFECYCLE_FIELDS <- c("season", "final_through_date", "frozen_sha256", "frozen_at")
+
+# Lifecycle helper (NBA_analytics#235). Uses config.R's nba_data_lifecycle()
+# when loaded; otherwise assigns "live" to every top-level file in season.
+.dm_default_lifecycle_fn <- function() {
+  if (exists("nba_data_lifecycle", mode = "function")) {
+    get("nba_data_lifecycle", mode = "function")
+  } else {
+    function(files) {
+      files <- basename(files)
+      out <- lapply(files, function(f) list(lifecycle = "live"))
+      names(out) <- files
+      out
+    }
+  }
+}
 
 .dm_utc <- function(x) format(as.POSIXct(x), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
 
@@ -172,7 +191,7 @@ dm_latest_completed_schedule_date <- function(schedule_path) {
   if (!length(gd)) as.Date(NA) else max(gd)
 }
 
-.dm_entry <- function(path, spec, prev_entry, now) {
+.dm_entry <- function(path, spec, prev_entry, now, lc = NULL) {
   f <- basename(path)
   sha <- unname(as.character(tools::sha256sum(path)))
   j <- tryCatch(jsonlite::fromJSON(path, simplifyVector = FALSE), error = function(e) NULL)
@@ -203,7 +222,7 @@ dm_latest_completed_schedule_date <- function(schedule_path) {
     note <- "no coverage extractor registered; content treated as not game-dated"
   }
 
-  list(
+  entry <- list(
     generated_at        = gen,
     through_date        = if (is.na(through)) NULL else through,
     through_date_source = through_source,
@@ -216,6 +235,13 @@ dm_latest_completed_schedule_date <- function(schedule_path) {
     static              = static,
     static_reason       = spec$static_reason %||% NULL
   )
+  if (!is.null(lc) && !is.null(lc$lifecycle)) {
+    entry$lifecycle <- lc$lifecycle
+    if (identical(lc$lifecycle, "season_final")) {
+      for (k in DM_LIFECYCLE_FIELDS) if (!is.null(lc[[k]])) entry[[k]] <- lc[[k]]
+    }
+  }
+  entry
 }
 
 .dm_read_prev <- function(prev_path) {
@@ -226,12 +252,15 @@ dm_latest_completed_schedule_date <- function(schedule_path) {
 build_data_manifest <- function(data_dir = file.path("web", "public", "data"),
                                 schedule_path = NULL,
                                 now = Sys.time(),
-                                prev_manifest = .dm_read_prev(file.path(data_dir, DM_FILE_NAME))) {
+                                prev_manifest = .dm_read_prev(file.path(data_dir, DM_FILE_NAME)),
+                                lifecycle_fn = .dm_default_lifecycle_fn()) {
   files <- setdiff(sort(list.files(data_dir, pattern = "\\.json$")), DM_FILE_NAME)
+  lifecycles <- if (is.function(lifecycle_fn)) lifecycle_fn(files) else list()
   datasets <- list()
   for (f in files) {
     datasets[[f]] <- .dm_entry(file.path(data_dir, f), DM_SPEC[[f]] %||% list(),
-                               prev_manifest$datasets[[f]], now)
+                               prev_manifest$datasets[[f]], now,
+                               lc = lifecycles[[f]])
   }
   sched <- dm_latest_completed_schedule_date(schedule_path)
   if (is.na(sched) && !is.null(datasets[["matchups_slates.json"]]$through_date)) {
@@ -269,12 +298,19 @@ local({
   root <- normalizePath(dirname(dirname(f[1])), winslash = "/", mustWork = FALSE)
   setwd(root)
   sched <- NULL
+  lc_fn <- NULL
   if (file.exists("config.R")) {
     env <- new.env()
     ok <- tryCatch({ sys.source("config.R", envir = env); TRUE }, error = function(e) FALSE)
     if (ok && exists("CACHE_MATCHUPS_SCHEDULE", envir = env))
       sched <- env$CACHE_MATCHUPS_SCHEDULE(env$MATCHUPS_HOOPR_SEASON)
+    if (ok && exists("nba_data_lifecycle", envir = env))
+      lc_fn <- env$nba_data_lifecycle
   }
-  out <- write_data_manifest(schedule_path = sched)
+  out <- if (is.function(lc_fn)) {
+    write_data_manifest(schedule_path = sched, lifecycle_fn = lc_fn)
+  } else {
+    write_data_manifest(schedule_path = sched)
+  }
   message(sprintf(">>> write_data_manifest: wrote %s", out))
 })

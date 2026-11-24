@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "sport": "nba",
-  "generated_at": "2026-11-24T05:16:15Z",
+  "generated_at": "2026-11-24T06:43:12Z",
   "schedule_through_date": "2026-11-22",
   "datasets": {
     "cba_cap_sheet.json": {
@@ -57,12 +57,12 @@
       "static_reason": null
     },
     "landing_digest.json": {
-      "generated_at": "2026-11-24T05:15:13Z",
-      "through_date": null,
-      "through_date_source": "not_game_dated",
+      "generated_at": "2026-11-24T05:16:34Z",
+      "through_date": "2026-11-23",
+      "through_date_source": "payload:yesterday[final].game_date",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "d78b46377ec58f4abcde8e7fe4c1c7db357266cd0b6d09cb94268ba5fc1ffaea",
-      "coverage_note": "extractor payload:yesterday[final].game_date found no game date in the payload",
+      "content_sha256": "3827e5bfffb67f6d132a7c65e81ebad5ac149a5e72ee7389ecacb967f1cd31e8",
+      "coverage_note": null,
       "source_season": "2026-27",
       "builder": "build_landing_digest.R",
       "max_lag_days": 2,
@@ -70,14 +70,27 @@
       "static_reason": null
     },
     "matchups_slates.json": {
-      "generated_at": "2026-11-24T05:15:12Z",
-      "through_date": "2026-11-22",
+      "generated_at": "2026-11-24T05:16:34Z",
+      "through_date": "2026-11-23",
       "through_date_source": "payload:matchups[is_completed].game_date",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "d55758ab9098c808e3bc17695e2de79787ea2b155a0db0057be86ff9d7febbc5",
+      "content_sha256": "9a13e789b2959d15535e38f2eb69d024070aca0f665bd3d2e08528670e288460",
       "coverage_note": null,
       "source_season": "2026-27",
       "builder": "build_matchups_dataset.R",
+      "max_lag_days": 2,
+      "static": false,
+      "static_reason": null
+    },
+    "momentum_board.json": {
+      "generated_at": "2026-11-24T06:43:11Z",
+      "through_date": "2026-11-22",
+      "through_date_source": "payload:through_date",
+      "stamp_source": "payload:generated_at",
+      "content_sha256": "969435920208aade730e43c322637a4b202a0160a05c5206914ea9216f402fdf",
+      "coverage_note": null,
+      "source_season": "2026-27",
+      "builder": "build_momentum_dataset.R",
       "max_lag_days": 2,
       "static": false,
       "static_reason": null

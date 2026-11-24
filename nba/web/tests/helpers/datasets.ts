@@ -114,6 +114,8 @@ export const EXPECTED_DATA_FILES = [
   'landing_digest.json',
   // Read by the Gallery page at build time and the landing slideshow (front-office#210).
   'visual_media_index.json',
+  // Momentum Board data layer (NBA_analytics#237); the /momentum page is #238.
+  'momentum_board.json',
 ] as const;
 export type DataFileName = (typeof EXPECTED_DATA_FILES)[number];
 
