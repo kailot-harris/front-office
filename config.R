@@ -44,6 +44,22 @@ season_label <- function(end_year = CURRENT_SEASON) {
   sprintf("%d-%02d", as.integer(end_year) - 1L, as.integer(end_year) %% 100L)
 }
 
+# Derive hoopR end-year season integer from game_date (NBA season runs Oct-Jun;
+# month >= 7 belongs to year + 1L, month <= 6 belongs to year).
+# Falls back to fallback_season when game_date is missing/NA.
+nba_season_end_year <- function(game_date, fallback_season = CURRENT_SEASON) {
+  gd <- suppressWarnings(as.Date(game_date))
+  yr <- suppressWarnings(as.integer(format(gd, "%Y")))
+  mo <- suppressWarnings(as.integer(format(gd, "%m")))
+  derived <- yr + ifelse(mo >= 7L, 1L, 0L)
+  if (!is.null(fallback_season)) {
+    fb <- suppressWarnings(as.integer(fallback_season))
+    if (length(fb) == 1L) fb <- rep(fb, length(derived))
+    derived <- ifelse(is.na(derived), fb, derived)
+  }
+  as.integer(derived)
+}
+
 # Current-season cache inputs (front-office#191). Missing file => stop(), never a
 # fallback to another season.
 current_season_cache <- function(kind = c("pbp", "player_box")) {

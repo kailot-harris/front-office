@@ -733,6 +733,33 @@ seed_prediction_log <- function() {
 # ------------------------------------------------------------------------------
 # 2. Load or Get Prediction Log
 # ------------------------------------------------------------------------------
+# Normalize `season` on existing log rows from `game_date` (hoopR end-year
+# convention: e.g. 2026-10-20..2027-06-30 -> 2027L), repairing historical
+# mixed 2026/2027 labels without dropping or altering any other fields.
+normalize_prediction_log_seasons <- function(df, persist = FALSE) {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) == 0L) return(df)
+  if (!all(c("season", "game_date") %in% names(df))) return(df)
+  gd <- suppressWarnings(as.Date(df$game_date))
+  expected <- if (exists("nba_season_end_year", mode = "function")) {
+    nba_season_end_year(gd, fallback_season = df$season)
+  } else {
+    yr <- suppressWarnings(as.integer(format(gd, "%Y")))
+    mo <- suppressWarnings(as.integer(format(gd, "%m")))
+    derived <- yr + ifelse(mo >= 7L, 1L, 0L)
+    ifelse(is.na(derived), suppressWarnings(as.integer(df$season)), derived)
+  }
+  cur <- suppressWarnings(as.integer(df$season))
+  mismatch <- !is.na(expected) & (is.na(cur) | cur != expected)
+  if (any(mismatch)) {
+    df$season <- as.integer(ifelse(mismatch, expected, cur))
+    if (isTRUE(persist)) {
+      saveRDS(df, PRED_LOG_RDS)
+      utils::write.csv(df, PRED_LOG_CSV, row.names = FALSE, na = "")
+    }
+  }
+  df
+}
+
 get_prediction_log <- function() {
   df <- if (file.exists(PRED_LOG_RDS)) {
     readRDS(PRED_LOG_RDS)
@@ -745,7 +772,7 @@ get_prediction_log <- function() {
        length(setdiff(PRED_LOG_SNAPSHOT_COLS, names(df))) > 0L)) {
     df <- migrate_prediction_log_provenance_v3(df, persist = TRUE)
   }
-  df
+  normalize_prediction_log_seasons(df, persist = TRUE)
 }
 
 # ------------------------------------------------------------------------------
@@ -790,7 +817,7 @@ get_prediction_log <- function() {
   tibble(
     game_id                 = as.character(slate$game_id),
     game_date               = as.Date(slate$game_date),
-    season                  = as.integer(CURRENT_SEASON),
+    season                  = if (exists("nba_season_end_year", mode = "function")) nba_season_end_year(slate$game_date, fallback_season = CURRENT_SEASON) else as.integer(CURRENT_SEASON),
     home_team               = home_short,
     away_team               = away_short,
     prediction_timestamp    = Sys.time(),

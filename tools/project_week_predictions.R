@@ -291,7 +291,7 @@ source(file.path(.pw_root(), "fatigue_travel_engine.R"), local = TRUE)
   tibble(
     game_id                 = as.character(wk$game_id),
     game_date               = as.Date(wk$game_date),
-    season                  = 2026L,   # the log labels BOTH seasons 2026; joins are by DATE
+    season                  = nba_season_end_year(wk$game_date, fallback_season = MATCHUPS_HOOPR_SEASON),
     home_team               = hn,
     away_team               = an,
     prediction_timestamp    = prediction_timestamp,
@@ -422,6 +422,9 @@ main <- function(do_write = NULL, slate = NULL) {
   saveRDS(log_df, bk)
   cat(sprintf("\n  backed up %d existing rows to %s\n", nrow(log_df), basename(bk)))
   out <- bind_rows(log_df, new_rows)
+  if (all(c("season", "game_date") %in% names(out))) {
+    out$season <- nba_season_end_year(out$game_date, fallback_season = out$season)
+  }
   out <- out[order(as.Date(out$game_date), out$game_id), , drop = FALSE]
   saveRDS(out, CACHE_PREDICTION_LOG)
   if (exists("PRED_LOG_CSV")) utils::write.csv(out, PRED_LOG_CSV, row.names = FALSE, na = "")
