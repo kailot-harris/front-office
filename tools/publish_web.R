@@ -89,6 +89,14 @@
 #      331 against the 330 published beside them. Fatal, with
 #      web/tests/known-issues.json as the documented escape valve.
 #
+#   L  lifecycle (WNBA#250) - every data file's manifest entry carries a
+#      lifecycle (live | season_final | archived) that matches config.R, and
+#      every season_final file still hashes to its frozen_sha256. A file with no
+#      lifecycle fails in both modes. Off-season, F and I run in full on LIVE
+#      files only; season_final files are pinned by L's hash check instead of
+#      being stamp/lag-checked; archived files are listed. In-season, A-I are
+#      unchanged. Freeze a finished season with tools/freeze_season.R.
+#
 # SEASONAL SCOPE
 # --------------
 # The WNBA season runs ~May to end of October and schedule_daily.bat refuses to
@@ -663,7 +671,20 @@ source("config.R")
   }
 }
 
-.assert_payload_provenance <- function(run_start) {
+# Off-season scoping (WNBA#250). In-season F is unchanged: it walks
+# WEB_DATA_FILES and an unstamped payload is reported, not failed. Off-season it
+# walks every top-level data file by its manifest lifecycle:
+#   live          stamp must be at or after run start; NO stamp FAILS, because a
+#                 live off-season file is exactly what this run claims to rebuild
+#   season_final  not read for a stamp; its bytes are pinned by frozen_sha256 and
+#                 assertion L fails on any change
+#   archived      not read (static snapshot)
+#   (none)        checked as live here, and assertion L fails it outright
+.assert_payload_provenance <- function(run_start, mode = "inseason", manifest = NULL,
+                                       data_dir = WEB_DATA_DIR) {
+  if (identical(mode, "offseason")) {
+    return(.assert_payload_provenance_offseason(run_start, manifest, data_dir))
+  }
   files <- WEB_DATA_FILES
   rows <- character(0)
   stale <- character(0)
@@ -695,6 +716,61 @@ source("config.R")
        summary = sprintf("%d stamped payload(s) fresh, %d stale, %d carry no stamp",
                          length(files) - length(stale) - length(unstamped),
                          length(stale), length(unstamped)))
+}
+
+.pw_manifest_entries <- function(manifest) {
+  entries <- if (is.null(manifest) || !is.list(manifest$datasets)) list() else manifest$datasets
+  names(entries) <- vapply(entries, function(e) as.character(e$file %||% ""), character(1))
+  entries
+}
+
+.pw_data_files <- function(data_dir) {
+  setdiff(sort(list.files(data_dir, pattern = "\\.json$")), "data_manifest.json")
+}
+
+.assert_payload_provenance_offseason <- function(run_start, manifest, data_dir) {
+  entries <- .pw_manifest_entries(manifest)
+  files <- .pw_data_files(data_dir)
+  rows <- character(0); stale <- character(0); unstamped <- character(0)
+  frozen <- character(0); archived <- character(0); checked <- 0L
+  for (f in files) {
+    lc <- entries[[f]]$lifecycle
+    if (identical(lc, "season_final")) {
+      frozen <- c(frozen, f)
+      rows <- c(rows, sprintf("    %-9s %-40s season %s final (bytes pinned by frozen_sha256, see L)",
+                              "[FROZEN]", f, as.character(entries[[f]]$season %||% "?")))
+      next
+    }
+    if (identical(lc, "archived")) {
+      archived <- c(archived, f)
+      rows <- c(rows, sprintf("    %-9s %-40s archived snapshot, not rebuilt", "[ARCHIVED]", f))
+      next
+    }
+    checked <- checked + 1L
+    tag <- if (is.null(lc)) " (NO LIFECYCLE - checked as live)" else ""
+    g <- .pw_payload_generated_at(file.path(data_dir, f))
+    if (is.na(g)) {
+      unstamped <- c(unstamped, f)
+      rows <- c(rows, sprintf("    %-9s %-40s live file carries no generated_at%s", "[NO STAMP]", f, tag))
+      next
+    }
+    fresh <- !is.na(run_start) && g >= run_start
+    if (!fresh) stale <- c(stale, f)
+    rows <- c(rows, sprintf("    %-9s %-40s generated_at=%s%s",
+                            if (fresh) "[FRESH]" else "[STALE]", f,
+                            format(g, "%Y-%m-%d %H:%M:%S %Z"), tag))
+  }
+  if (length(stale) || length(unstamped)) {
+    rows <- c(rows, "    A stale or unstamped LIVE file blocks. If it is a finished season's file that no",
+              "    off-season stage rebuilds, freeze it: Rscript tools/freeze_season.R --season <yyyy>")
+  }
+  list(id = "F", name = "payload provenance (live files: embedded generated_at at or after run start)",
+       pass = length(stale) == 0 && length(unstamped) == 0, fatal = TRUE,
+       stale = stale, unstamped = unstamped, frozen = frozen, archived = archived,
+       detail = rows,
+       summary = sprintf("off-season: %d live file(s) checked - %d fresh, %d stale, %d unstamped; %d season_final, %d archived not stamp-checked",
+                         checked, checked - length(stale) - length(unstamped), length(stale),
+                         length(unstamped), length(frozen), length(archived)))
 }
 
 # ------------------------------------------------------------------------------
@@ -1030,18 +1106,32 @@ source("config.R")
   unique(p)
 }
 
+#
+# Off-season scoping (WNBA#250): with mode = "offseason", completeness (listed,
+# valid UTC generated_at) is still enforced for EVERY file, but the stamp/lag
+# checks run on live files only. A season_final entry is reported [FROZEN] and
+# its bytes are verified against frozen_sha256 by assertion L; an archived entry
+# is reported [ARCHIVED]. An entry with no lifecycle is checked as live (and L
+# fails it). In-season (the default) this function is unchanged.
+# `manifest` lets the caller pass the manifest object to assert against (the
+# off-season dry run passes an in-memory preview); NULL reads data_dir's file.
 .assert_manifest_and_coverage <- function(data_dir = file.path("web", "public", "data"),
                                           max_lag_days = 3L,
                                           schedule_through_date = NULL,
-                                          dry_run = TRUE) {
+                                          dry_run = TRUE,
+                                          mode = "inseason",
+                                          manifest = NULL) {
   mpath <- file.path(data_dir, "data_manifest.json")
   base <- list(id = "I", name = "data manifest completeness + schedule-coverage lag",
                fatal = TRUE)
-  if (!file.exists(mpath)) {
+  offseason <- identical(mode, "offseason")
+  if (offseason) base$name <- "data manifest completeness + schedule-coverage lag (lag on live files)"
+  if (is.null(manifest) && !file.exists(mpath)) {
     return(c(base, list(pass = FALSE, detail = sprintf("    [MISSING] %s", mpath),
                         summary = "data_manifest.json is absent")))
   }
-  m <- tryCatch(jsonlite::fromJSON(mpath, simplifyVector = FALSE), error = function(e) NULL)
+  m <- if (!is.null(manifest)) manifest else
+    tryCatch(jsonlite::fromJSON(mpath, simplifyVector = FALSE), error = function(e) NULL)
   if (is.null(m) || !is.list(m$datasets)) {
     return(c(base, list(pass = FALSE, detail = "    [FAIL] data_manifest.json is unparseable or lacks datasets",
                         summary = "manifest unreadable")))
@@ -1068,6 +1158,15 @@ source("config.R")
     if (!.pw_is_utc_iso(e$generated_at)) {
       lines <- c(lines, sprintf("    [MISSING] %s - generated_at absent or not UTC ISO-8601", f))
       problems <- c(problems, sprintf("%s unstamped", f)); next
+    }
+    if (offseason && identical(e$lifecycle, "season_final")) {
+      lines <- c(lines, sprintf("    [FROZEN] %s - season %s final through %s (bytes checked by L)",
+                                f, as.character(e$season %||% "?"), as.character(e$final_through_date %||% "?")))
+      next
+    }
+    if (offseason && identical(e$lifecycle, "archived")) {
+      lines <- c(lines, sprintf("    [ARCHIVED] %s - generated %s, not rebuilt", f, e$generated_at))
+      next
     }
     if (isTRUE(e$static)) {
       if (is.null(e$static_reason) || !nzchar(trimws(as.character(e$static_reason)))) {
@@ -1135,6 +1234,102 @@ source("config.R")
                          else sprintf("%d problem(s): %s", length(problems), paste(problems, collapse = "; "))))
 }
 
+# ------------------------------------------------------------------------------
+# ASSERTION L - data-file lifecycle + frozen-file integrity (WNBA#250). Both modes.
+#
+#   * every top-level data file must have a manifest entry with a lifecycle in
+#     WEB_DATA_LIFECYCLES; no lifecycle FAILS (classify the file in config.R)
+#   * the manifest's lifecycle must match what config.R assigns now
+#     (`expected`), so a stale manifest cannot carry an old classification
+#   * season_final entries must carry season, final_through_date, frozen_sha256
+#     and frozen_at, and the file's current content hash (CRLF-normalised, see
+#     config.R's wnba_lifecycle_sha256) must equal frozen_sha256; any change
+#     to a frozen file FAILS
+# ------------------------------------------------------------------------------
+.assert_lifecycle <- function(data_dir = WEB_DATA_DIR, manifest = NULL,
+                              expected = function(files) wnba_data_lifecycle(files)) {
+  base <- list(id = "L", name = "data-file lifecycle + frozen-file integrity", fatal = TRUE)
+  if (is.null(manifest)) {
+    mpath <- file.path(data_dir, "data_manifest.json")
+    manifest <- if (file.exists(mpath))
+      tryCatch(jsonlite::fromJSON(mpath, simplifyVector = FALSE), error = function(e) NULL) else NULL
+  }
+  if (is.null(manifest) || !is.list(manifest$datasets)) {
+    return(c(base, list(pass = FALSE, problems = "manifest absent or unreadable",
+                        detail = "    [FAIL] no readable data_manifest.json to read lifecycles from",
+                        summary = "manifest absent or unreadable")))
+  }
+  entries <- .pw_manifest_entries(manifest)
+  files <- .pw_data_files(data_dir)
+  exp <- if (is.function(expected)) expected(files) else list()
+  problems <- character(0); lines <- character(0)
+  counts <- c(live = 0L, season_final = 0L, archived = 0L)
+  for (f in files) {
+    e <- entries[[f]]
+    lc <- e$lifecycle
+    if (is.null(lc) || !nzchar(as.character(lc))) {
+      lines <- c(lines, sprintf("    [NO LIFECYCLE] %s - assign one in config.R (WEB_DATA_SEASON_FILES / WEB_DATA_FILES_OFFSEASON / WEB_DATA_ARCHIVED_FILES)", f))
+      problems <- c(problems, sprintf("%s has no lifecycle", f)); next
+    }
+    if (!lc %in% WEB_DATA_LIFECYCLES) {
+      lines <- c(lines, sprintf("    [FAIL] %s - unknown lifecycle '%s'", f, lc))
+      problems <- c(problems, sprintf("%s unknown lifecycle %s", f, lc)); next
+    }
+    want <- exp[[f]]$lifecycle
+    if (is.function(expected) && !identical(as.character(want %||% "<none>"), as.character(lc))) {
+      lines <- c(lines, sprintf("    [FAIL] %s - manifest says %s, config.R assigns %s (stale manifest?)",
+                                f, lc, want %||% "<none>"))
+      problems <- c(problems, sprintf("%s lifecycle %s != config %s", f, lc, want %||% "<none>")); next
+    }
+    counts[[lc]] <- counts[[lc]] + 1L
+    if (!identical(lc, "season_final")) {
+      lines <- c(lines, sprintf("    [%s] %s", toupper(lc), f)); next
+    }
+    miss <- Filter(function(k) is.null(e[[k]]) || !nzchar(as.character(e[[k]])),
+                   c("season", "final_through_date", "frozen_sha256", "frozen_at"))
+    if (length(miss)) {
+      lines <- c(lines, sprintf("    [FAIL] %s - season_final without %s", f, paste(miss, collapse = ", ")))
+      problems <- c(problems, sprintf("%s season_final missing %s", f, paste(miss, collapse = ", "))); next
+    }
+    want_sha <- exp[[f]]$frozen_sha256
+    if (is.function(expected) && !identical(as.character(want_sha %||% ""), as.character(e$frozen_sha256))) {
+      lines <- c(lines, sprintf("    [FAIL] %s - manifest frozen_sha256 differs from the lifecycle registry", f))
+      problems <- c(problems, sprintf("%s frozen_sha256 disagrees with registry", f)); next
+    }
+    actual <- wnba_lifecycle_sha256(file.path(data_dir, f))
+    if (!identical(actual, as.character(e$frozen_sha256))) {
+      lines <- c(lines, sprintf("    [CHANGED] %s - season %s was frozen at %s, content hash now %s (frozen %s)",
+                                f, e$season, e$frozen_at, substr(actual, 1, 12), substr(e$frozen_sha256, 1, 12)))
+      problems <- c(problems, sprintf("%s changed since frozen", f)); next
+    }
+    lines <- c(lines, sprintf("    [SEASON_FINAL] %s - season %s, hash matches frozen %s", f, e$season, e$frozen_at))
+  }
+  pass <- length(problems) == 0
+  c(base, list(pass = pass, problems = problems, detail = lines, counts = counts,
+               summary = if (pass) sprintf("%d file(s): %d live, %d season_final (hash verified), %d archived",
+                                           length(files), counts[["live"]], counts[["season_final"]], counts[["archived"]])
+                         else sprintf("%d problem(s): %s", length(problems), paste(problems, collapse = "; "))))
+}
+
+# Off-season dry run: the manifest a live run would assert against. A live run
+# refreshes data_manifest.json before asserting (.pw_refresh_manifest); a dry
+# run must not write, so it builds the same manifest in memory instead.
+.pw_preview_manifest <- function() {
+  writer <- file.path("tools", "write_data_manifest.R")
+  if (!file.exists(writer)) return(NULL)
+  env <- new.env()
+  old <- Sys.getenv("WNBA_SKIP_MANIFEST_AUTORUN")
+  Sys.setenv(WNBA_SKIP_MANIFEST_AUTORUN = "1")
+  on.exit(Sys.setenv(WNBA_SKIP_MANIFEST_AUTORUN = old), add = TRUE)
+  tryCatch({
+    sys.source(writer, envir = env)
+    env$build_data_manifest(data_dir = WEB_DATA_DIR, schedule_path = CACHE_WNBA_SCHEDULE)
+  }, error = function(e) {
+    log_warn(paste("publish_web: manifest preview failed:", conditionMessage(e)), script = .PW_LOG_SCRIPT)
+    NULL
+  })
+}
+
 # Refresh the manifest (live runs only). Missing writer is non-fatal.
 .pw_refresh_manifest <- function() {
   writer <- file.path("tools", "write_data_manifest.R")
@@ -1171,6 +1366,18 @@ publish_web <- function(dry_run = TRUE,
 
   # Refresh data_manifest.json on live runs only; a dry run never mutates it.
   if (!isTRUE(dry_run)) .pw_refresh_manifest()
+  # Manifest for F/I/L. Live: the refreshed file on disk. Off-season dry run: an
+  # in-memory preview of what the live run would write (WNBA#250). In-season dry
+  # run: the file on disk, as before.
+  manifest_obj <- if (isTRUE(dry_run) && identical(mode, "offseason")) .pw_preview_manifest() else NULL
+  if (is.null(manifest_obj)) {
+    mp <- file.path(WEB_DATA_DIR, "data_manifest.json")
+    manifest_obj <- if (file.exists(mp))
+      tryCatch(jsonlite::fromJSON(mp, simplifyVector = FALSE), error = function(e) NULL) else NULL
+    manifest_src <- "data_manifest.json on disk"
+  } else {
+    manifest_src <- "in-memory preview (dry run; nothing written)"
+  }
 
   checks <- list(
     .assert_mtime_freshness(run_start, mode = mode),
@@ -1178,10 +1385,13 @@ publish_web <- function(dry_run = TRUE,
     .assert_nonempty_diff(repo_root, mode = mode),
     .assert_publish_branch(repo_root, publish_branch),
     .assert_log_scan(log_lines, run_start, fail_on_exporter_warnings, mode = mode, allow_degraded = allow_degraded),
-    .assert_payload_provenance(run_start),
+    .assert_payload_provenance(run_start, mode = mode, manifest = manifest_obj),
     .assert_web_contracts(skip_contracts),
     .assert_zero_betting_guard(),
-    .assert_manifest_and_coverage(WEB_DATA_DIR, dry_run = dry_run)
+    if (identical(mode, "offseason"))
+      .assert_manifest_and_coverage(WEB_DATA_DIR, dry_run = dry_run, mode = mode, manifest = manifest_obj)
+    else .assert_manifest_and_coverage(WEB_DATA_DIR, dry_run = dry_run),
+    .assert_lifecycle(WEB_DATA_DIR, manifest = manifest_obj)
   )
 
   passed  <- vapply(checks, function(ch) isTRUE(ch$pass), logical(1))
@@ -1200,6 +1410,7 @@ publish_web <- function(dry_run = TRUE,
   cat(sprintf("  run start        : %s\n",
               ifelse(is.na(run_start), "<undetected>", format(run_start, "%Y-%m-%d %H:%M:%S"))))
   cat(sprintf("  schedule cache   : %s\n", CACHE_WNBA_SCHEDULE))
+  cat(sprintf("  data manifest    : %s\n", manifest_src))
   cat("\n-- Assertions --------------------------------------------------\n")
   for (ch in checks) {
     cat(sprintf("  [%s] %s. %s - %s\n",

@@ -466,6 +466,89 @@ WEB_DATA_FILES_OFFSEASON <- c(
   WEB_JSON_OFFSEASON_MONITOR
 )
 
+# ------------------------------------------------------------------------------------------
+# Data-file lifecycle (WNBA#250, shared four-sport design)
+# ------------------------------------------------------------------------------------------
+# Every top-level web/public/data/*.json is in exactly one lifecycle, recorded on its
+# data_manifest.json entry by tools/write_data_manifest.R:
+#
+#   live          rebuilt by the runs that publish now. Off-season that is
+#                 WEB_DATA_FILES_OFFSEASON; a season file that has NOT been frozen is also
+#                 live, so the off-season gate keeps checking it in full (and blocks) until
+#                 someone freezes it. Nothing is skipped by default.
+#   season_final  a finished season's file, frozen by tools/freeze_season.R after it was
+#                 verified to reach the season's last game. Carries season,
+#                 final_through_date, frozen_sha256 and frozen_at. Off-season, publish_web.R
+#                 checks it by content hash only; any byte change fails the gate.
+#   archived      a static snapshot no stage rebuilds (WNBA#141/#212), or an old season's
+#                 file moved here by `tools/freeze_season.R --thaw`.
+#
+# The freeze/thaw state lives in WEB_DATA_LIFECYCLE_REGISTRY (tracked), written only by
+# tools/freeze_season.R. A registry entry overrides the defaults below. A file that is in
+# none of these lists and not in the registry has NO lifecycle, and publish_web.R's
+# assertion L fails on it in both modes: a new payload has to be classified here first.
+WEB_DATA_LIFECYCLES         <- c("live", "season_final", "archived")
+WEB_DATA_LIFECYCLE_REGISTRY <- file.path(PROJECT_DIR, "data", "season_lifecycle.json")
+
+# The season-scoped payloads: everything the in-season pipeline rebuilds. WEB_DATA_FILES
+# plus the two in-season outputs it does not list (run_full_pipeline.R's landing_digest
+# stage and export_visual_media_index.R). These are what freeze_season.R freezes.
+WEB_DATA_SEASON_FILES <- c(
+  basename(WEB_DATA_FILES),
+  "landing_digest.json",
+  "visual_media_index.json"
+)
+
+# Archived static snapshots (the same four tools/write_data_manifest.R marks static).
+WEB_DATA_ARCHIVED_FILES <- basename(c(
+  WEB_JSON_CBA_CAP_SHEET,
+  WEB_JSON_OFFSEASON_DRAFT,
+  WEB_JSON_OFFSEASON_TEAMS,
+  WEB_JSON_OFFSEASON_TRANSACTIONS
+))
+
+wnba_read_lifecycle_registry <- function(path = WEB_DATA_LIFECYCLE_REGISTRY) {
+  empty <- list(schema_version = 1L, sport = "wnba", files = list())
+  if (is.null(path) || !file.exists(path)) return(empty)
+  r <- tryCatch(jsonlite::fromJSON(path, simplifyVector = FALSE),
+                error = function(e) stop("lifecycle registry unreadable: ", path, ": ", conditionMessage(e)))
+  if (is.null(r$files)) r$files <- list()
+  r
+}
+
+# Lifecycle per file name: a named list, file -> list(lifecycle, [season,
+# final_through_date, frozen_sha256, frozen_at]) or NULL when nothing assigns one.
+wnba_data_lifecycle <- function(files,
+                                registry = wnba_read_lifecycle_registry(),
+                                offseason_live = basename(WEB_DATA_FILES_OFFSEASON),
+                                season_files = WEB_DATA_SEASON_FILES,
+                                archived_files = WEB_DATA_ARCHIVED_FILES) {
+  files <- basename(files)
+  out <- lapply(files, function(f) {
+    reg <- registry$files[[f]]
+    if (!is.null(reg) && !is.null(reg$lifecycle)) return(reg)
+    if (f %in% offseason_live) return(list(lifecycle = "live"))
+    if (f %in% archived_files) return(list(lifecycle = "archived"))
+    if (f %in% season_files) return(list(lifecycle = "live"))
+    NULL
+  })
+  names(out) <- files
+  out
+}
+
+# Content hash used for frozen_sha256: sha256 of the file's bytes with CRLF normalised to
+# LF, so a checkout with a different core.autocrlf does not read as a changed file.
+wnba_lifecycle_sha256 <- function(path) {
+  if (!file.exists(path)) return(NA_character_)
+  b <- readBin(path, "raw", n = file.info(path)$size)
+  cr <- which(b == as.raw(13L))
+  if (length(cr)) {
+    crlf <- cr[cr < length(b) & b[pmin(cr + 1L, length(b))] == as.raw(10L)]
+    if (length(crlf)) b <- b[-crlf]
+  }
+  unname(as.character(tools::sha256sum(bytes = b)))
+}
+
 OFFSEASON_FA_BURST_WINDOW <- NULL
 
 # Weekly edition cadence for build_offseason_monitor.R, as an ISO weekday (1 = Monday).
