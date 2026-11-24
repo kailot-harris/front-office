@@ -38,10 +38,10 @@ export interface PlayoffHitter {
 
 export interface MlbTacticalRatings {
   rotationDepth: number | null;     // 0-100: Quality and depth of starting pitching rotation
-  bullpenLeverage: number;          // 0-100: Late-inning shutdown capability & fatigue resilience
+  bullpenLeverage: number | null;   // 0-100: Late-inning shutdown capability & fatigue resilience
   powerIso: number | null;          // 0-100: Lineup power, barrel rate, and home run impact
   contactDiscipline: number | null; // 0-100: Contact% in zone, low whiff, and K-avoidance
-  defenseFielding: number;          // 0-100: Defensive run prevention & catcher framing
+  defenseFielding: number | null;   // 0-100: Defensive run prevention & catcher framing
 }
 
 export interface TeamPlayoffProfile {

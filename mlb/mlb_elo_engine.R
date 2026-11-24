@@ -290,7 +290,7 @@ seed_pitcher_rgs <- function(season = 2024, default_rgs = 50.0) {
     )
 
   rgs_map <- setNames(
-    pmax(35, pmin(68, default_rgs + (starters$war_val * 1.5))),
+    ifelse(is.na(starters$war_val), default_rgs, default_rgs + (starters$war_val * 1.5)),
     starters$mlbam_id
   )
 

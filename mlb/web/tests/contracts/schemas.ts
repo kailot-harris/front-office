@@ -576,10 +576,10 @@ export const TeamPlayoffProfileSchema = z
     tacticalRatings: z
       .object({
         rotationDepth: pct.nullable(),
-        bullpenLeverage: pct,
+        bullpenLeverage: pct.nullable(),
         powerIso: pct.nullable(),
         contactDiscipline: pct.nullable(),
-        defenseFielding: pct,
+        defenseFielding: pct.nullable(),
       })
       .strict(),
     starters: z
