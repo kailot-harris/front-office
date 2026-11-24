@@ -398,6 +398,96 @@ WEB_DATA_FILES_OFFSEASON <- c(
   WEB_JSON_OFFSEASON_MONITOR
 )
 
+# ---------------------------------------------------------------------------
+# 8b. Data-file lifecycle (MLB-Analytics#147, shared four-sport design)
+# ---------------------------------------------------------------------------
+# Every top-level web/public/data/*.json is in exactly one lifecycle, recorded
+# on its data_manifest.json entry by tools/write_data_manifest.R:
+#
+#   live          rebuilt by the runs that publish now. Off-season that is
+#                 WEB_DATA_FILES_OFFSEASON; a season file that has NOT been
+#                 frozen is also live, so the off-season gate keeps checking
+#                 it in full (and blocks) until someone freezes it. Nothing is
+#                 skipped by default.
+#   season_final  a finished season's file, frozen by tools/freeze_season.R
+#                 after it was verified to reach the season's last game.
+#                 Carries season, final_through_date, frozen_sha256 and
+#                 frozen_at. Off-season, publish_web.R checks it by content
+#                 hash only; any byte change fails the gate.
+#   archived      a static snapshot no stage rebuilds, or an old season's file
+#                 moved here by `tools/freeze_season.R --thaw`.
+#
+# The freeze/thaw state lives in WEB_DATA_LIFECYCLE_REGISTRY (tracked), written
+# only by tools/freeze_season.R. A registry entry overrides the defaults below.
+# A file that is in none of these lists and not in the registry has NO
+# lifecycle, and publish_web.R's assertion M fails on it in both modes: a new
+# payload has to be classified here first.
+WEB_DATA_LIFECYCLES         <- c("live", "season_final", "archived")
+WEB_DATA_LIFECYCLE_REGISTRY <- file.path(MLB_ROOT_DIR, "data", "season_lifecycle.json")
+
+# The season-scoped payloads: everything the in-season pipeline (and live
+# postseason results refresh) rebuilds. WEB_DATA_FILES plus the four in-season
+# outputs it does not list (Stage 14b spatial_index.json, Stage 14 Statcast
+# statcast_spatial_analytics.json, refresh/export world_series.json, and
+# Stage 19 visual_media_index.json). These are what freeze_season.R freezes.
+WEB_DATA_SEASON_FILES <- c(
+  basename(WEB_DATA_FILES),
+  basename(c(
+    WEB_JSON_SPATIAL_INDEX,
+    WEB_JSON_STATCAST_SPATIAL_ANALYTICS,
+    WEB_JSON_WORLD_SERIES
+  )),
+  "visual_media_index.json"
+)
+
+# Static snapshots that no pipeline stage rebuilds (empty today; old-season
+# unique filenames also move here in WEB_DATA_LIFECYCLE_REGISTRY on `--thaw`).
+WEB_DATA_ARCHIVED_FILES <- character(0)
+
+mlb_read_lifecycle_registry <- function(path = WEB_DATA_LIFECYCLE_REGISTRY) {
+  empty <- list(schema_version = 1L, sport = "mlb", files = list())
+  if (is.null(path) || !file.exists(path)) return(empty)
+  r <- tryCatch(jsonlite::fromJSON(path, simplifyVector = FALSE),
+                error = function(e) stop("lifecycle registry unreadable: ", path, ": ", conditionMessage(e)))
+  if (is.null(r$files)) r$files <- list()
+  r
+}
+
+# Lifecycle per file name: a named list, file -> list(lifecycle, [season,
+# final_through_date, frozen_sha256, frozen_at]) or NULL when nothing assigns one.
+mlb_data_lifecycle <- function(files,
+                               registry = mlb_read_lifecycle_registry(),
+                               offseason_live = basename(WEB_DATA_FILES_OFFSEASON),
+                               season_files = WEB_DATA_SEASON_FILES,
+                               archived_files = WEB_DATA_ARCHIVED_FILES) {
+  files <- basename(files)
+  out <- lapply(files, function(f) {
+    reg <- registry$files[[f]]
+    if (!is.null(reg) && !is.null(reg$lifecycle)) return(reg)
+    if (f %in% offseason_live) return(list(lifecycle = "live"))
+    if (f %in% archived_files) return(list(lifecycle = "archived"))
+    if (f %in% season_files) return(list(lifecycle = "live"))
+    NULL
+  })
+  names(out) <- files
+  out
+}
+
+# Content hash used for frozen_sha256: sha256 of the file's bytes with CRLF
+# normalised to LF, so a checkout with a different core.autocrlf does not read
+# as a changed file.
+mlb_lifecycle_sha256 <- function(path) {
+  if (!file.exists(path)) return(NA_character_)
+  sz <- file.info(path)$size
+  b <- if (is.na(sz) || sz <= 0) raw(0) else readBin(path, "raw", n = sz)
+  cr <- which(b == as.raw(13L))
+  if (length(cr)) {
+    crlf <- cr[cr < length(b) & b[pmin(cr + 1L, length(b))] == as.raw(10L)]
+    if (length(crlf)) b <- b[-crlf]
+  }
+  unname(as.character(tools::sha256sum(bytes = b)))
+}
+
 # Off-season burst windows for cadence escalation (blueprint §4)
 MLB_OFFSEASON_BURST_WINDOWS <- list(
   # Nov 2: option deadline, QO deadline, and open market opening at 5pm ET.

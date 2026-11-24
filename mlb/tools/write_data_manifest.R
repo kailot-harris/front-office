@@ -19,6 +19,12 @@
 #                       "not_game_dated" and a coverage_note.
 #   static/static_reason  explicit exemption from the lag gate.
 #
+# Lifecycle (MLB-Analytics#147): each entry also carries `lifecycle`
+# (live | season_final | archived) as config.R's mlb_data_lifecycle() assigns
+# it; season_final entries add season, final_through_date, frozen_sha256 and
+# frozen_at from the registry tools/freeze_season.R writes. publish_web.R
+# Assertion M reads them.
+#
 # `schedule_through_date` is the latest completed slate game in the cached
 # season schedule (null offline), so publish_web.R assertion H
 # (front-office#191) can measure how far each dataset lags the schedule.
@@ -147,6 +153,19 @@ DM_NOT_GAME_DATED <- c(
 
 .dm_sha256 <- function(path) unname(as.character(tools::sha256sum(path)))
 
+# ------------------------------------------------------------------------------
+# Lifecycle (MLB-Analytics#147). Assigned by config.R's mlb_data_lifecycle(),
+# which reads the freeze/thaw registry tools/freeze_season.R writes. The writer
+# only copies what config.R assigns; it never decides a lifecycle itself. When
+# config.R is not loaded the entries carry no lifecycle, and publish_web.R's
+# assertion M fails on that rather than guessing.
+# ------------------------------------------------------------------------------
+DM_LIFECYCLE_FIELDS <- c("season", "final_through_date", "frozen_sha256", "frozen_at")
+
+.dm_default_lifecycle_fn <- function() {
+  if (exists("mlb_data_lifecycle", mode = "function")) get("mlb_data_lifecycle", mode = "function") else NULL
+}
+
 # Latest completed slate-game date in the cached season schedule, or
 # NA_character_ when the cache is absent/unreadable (offline CI).
 dm_latest_completed_schedule_date <- function(season = NULL, schedule_path = NULL) {
@@ -197,7 +216,8 @@ dm_latest_completed_schedule_date <- function(season = NULL, schedule_path = NUL
 
 build_data_manifest <- function(data_dir = NULL, schedule_through_date = NULL,
                                 now = Sys.time(), previous = NULL,
-                                extractors = DM_COVERAGE_EXTRACTORS) {
+                                extractors = DM_COVERAGE_EXTRACTORS,
+                                lifecycle_fn = .dm_default_lifecycle_fn()) {
   if (is.null(data_dir)) {
     data_dir <- if (exists("WEB_DATA_DIR")) get("WEB_DATA_DIR") else file.path("web", "public", "data")
   }
@@ -207,6 +227,7 @@ build_data_manifest <- function(data_dir = NULL, schedule_through_date = NULL,
   for (e in .dm_or(previous$datasets, list())) if (is.character(e$file)) prev_by_file[[e$file]] <- e
 
   files <- sort(setdiff(list.files(data_dir, pattern = "[.]json$"), DM_MANIFEST_FILE))
+  lifecycles <- if (is.function(lifecycle_fn)) lifecycle_fn(files) else list()
   datasets <- lapply(files, function(f) {
     path <- file.path(data_dir, f)
     obj <- tryCatch(jsonlite::fromJSON(path, simplifyVector = FALSE), error = function(e) NULL)
@@ -232,7 +253,7 @@ build_data_manifest <- function(data_dir = NULL, schedule_through_date = NULL,
               else "no coverage extractor registered; content not game-dated"
     }
     si <- .dm_static_info(f, obj)
-    list(
+    entry <- list(
       file = f,
       generated_at = .dm_fmt_utc(st$time),
       stamp_source = st$source,
@@ -244,6 +265,14 @@ build_data_manifest <- function(data_dir = NULL, schedule_through_date = NULL,
       static_reason = si$reason,
       builder = DM_BUILDER
     )
+    lc <- lifecycles[[f]]
+    if (!is.null(lc) && !is.null(lc$lifecycle)) {
+      entry$lifecycle <- lc$lifecycle
+      if (identical(lc$lifecycle, "season_final")) {
+        for (k in DM_LIFECYCLE_FIELDS) if (!is.null(lc[[k]])) entry[[k]] <- lc[[k]]
+      }
+    }
+    entry
   })
 
   sched_out <- if (is.na(schedule_through_date)) NULL else schedule_through_date
@@ -275,12 +304,12 @@ write_data_manifest <- function(data_dir = NULL, path = NULL, ...) {
 }
 
 # Non-interactive entry point (Rscript tools/write_data_manifest.R).
-if (!interactive() && sys.nframe() == 0L) {
+if (!interactive() && sys.nframe() == 0L && !nzchar(Sys.getenv("MLB_SKIP_MANIFEST_AUTORUN"))) {
   root <- .dm_project_root()
   if (is.na(root)) stop("write_data_manifest.R: cannot locate the project root (no config.R).")
   setwd(root)
   suppressPackageStartupMessages(library(jsonlite))
-  source("config.R")
+  source("config.R")  # lifecycle assignment (MLB-Analytics#147)
   out <- write_data_manifest()
   m <- jsonlite::fromJSON(out, simplifyVector = FALSE)
   cat(sprintf("[INFO] wrote %s (%d datasets, schedule_through_date=%s)\n",
