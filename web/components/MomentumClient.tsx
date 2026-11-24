@@ -20,6 +20,15 @@ const SORT_LABEL_OVERRIDES: Record<string, string> = {
   model_residual: 'Beat model expectation by',
 };
 
+/** Sort keys that get their own always-visible column after the Elo columns. */
+const EXTRA_METRIC_KEYS = ['model_residual', 'net_rating_change', 'schedule_strength'] as const;
+type ExtraMetricKey = (typeof EXTRA_METRIC_KEYS)[number];
+
+/** Fixed columns: team, rank, rank change, momentum score, Elo 7d, Elo 14d, the extra metrics, trend. */
+export const MOMENTUM_COLUMN_COUNT = 7 + EXTRA_METRIC_KEYS.length;
+
+const STICKY_CELL = 'sticky left-0 z-10 bg-surface';
+
 const DRIVER_LABELS: { key: string; label: string }[] = [
   { key: 'efg_offense', label: 'Shooting efficiency (offense)' },
   { key: 'efg_defense', label: 'Shooting efficiency allowed' },
@@ -104,8 +113,13 @@ const Th: React.FC<{
   help: React.ReactNode;
   align?: 'left' | 'right';
   className?: string;
-}> = ({ label, help, align = 'left', className = '' }) => (
-  <th scope="col" className={`px-3 py-2 text-left font-semibold whitespace-nowrap ${className}`}>
+  sorted?: boolean;
+}> = ({ label, help, align = 'left', className = '', sorted = false }) => (
+  <th
+    scope="col"
+    aria-sort={sorted ? 'descending' : undefined}
+    className={`px-3 py-2 text-left font-semibold whitespace-nowrap ${sorted ? 'bg-emerald-500/10 text-slate-100' : ''} ${className}`}
+  >
     <span className="inline-flex items-center gap-0.5">
       {label}
       <InfoTip label={label} align={align}>
@@ -410,8 +424,6 @@ interface BoardRowProps {
   expanded: boolean;
   onToggle: () => void;
   sort: MomentumSortOption;
-  showSortColumn: boolean;
-  colSpan: number;
   teamCount: number;
   flagLabels: Record<number, string>;
   historyStarts: string;
@@ -424,16 +436,21 @@ const BoardRow: React.FC<BoardRowProps> = ({
   expanded,
   onToggle,
   sort,
-  showSortColumn,
-  colSpan,
   teamCount,
   flagLabels,
   historyStarts,
   panelWidth,
 }) => {
   const detailId = `momentum-detail-${row.team}-${windowSize}`;
-  const sortValue = row.sort_keys[sort.key] ?? null;
   const greyed = !row.ranked;
+  const sortedCell = (key: string) => (sort.key === key ? 'bg-emerald-500/5' : '');
+  const unrankedReason = 'Unranked teams have no value for this column';
+  const metricReason = (key: ExtraMetricKey): string => {
+    if (!row.ranked) return unrankedReason;
+    if (key === 'model_residual') return row.model_residual.null_reason ?? 'No games with a recorded prediction in this window';
+    if (key === 'net_rating_change') return row.ratings.net.change_null_reason ?? 'Not available for this window';
+    return 'Not available for this window';
+  };
   return (
     <>
       <tr
@@ -443,7 +460,7 @@ const BoardRow: React.FC<BoardRowProps> = ({
           greyed ? 'bg-slate-900/40 text-slate-400' : 'text-slate-200'
         }`}
       >
-        <td className="px-3 py-2">
+        <td className={`px-3 py-2 ${STICKY_CELL}`}>
           <button
             type="button"
             onClick={onToggle}
@@ -482,41 +499,44 @@ const BoardRow: React.FC<BoardRowProps> = ({
         <td className="px-3 py-2 whitespace-nowrap">
           <RankChange row={row} historyStarts={historyStarts} />
         </td>
-        <td className="px-3 py-2 whitespace-nowrap font-mono tabular-nums">
+        <td className={`px-3 py-2 whitespace-nowrap font-mono tabular-nums ${sortedCell('combined_score')}`}>
           {row.combined_score.value === null ? (
             <Missing reason={row.combined_score.null_reason ?? 'Not ranked for this window'} />
           ) : (
             signed(row.combined_score.value, 2)
           )}
         </td>
-        {showSortColumn && (
-          <td className="px-3 py-2 whitespace-nowrap font-mono tabular-nums">
-            {sortValue === null ? (
-              <Missing
-                reason={
-                  row.ranked
-                    ? row.combined_score.null_reason ?? 'Not available for this sort'
-                    : 'Unranked teams have no value for this sort'
-                }
-              />
-            ) : (
-              <>
-                {sort.key === 'schedule_strength' ? pct(sortValue) : signed(sortValue, sort.key === 'model_residual' ? 2 : 1)}
-                {sort.key === 'model_residual' && (
+        <td className={`px-3 py-2 whitespace-nowrap ${sortedCell('elo_change_7d')}`}>
+          <EloCell value={row.elo.change_7d} />
+        </td>
+        <td className={`px-3 py-2 whitespace-nowrap ${sortedCell('elo_change_14d')}`}>
+          <EloCell value={row.elo.change_14d} />
+        </td>
+        {EXTRA_METRIC_KEYS.map((key) => {
+          const v = row.sort_keys[key] ?? null;
+          return (
+            <td
+              key={key}
+              data-col={key}
+              className={`px-3 py-2 whitespace-nowrap font-mono tabular-nums ${sortedCell(key)}`}
+            >
+              {v === null ? (
+                <Missing reason={metricReason(key)} />
+              ) : key === 'schedule_strength' ? (
+                pct(v)
+              ) : key === 'model_residual' ? (
+                <>
+                  {signed(v, 2)}
                   <span className="ml-1 text-[11px] text-slate-400">
                     ({row.model_residual.residual_games_in_window} games)
                   </span>
-                )}
-              </>
-            )}
-          </td>
-        )}
-        <td className="px-3 py-2 whitespace-nowrap">
-          <EloCell value={row.elo.change_7d} />
-        </td>
-        <td className="px-3 py-2 whitespace-nowrap">
-          <EloCell value={row.elo.change_14d} />
-        </td>
+                </>
+              ) : (
+                signed(v, 1)
+              )}
+            </td>
+          );
+        })}
         <td className="px-3 py-2">
           {row.sparkline.length > 0 ? (
             <Sparkline points={row.sparkline} team={row.team_name} />
@@ -527,7 +547,7 @@ const BoardRow: React.FC<BoardRowProps> = ({
       </tr>
       {expanded && (
         <tr className="bg-surface-raised/40">
-          <td colSpan={colSpan} className="p-0">
+          <td colSpan={MOMENTUM_COLUMN_COUNT} className="p-0">
             <MomentumDetail
               row={row}
               id={detailId}
@@ -706,8 +726,6 @@ export const MomentumClient: React.FC<{ data: MomentumPayload | null }> = ({ dat
   const sortLabel = (o: MomentumSortOption) => SORT_LABEL_OVERRIDES[o.key] ?? o.label;
   const rows = sortRows(board.rows, sort);
   const rankedRows = board.rows.filter((r) => r.ranked).length;
-  const showSortColumn = sort.key !== 'combined_score';
-  const colSpan = showSortColumn ? 8 : 7;
   const flagLabels = Object.fromEntries(data.methods.flags.definitions.map((d) => [d.id, d.label]));
   const historyStarts = data.methods.rank_history.starts;
   const weights = data.methods.combined_score.weights;
@@ -796,7 +814,7 @@ export const MomentumClient: React.FC<{ data: MomentumPayload | null }> = ({ dat
       )}
 
       <div ref={setScrollEl} data-testid="momentum-scroll" className="relative overflow-x-auto rounded-xl border border-slate-800">
-        <table className="w-full min-w-[44rem] text-sm">
+        <table className="w-full min-w-[62rem] text-sm">
           <caption className="sr-only">
             Momentum board, last {windowSize} games, sorted by {sortLabel(sort)}
           </caption>
@@ -804,6 +822,7 @@ export const MomentumClient: React.FC<{ data: MomentumPayload | null }> = ({ dat
             <tr>
               <Th
                 label="Team"
+                className="sticky left-0 z-10 bg-surface-raised"
                 help="Team and record. Select a team name to open its details: drivers, flags, schedule and rank history."
               />
               <Th
@@ -816,16 +835,16 @@ export const MomentumClient: React.FC<{ data: MomentumPayload | null }> = ({ dat
               />
               <Th
                 label="Momentum score"
+                sorted={sort.key === 'combined_score'}
                 help={`Higher means stronger recent form than other ranked teams; 0 is average. ${wp(weights.form)} form against opponents faced, ${wp(weights.trend)} net rating trend, ${wp(weights.residual)} beating model expectation, ${wp(weights.elo)} Elo change.`}
               />
-              {showSortColumn && (
-                <Th
-                  label={sortLabel(sort)}
-                  help={sortHelp[sort.key] ?? sortLabel(sort)}
-                />
-              )}
-              <Th label="Elo 7d" help={`Change in Elo over the last 7 days. ${ELO_HELP}`} />
-              <Th label="Elo 14d" help={`Change in Elo over the last 14 days. ${ELO_HELP}`} />
+              <Th label="Elo 7d" sorted={sort.key === 'elo_change_7d'} help={`Change in Elo over the last 7 days. ${ELO_HELP}`} />
+              <Th label="Elo 14d" sorted={sort.key === 'elo_change_14d'} help={`Change in Elo over the last 14 days. ${ELO_HELP}`} />
+              {EXTRA_METRIC_KEYS.map((key) => {
+                const opt = sortOptions.find((o) => o.key === key);
+                const label = opt ? sortLabel(opt) : key;
+                return <Th key={key} label={label} sorted={sort.key === key} help={sortHelp[key] ?? label} />;
+              })}
               <Th
                 label="Trend"
                 align="right"
@@ -842,8 +861,6 @@ export const MomentumClient: React.FC<{ data: MomentumPayload | null }> = ({ dat
                 expanded={!!expanded[row.team]}
                 onToggle={() => setExpanded((s) => ({ ...s, [row.team]: !s[row.team] }))}
                 sort={sort}
-                showSortColumn={showSortColumn}
-                colSpan={colSpan}
                 teamCount={board.team_count}
                 flagLabels={flagLabels}
                 historyStarts={historyStarts}
