@@ -44,8 +44,8 @@ export const PlayersClient: React.FC<PlayersClientProps> = ({
         if (!res.ok) throw new Error('Failed to fetch full player roster');
         return res.json();
       })
-      .then((data: PlayerProjection[]) => {
-        setPlayers(data);
+      .then((data: PlayerProjection[] | { players: PlayerProjection[] }) => {
+        setPlayers(Array.isArray(data) ? data : data.players);
       })
       .catch((err) => console.warn('Could not load full player roster:', err))
       .finally(() => setIsLoadingFullRoster(false));

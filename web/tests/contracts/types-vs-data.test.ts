@@ -51,7 +51,12 @@ interface ParityCase {
 
 const parityCases: ParityCase[] = [
   { file: 'projections_season_teams.json', tsFile: 'lib/types.ts', iface: 'TeamProjection' },
-  { file: 'projections_season_players.json', tsFile: 'lib/types.ts', iface: 'PlayerProjection' },
+  {
+    file: 'projections_season_players.json',
+    tsFile: 'lib/types.ts',
+    iface: 'PlayerProjection',
+    pick: (j) => (Array.isArray(j) ? j : (j as { players: Record<string, unknown>[] }).players),
+  },
   { file: 'projections_models_metadata.json', tsFile: 'lib/types.ts', iface: 'ModelMetadata', pick: (j) => [j as Record<string, unknown>] },
   { file: 'projections_diagnostics.json', tsFile: 'lib/types.ts', iface: 'ModelDiagnostics', pick: (j) => [j as Record<string, unknown>] },
   { file: 'projections_postseason_ops.json', tsFile: 'lib/types.ts', iface: 'PostseasonOpsData', pick: (j) => [j as Record<string, unknown>] },

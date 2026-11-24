@@ -478,17 +478,29 @@ simulate_mlb_series <- function(team_a_code, team_b_code, hca_team_code, profile
 }
 
 #' Master Execution Function
-run_mlb_series_simulator <- function() {
-  teams_file <- file.path(PROJECT_DIR, "web", "public", "data", "projections_season_teams.json")
-  players_file <- file.path(PROJECT_DIR, "web", "public", "data", "projections_season_players.json")
-  post_file <- file.path(PROJECT_DIR, "web", "public", "data", "projections_postseason_ops.json")
+run_mlb_series_simulator <- function(
+  root_dir = PROJECT_DIR,
+  expected_season = if (exists("MLB_CURRENT_SEASON")) MLB_CURRENT_SEASON else 2026L
+) {
+  teams_file <- file.path(root_dir, "web", "public", "data", "projections_season_teams.json")
+  players_file <- file.path(root_dir, "web", "public", "data", "projections_season_players.json")
+  post_file <- file.path(root_dir, "web", "public", "data", "projections_postseason_ops.json")
   
-  if (!file.exists(teams_file) || !file.exists(players_file)) {
+  if (!file.exists(teams_file)) {
     stop("Missing required base JSON files for Series Simulator")
+  }
+
+  snap <- read_projections_season_players(
+    players_file = players_file,
+    expected_season = expected_season,
+    caller = "SERIES SIMULATOR"
+  )
+  if (!isTRUE(snap$ok)) {
+    return(invisible(NULL))
   }
   
   teams_df <- fromJSON(teams_file)
-  players_df <- fromJSON(players_file)
+  players_df <- snap$players
   post_ops <- if (file.exists(post_file)) fromJSON(post_file) else list()
   
   message(sprintf(">>> Loaded %d teams and %d players.", nrow(teams_df), nrow(players_df)))
@@ -542,14 +554,15 @@ run_mlb_series_simulator <- function() {
     # and FIRST in the object because F only scans the first 4096 bytes of the
     # file (this payload is ~1.2 MB). `updatedAt` is kept for the web app, which
     # already renders it; it is local-time and not a format F can parse.
-    generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
-    updatedAt   = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-    nSims       = 10000,
-    teams       = profiles,
-    matchups    = matchups_catalog
+    generated_at        = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+    updatedAt           = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+    projectionsSnapshot = list(season = snap$season, as_of_date = snap$as_of_date),
+    nSims               = 10000,
+    teams               = profiles,
+    matchups            = matchups_catalog
   )
   
-  output_json <- file.path(PROJECT_DIR, "web", "public", "data", "playoff_series_matchups.json")
+  output_json <- file.path(root_dir, "web", "public", "data", "playoff_series_matchups.json")
   write(toJSON(output_catalog, auto_unbox = TRUE, pretty = TRUE, na = "null"), output_json)
   message(sprintf(">>> Wrote series simulator catalog to %s (%.2f MB)", output_json, file.info(output_json)$size / 1e6))
   

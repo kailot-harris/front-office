@@ -129,7 +129,11 @@ test_that("export_player_spatial_maps resolves season Statcast cache, prunes sta
     position = c("B", "SP"),
     stringsAsFactors = FALSE
   )
-  jsonlite::write_json(players_2026, file.path(out_dir, "projections_season_players.json"), auto_unbox = TRUE)
+  jsonlite::write_json(
+    list(generated_at = "2026-04-01T12:00:00Z", season = 2026L, players = players_2026),
+    file.path(out_dir, "projections_season_players.json"),
+    auto_unbox = TRUE
+  )
 
   assign("PROJECT_DIR", REPO_ROOT, envir = globalenv())
   source("tools/export_player_spatial_maps.R")
@@ -164,7 +168,11 @@ test_that("export_player_spatial_maps resolves season Statcast cache, prunes sta
     position = c("B", "B"),
     stringsAsFactors = FALSE
   )
-  jsonlite::write_json(players_2025, file.path(out_dir, "projections_season_players.json"), auto_unbox = TRUE)
+  jsonlite::write_json(
+    list(generated_at = "2025-04-01T12:00:00Z", season = 2025L, players = players_2025),
+    file.path(out_dir, "projections_season_players.json"),
+    auto_unbox = TRUE
+  )
 
   export_player_spatial_maps(out_dir = out_dir, season = 2025L, root_dir = tmp_root)
   expect_false(file.exists(file.path(spatial_dir, "P_543037.json")))
@@ -183,6 +191,11 @@ test_that("export_player_spatial_maps resolves season Statcast cache, prunes sta
 
   # Missing Statcast cache for season = 2027 still emits untracked placeholders and keeps 1-to-1 parity
   writeLines('{"player_id":"STALE_2027"}', file.path(spatial_dir, "STALE_2027.json"))
+  jsonlite::write_json(
+    list(generated_at = "2027-04-01T12:00:00Z", season = 2027L, players = players_2025),
+    file.path(out_dir, "projections_season_players.json"),
+    auto_unbox = TRUE
+  )
   export_player_spatial_maps(out_dir = out_dir, season = 2027L, root_dir = tmp_root)
   expect_false(file.exists(file.path(spatial_dir, "STALE_2027.json")))
   ohtani_2027 <- jsonlite::fromJSON(file.path(spatial_dir, "B_660271.json"), simplifyVector = FALSE)
@@ -194,7 +207,11 @@ test_that("export_player_spatial_maps resolves season Statcast cache, prunes sta
   )
 
   # Empty roster prunes all spatial/*.json files and preserves JSON array []
-  writeLines("[]", file.path(out_dir, "projections_season_players.json"))
+  jsonlite::write_json(
+    list(generated_at = "2025-04-01T12:00:00Z", season = 2025L, players = list()),
+    file.path(out_dir, "projections_season_players.json"),
+    auto_unbox = TRUE
+  )
   export_player_spatial_maps(out_dir = out_dir, season = 2025L, root_dir = tmp_root)
   expect_length(read_spatial_index_ids(idx_path), 0L)
   expect_length(list.files(spatial_dir, pattern = "\\.json$"), 0L)
@@ -257,14 +274,18 @@ test_that("run_full_pipeline.R registers export_player_spatial_maps after Stage 
   )
   writeLines('{"player_id":"STALE_STAGE"}', file.path(spatial_dir, "STALE_STAGE.json"))
   jsonlite::write_json(
-    data.frame(
-      player_id = c("B_592450", "P_543037"),
-      mlbam_id = c(592450L, 543037L),
-      player_name = c("Aaron Judge", "Gerrit Cole"),
-      player_type = c("Batter", "Pitcher"),
-      team = c("NYY", "NYY"),
-      position = c("B", "SP"),
-      stringsAsFactors = FALSE
+    list(
+      generated_at = sprintf("%d-04-01T12:00:00Z", MLB_CURRENT_SEASON),
+      season = MLB_CURRENT_SEASON,
+      players = data.frame(
+        player_id = c("B_592450", "P_543037"),
+        mlbam_id = c(592450L, 543037L),
+        player_name = c("Aaron Judge", "Gerrit Cole"),
+        player_type = c("Batter", "Pitcher"),
+        team = c("NYY", "NYY"),
+        position = c("B", "SP"),
+        stringsAsFactors = FALSE
+      )
     ),
     file.path(out_dir, "projections_season_players.json"),
     auto_unbox = TRUE

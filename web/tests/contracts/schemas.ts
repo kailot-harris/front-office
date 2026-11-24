@@ -135,6 +135,21 @@ export const PlayerProjectionSchema = z
   })
   .strict();
 
+export const ProjectionsSnapshotSchema = z
+  .object({
+    season: z.number().int().min(2020).max(2035),
+    as_of_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  })
+  .strict();
+
+export const PlayersSnapshotSchema = z
+  .object({
+    generated_at: z.string().datetime(),
+    season: z.number().int().min(2020).max(2035),
+    players: z.array(PlayerProjectionSchema),
+  })
+  .strict();
+
 // ----------------------------------------------------------------------------
 // 3. projections_models_metadata.json -> ModelMetadata (lib/types.ts)
 // ----------------------------------------------------------------------------
@@ -349,6 +364,7 @@ export const CbtLeagueOverviewSchema = z
   .object({
     generated_at: z.string().datetime(),
     season: z.string().min(4),
+    projectionsSnapshot: ProjectionsSnapshotSchema.optional(),
     baseThreshold: num.positive(),
     tier1Threshold: num.positive(),
     tier2Threshold: num.positive(),
@@ -416,6 +432,7 @@ export const ClutchCatalogSchema = z
   .object({
     generated_at: z.string().datetime(),
     updatedAt: z.string().min(1),
+    projectionsSnapshot: ProjectionsSnapshotSchema.optional(),
     totalProfiles: z.number().int().positive(),
     clutchLeaderBatters: z.array(z.string().min(1)).min(1),
     clutchLeaderPitchers: z.array(z.string().min(1)).min(1),
@@ -632,6 +649,7 @@ export const PlayoffMatchupsCatalogSchema = z
   .object({
     generated_at: z.string().datetime(),
     updatedAt: z.string().min(1),
+    projectionsSnapshot: ProjectionsSnapshotSchema.optional(),
     nSims: z.number().int().positive(),
     teams: z.record(teamEnum, TeamPlayoffProfileSchema),
     matchups: z.record(z.string(), PrecomputedMatchupSchema),

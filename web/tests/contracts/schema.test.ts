@@ -18,6 +18,7 @@ import {
 import {
   TeamProjectionSchema,
   PlayerProjectionSchema,
+  PlayersSnapshotSchema,
   ModelMetadataSchema,
   ModelDiagnosticsSchema,
   PostseasonOpsDataSchema,
@@ -82,7 +83,11 @@ describe('Strict Zod schema contracts against public/data/*.json', () => {
 
   it('projections_season_players.json matches PlayerProjectionSchema', () => {
     expect(d.players.length).toBeGreaterThan(500);
-    assertValid(z.array(PlayerProjectionSchema), d.players, 'projections_season_players.json');
+    assertValid(
+      z.union([z.array(PlayerProjectionSchema), PlayersSnapshotSchema]),
+      d.playersRaw,
+      'projections_season_players.json',
+    );
   });
 
   it('projections_models_metadata.json matches ModelMetadataSchema', () => {

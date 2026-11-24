@@ -44,19 +44,19 @@ run_mlb_clutch_engine <- function(
   fg_batters_file = NULL,
   fg_pitchers_file = NULL,
   boxscores_file = NULL,
-  output_json = file.path(PROJECT_DIR, "web", "public", "data", "clutch_leverage_metrics.json")
+  output_json = file.path(PROJECT_DIR, "web", "public", "data", "clutch_leverage_metrics.json"),
+  expected_season = if (exists("MLB_CURRENT_SEASON")) MLB_CURRENT_SEASON else 2026L
 ) {
-  if (!file.exists(players_file)) {
-    msg <- sprintf("Missing %s; skipping clutch leverage engine.", basename(players_file))
-    warning(msg)
-    if (exists("log_warn")) log_warn(msg)
+  snap <- read_projections_season_players(
+    players_file = players_file,
+    expected_season = expected_season,
+    caller = "CLUTCH ENGINE"
+  )
+  if (!isTRUE(snap$ok)) {
+    warning(snap$reason, call. = FALSE)
     return(invisible(NULL))
   }
-  
-  players_df <- tryCatch(fromJSON(players_file), error = function(e) {
-    warning(sprintf("Failed to parse %s: %s", basename(players_file), e$message))
-    NULL
-  })
+  players_df <- snap$players
   if (is.null(players_df) || !is.data.frame(players_df) || nrow(players_df) == 0) {
     warning("No player rows available; skipping clutch leverage engine.")
     return(invisible(NULL))
@@ -395,6 +395,7 @@ run_mlb_clutch_engine <- function(
     # already renders it; it is local-time and not a format F can parse.
     generated_at         = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
     updatedAt            = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+    projectionsSnapshot  = list(season = snap$season, as_of_date = snap$as_of_date),
     totalProfiles        = length(profile_list),
     clutchLeaderBatters  = batter_leaders,
     clutchLeaderPitchers = pitcher_leaders,

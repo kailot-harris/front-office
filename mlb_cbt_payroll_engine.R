@@ -23,6 +23,10 @@ suppressPackageStartupMessages({
   library(dplyr)
 })
 
+if (!exists("read_projections_season_players", mode = "function") && file.exists("config.R")) {
+  source("config.R")
+}
+
 # Standard 2026 CBA CBT Thresholds (in Millions) -- module-level so
 # compute_cbt_tax()/get_cbt_tier() are usable (and testable) standalone,
 # outside of run_mlb_cbt_payroll_engine().
@@ -177,7 +181,8 @@ load_sourced_payroll <- function(source_path) {
 
 run_mlb_cbt_payroll_engine <- function(
   root_dir = getwd(),
-  payroll_source_path = file.path(root_dir, "data", "cbt_payroll_source.json")
+  payroll_source_path = file.path(root_dir, "data", "cbt_payroll_source.json"),
+  expected_season = if (exists("MLB_CURRENT_SEASON")) MLB_CURRENT_SEASON else 2026L
 ) {
   message(">>> [CBT Engine] Initializing 2026 MLB Payroll & Luxury Tax Architect...")
   
@@ -188,12 +193,18 @@ run_mlb_cbt_payroll_engine <- function(
   if (!file.exists(teams_file)) {
     stop(sprintf("Teams projection file not found: %s", teams_file))
   }
-  if (!file.exists(players_file)) {
-    stop(sprintf("Players projection file not found: %s", players_file))
+
+  snap <- read_projections_season_players(
+    players_file = players_file,
+    expected_season = expected_season,
+    caller = "CBT ENGINE"
+  )
+  if (!isTRUE(snap$ok)) {
+    return(invisible(NULL))
   }
   
   teams_data <- jsonlite::fromJSON(teams_file)
-  players_data <- jsonlite::fromJSON(players_file)
+  players_data <- snap$players
   
   message(sprintf("Loaded %d team records and %d player projection records.", nrow(teams_data), nrow(players_data)))
   
@@ -501,9 +512,10 @@ run_mlb_cbt_payroll_engine <- function(
     # file (this payload is ~195 KB). This engine does not source config.R, so
     # the format string is inline here, matching tools/export_web_data.R.
     generated_at            = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
-    season                  = "2026",
+    season                  = as.character(snap$season),
     payrollSource           = if (!is.null(sourced_payroll)) sourced_payroll$source else NA_character_,
     payrollAsOfDate         = if (!is.null(sourced_payroll)) sourced_payroll$as_of_date else NA_character_,
+    projectionsSnapshot     = list(season = snap$season, as_of_date = snap$as_of_date),
     baseThreshold           = BASE_THRESHOLD,
     tier1Threshold          = TIER1_THRESHOLD,
     tier2Threshold          = TIER2_THRESHOLD,

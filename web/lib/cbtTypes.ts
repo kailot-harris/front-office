@@ -64,6 +64,10 @@ export interface CbtLeagueOverview {
   season: string;
   payrollSource?: string | null;
   payrollAsOfDate?: string | null;
+  projectionsSnapshot?: {
+    season: number;
+    as_of_date: string | null;
+  };
   baseThreshold: number;
   tier1Threshold: number;
   tier2Threshold: number;

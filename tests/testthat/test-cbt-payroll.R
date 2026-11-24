@@ -119,7 +119,11 @@ test_that("run_mlb_cbt_payroll_engine() publishes null payroll/CBT fields when n
     stringsAsFactors = FALSE
   )
   jsonlite::write_json(teams_df, file.path(tmp_root, "web", "public", "data", "projections_season_teams.json"), auto_unbox = TRUE)
-  jsonlite::write_json(players_df, file.path(tmp_root, "web", "public", "data", "projections_season_players.json"), auto_unbox = TRUE)
+  jsonlite::write_json(
+    list(generated_at = "2026-04-01T12:00:00Z", season = 2026L, players = players_df),
+    file.path(tmp_root, "web", "public", "data", "projections_season_players.json"),
+    auto_unbox = TRUE
+  )
 
   catalog <- suppressMessages(run_mlb_cbt_payroll_engine(
     root_dir = tmp_root,
@@ -175,7 +179,11 @@ test_that("run_mlb_cbt_payroll_engine() uses sourced cached payroll dataset with
     stringsAsFactors = FALSE
   )
   jsonlite::write_json(teams_df, file.path(tmp_root, "web", "public", "data", "projections_season_teams.json"), auto_unbox = TRUE)
-  jsonlite::write_json(players_df, file.path(tmp_root, "web", "public", "data", "projections_season_players.json"), auto_unbox = TRUE)
+  jsonlite::write_json(
+    list(generated_at = "2026-04-01T12:00:00Z", season = 2026L, players = players_df),
+    file.path(tmp_root, "web", "public", "data", "projections_season_players.json"),
+    auto_unbox = TRUE
+  )
 
   src_path <- file.path(tmp_root, "data", "cbt_payroll_source.json")
   jsonlite::write_json(

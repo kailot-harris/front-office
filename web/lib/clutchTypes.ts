@@ -57,6 +57,10 @@ export interface ClutchProfile {
 export interface ClutchCatalog {
   generated_at: string;
   updatedAt: string;
+  projectionsSnapshot?: {
+    season: number;
+    as_of_date: string | null;
+  };
   totalProfiles: number;
   clutchLeaderBatters: string[];
   clutchLeaderPitchers: string[];

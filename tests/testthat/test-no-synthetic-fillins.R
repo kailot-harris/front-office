@@ -155,7 +155,19 @@ test_that("mlb_clutch_leverage_engine handles missing files cleanly and emits NA
     composite_zscore = c(NA_real_, 1.5, NA_real_, 1.2),
     proj_workload = c(NA_real_, 600, NA_real_, 65)
   )
-  writeLines(jsonlite::toJSON(players_input, auto_unbox = TRUE, na = "null"), tmp_players)
+  cur_season <- if (exists("MLB_CURRENT_SEASON")) MLB_CURRENT_SEASON else 2026L
+  writeLines(
+    jsonlite::toJSON(
+      list(
+        generated_at = sprintf("%d-04-01T12:00:00Z", cur_season),
+        season = cur_season,
+        players = players_input
+      ),
+      auto_unbox = TRUE,
+      na = "null"
+    ),
+    tmp_players
+  )
 
   catalog <- suppressMessages(clutch_env$run_mlb_clutch_engine(
     players_file = tmp_players,
@@ -163,7 +175,8 @@ test_that("mlb_clutch_leverage_engine handles missing files cleanly and emits NA
     fg_batters_file = tempfile(fileext = ".rds"),
     fg_pitchers_file = tempfile(fileext = ".rds"),
     boxscores_file = tempfile(fileext = ".rds"),
-    output_json = tmp_out
+    output_json = tmp_out,
+    expected_season = cur_season
   ))
 
   expect_true(file.exists(tmp_out))

@@ -113,6 +113,10 @@ export interface PrecomputedMatchup {
 export interface PlayoffMatchupsCatalog {
   generated_at: string;
   updatedAt: string;
+  projectionsSnapshot?: {
+    season: number;
+    as_of_date: string | null;
+  };
   nSims: number;
   teams: Record<string, TeamPlayoffProfile>;
   matchups: Record<string, PrecomputedMatchup>;
