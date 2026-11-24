@@ -404,22 +404,6 @@ export const CoachingStaffMetricSchema = z
   .object({
     teamAbbr: teamEnum,
     teamName: z.string().min(2),
-    headCoach: z
-      .object({
-        name: z.string().min(2),
-        tenureYears: z.number().int().min(0),
-        coachingTree: z.string().min(2),
-        tacticalArchetype: z.string().min(2),
-      })
-      .strict(),
-    assistants: z
-      .object({
-        associateHC: z.string().min(2),
-        offensiveCoord: z.string().min(2),
-        defensiveCoord: z.string().min(2),
-        playerDevLead: z.string().min(2),
-      })
-      .strict(),
     metrics: z
       .object({
         coachImpactRating: pct.nullable(),

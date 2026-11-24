@@ -3,20 +3,6 @@
 // Type definitions for NBA Coaching Staff & Impact Analytics
 // ==============================================================================
 
-export interface HeadCoachInfo {
-  name: string;
-  tenureYears: number;
-  coachingTree: string;
-  tacticalArchetype: string;
-}
-
-export interface AssistantsInfo {
-  associateHC: string;
-  offensiveCoord: string;
-  defensiveCoord: string;
-  playerDevLead: string;
-}
-
 export interface CoachingMetrics {
   coachImpactRating: number | null;      // 0-100 composite score (null when unobserved)
   talentExpectedWins: number;            // Wins predicted strictly from roster talent
@@ -68,8 +54,6 @@ export interface CoachingProvenance {
 export interface CoachingStaffMetric {
   teamAbbr: string;
   teamName: string;
-  headCoach: HeadCoachInfo;
-  assistants: AssistantsInfo;
   metrics: CoachingMetrics;
   radarPercentiles: RadarPercentiles;
   provenance: CoachingProvenance;

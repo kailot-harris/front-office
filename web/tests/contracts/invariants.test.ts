@@ -452,14 +452,25 @@ describe('Domain & mathematical invariants: clutch, defense, playerDna, coaches,
     }
   });
 
-  it('coaching_metrics.json: omits unverified hand-typed careerGames and careerWinPct fields (#188)', () => {
+  it('coaching_metrics.json: omits unverified hand-typed registry fields (#188)', () => {
+    const forbiddenTopKeys = [
+      'careerGames',
+      'careerWinPct',
+      'headCoach',
+      'assistants',
+      'tenureYears',
+      'coachingTree',
+      'tacticalArchetype',
+      'associateHC',
+      'offensiveCoord',
+      'defensiveCoord',
+      'playerDevLead',
+    ];
     for (const c of coaches) {
       const topKeys = Object.keys(c as unknown as Record<string, unknown>);
-      const hcKeys = Object.keys(c.headCoach as unknown as Record<string, unknown>);
-      expect(topKeys, `${c.teamAbbr} top-level`).not.toContain('careerGames');
-      expect(topKeys, `${c.teamAbbr} top-level`).not.toContain('careerWinPct');
-      expect(hcKeys, `${c.teamAbbr} headCoach`).not.toContain('careerGames');
-      expect(hcKeys, `${c.teamAbbr} headCoach`).not.toContain('careerWinPct');
+      for (const k of forbiddenTopKeys) {
+        expect(topKeys, `${c.teamAbbr} top-level ${k}`).not.toContain(k);
+      }
     }
   });
 

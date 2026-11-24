@@ -8,7 +8,6 @@ import { AtoEfficiencyScatter } from '@/components/AtoEfficiencyScatter';
 import { CoachImpactProfile } from '@/components/CoachImpactProfile';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 import { HowToReadDisclosure } from '@/components/HowToReadDisclosure';
-import { GlossaryTerm } from '@/components/GlossaryTerm';
 import {
   Briefcase,
   Crosshair,
@@ -16,7 +15,6 @@ import {
   Award,
   Zap,
   TrendingUp,
-  GitBranch,
   ChevronRight,
 } from 'lucide-react';
 
@@ -25,9 +23,8 @@ interface CoachesClientProps {
 }
 
 export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => {
-  const [activeTab, setActiveTab] = useState<'tierboard' | 'scatter' | 'profile' | 'genealogy'>('tierboard');
+  const [activeTab, setActiveTab] = useState<'tierboard' | 'scatter' | 'profile'>('tierboard');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTree, setSelectedTree] = useState<string>('All');
   const [selectedCoach, setSelectedCoach] = useState<CoachingStaffMetric>(initialData[0] || null);
 
   // The ATO and challenge figures on this page fall back to the last completed
@@ -42,29 +39,16 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
     return spans.size > 0 ? Array.from(spans).sort().join(' + ') : null;
   }, [initialData]);
 
-  // Distinct coaching trees
-  const coachingTrees = useMemo(() => {
-    const trees = new Set<string>();
-    initialData.forEach((c) => {
-      if (c.headCoach.coachingTree) trees.add(c.headCoach.coachingTree);
-    });
-    return ['All', ...Array.from(trees).sort()];
-  }, [initialData]);
-
-  // Filtered coaches
+  // Filtered teams
   const filteredCoaches = useMemo(() => {
     return initialData.filter((c) => {
-      const matchesSearch =
-        c.headCoach.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.teamAbbr.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.teamName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.assistants.associateHC.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.assistants.offensiveCoord.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesTree = selectedTree === 'All' || c.headCoach.coachingTree === selectedTree;
-      return matchesSearch && matchesTree;
+      const q = searchTerm.toLowerCase();
+      return (
+        c.teamAbbr.toLowerCase().includes(q) ||
+        c.teamName.toLowerCase().includes(q)
+      );
     }).sort((a, b) => (b.metrics.coachImpactRating ?? -Infinity) - (a.metrics.coachImpactRating ?? -Infinity));
-  }, [initialData, searchTerm, selectedTree]);
+  }, [initialData, searchTerm]);
 
   // Top KPI metrics
   const topCirCoach = useMemo(() => {
@@ -160,17 +144,6 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
               <TrendingUp className="w-3.5 h-3.5" />
               Impact Profile
             </button>
-            <button role="tab" aria-selected={activeTab === 'genealogy'}
-              onClick={() => setActiveTab('genealogy')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === 'genealogy'
-                  ? 'bg-accent-600 text-white shadow-md shadow-accent-600/30'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              <GitBranch className="w-3.5 h-3.5" />
-              Coaching Trees
-            </button>
           </div>
         </div>
       </div>
@@ -179,9 +152,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
         The Coach Impact Rating compares a team&rsquo;s actual win total against a roster-talent
         baseline — the gap is a model residual attributed to coaching, not a directly measured
         effect. ATO (after-timeout) offensive and defensive marks show points per possession on
-        plays drawn up out of a stoppage, and each coach&rsquo;s{' '}
-        <GlossaryTerm term="coaching tree" /> groups them with others who share a tactical
-        lineage.
+        plays drawn up out of a stoppage, alongside observed coach&rsquo;s challenge overturn rates.
       </HowToReadDisclosure>
 
       {/* Top 4 KPI Stat Badges */}
@@ -193,12 +164,12 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           <div className="min-w-0">
             <span className="text-[11px] text-slate-400 font-medium block truncate">#1 Coach Impact Rating</span>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className="font-bold text-white text-sm truncate">{topCirCoach?.headCoach.name ?? '—'}</span>
+              <span className="font-bold text-white text-sm truncate">{topCirCoach?.teamName ?? '—'}</span>
               <span className="text-xs font-mono font-bold text-emerald-400">
                 {topCirCoach?.metrics.coachImpactRating != null ? `${topCirCoach.metrics.coachImpactRating} CIR` : '—'}
               </span>
             </div>
-            <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">{topCirCoach?.teamAbbr} • {topCirCoach?.headCoach.coachingTree}</span>
+            <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">{topCirCoach?.teamAbbr}</span>
           </div>
         </div>
 
@@ -209,7 +180,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           <div className="min-w-0">
             <span className="text-[11px] text-slate-400 font-medium block truncate">Top Offensive ATO</span>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className="font-bold text-white text-sm truncate">{topAtoCoach?.headCoach.name}</span>
+              <span className="font-bold text-white text-sm truncate">{topAtoCoach?.teamName ?? '—'}</span>
               <span className="text-xs font-mono font-bold text-indigo-400">{topAtoCoach?.metrics.atoOffensivePpp} PPP</span>
             </div>
             <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">{topAtoCoach?.teamAbbr}</span>
@@ -223,7 +194,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           <div className="min-w-0">
             <span className="text-[11px] text-slate-400 font-medium block truncate">Top Defensive ATO Stopper</span>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className="font-bold text-white text-sm truncate">{topDefAtoCoach?.headCoach.name}</span>
+              <span className="font-bold text-white text-sm truncate">{topDefAtoCoach?.teamName ?? '—'}</span>
               <span className="text-xs font-mono font-bold text-sky-400">{topDefAtoCoach?.metrics.atoDefensivePppAllowed} PPP</span>
             </div>
             <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">{topDefAtoCoach?.teamAbbr}</span>
@@ -237,7 +208,7 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
           <div className="min-w-0">
             <span className="text-[11px] text-slate-400 font-medium block truncate">Challenge Overturn Leader</span>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className="font-bold text-white text-sm truncate">{topChallengeCoach?.headCoach.name ?? '—'}</span>
+              <span className="font-bold text-white text-sm truncate">{topChallengeCoach?.teamName ?? '—'}</span>
               <span className="text-xs font-mono font-bold text-amber-400">
                 {topChallengeCoach?.metrics.challengeSuccessRate != null
                   ? `${(topChallengeCoach.metrics.challengeSuccessRate * 100).toFixed(1)}%`
@@ -252,35 +223,19 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
       {/* Main Content Area Based on Active Tab */}
       {activeTab === 'tierboard' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Column: List of Coaches (7 cols) */}
+          {/* Left Column: List of Teams (7 cols) */}
           <div className="lg:col-span-7 space-y-4">
-            {/* Search & Filter Bar */}
+            {/* Search Bar */}
             <div className="p-3 rounded-xl bg-surface-raised/80 border border-slate-800 flex flex-wrap items-center justify-between gap-3">
               <div className="relative flex-1 min-w-[200px]">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
                   type="text"
-                  placeholder="Filter by coach, assistant, or team..."
+                  placeholder="Filter by team..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full bg-surface border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                 />
-              </div>
-
-              {/* Coaching Tree Selector */}
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-slate-400">Tree:</span>
-                <select aria-label="Select tree"
-                  value={selectedTree}
-                  onChange={(e) => setSelectedTree(e.target.value)}
-                  className="bg-surface border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
-                >
-                  {coachingTrees.map((tree) => (
-                    <option key={tree} value={tree}>
-                      {tree}
-                    </option>
-                  ))}
-                </select>
               </div>
             </div>
 
@@ -309,14 +264,11 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <h4 className="text-sm font-bold text-white tracking-tight truncate">
-                            {c.headCoach.name}
+                            {c.teamName}
                           </h4>
                           <span className="text-[11px] sm:text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700">
                             {c.teamAbbr}
                           </span>
-                        </div>
-                        <div className="text-[11px] text-slate-400 truncate mt-0.5">
-                          {c.headCoach.tacticalArchetype}
                         </div>
                       </div>
                     </div>
@@ -364,10 +316,10 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                     <TeamLogo team={selectedCoach.teamAbbr} size="lg" />
                     <div>
                       <h3 className="text-base font-extrabold text-white tracking-tight">
-                        {selectedCoach.headCoach.name}
+                        {selectedCoach.teamName}
                       </h3>
-                      <div className="text-xs text-slate-400 mt-0.5">
-                        {selectedCoach.teamName} • {selectedCoach.headCoach.tenureYears} yrs tenure
+                      <div className="text-xs text-slate-400 mt-0.5 font-mono">
+                        {selectedCoach.teamAbbr}
                       </div>
                     </div>
                   </div>
@@ -377,15 +329,9 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                       Impact Rating
                     </span>
                     <span className="text-xl font-mono font-extrabold text-amber-400">
-                      {selectedCoach.metrics.coachImpactRating}
+                      {selectedCoach.metrics.coachImpactRating ?? '—'}
                     </span>
                   </div>
-                </div>
-
-                {/* Tactical Archetype Badge */}
-                <div className="p-2.5 rounded-lg bg-indigo-950/40 border border-indigo-500/20 text-xs text-indigo-300">
-                  <span className="font-semibold text-white">System Identity: </span>
-                  {selectedCoach.headCoach.tacticalArchetype}
                 </div>
 
                 {/* 5-Dimensional Radar Chart */}
@@ -396,42 +342,9 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                   </div>
                   <CoachRadarProfile
                     percentiles={selectedCoach.radarPercentiles}
-                    coachName={selectedCoach.headCoach.name}
+                    coachName={selectedCoach.teamName}
                     size={260}
                   />
-                </div>
-
-                {/* Coaching Bench & Assistants */}
-                <div className="pt-3 border-t border-slate-800 space-y-2">
-                  <span className="text-xs font-bold text-slate-300 block">
-                    Bench & Assistant Staff
-                  </span>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="p-2 bg-surface/60 rounded border border-slate-800">
-                      <span className="text-[11px] sm:text-[10px] text-slate-500 block">Associate HC</span>
-                      <span className="text-slate-200 font-medium truncate block">
-                        {selectedCoach.assistants.associateHC}
-                      </span>
-                    </div>
-                    <div className="p-2 bg-surface/60 rounded border border-slate-800">
-                      <span className="text-[11px] sm:text-[10px] text-slate-500 block">Offensive Lead</span>
-                      <span className="text-slate-200 font-medium truncate block">
-                        {selectedCoach.assistants.offensiveCoord}
-                      </span>
-                    </div>
-                    <div className="p-2 bg-surface/60 rounded border border-slate-800">
-                      <span className="text-[11px] sm:text-[10px] text-slate-500 block">Defensive Lead</span>
-                      <span className="text-slate-200 font-medium truncate block">
-                        {selectedCoach.assistants.defensiveCoord}
-                      </span>
-                    </div>
-                    <div className="p-2 bg-surface/60 rounded border border-slate-800">
-                      <span className="text-[11px] sm:text-[10px] text-slate-500 block">Player Dev / Shooting</span>
-                      <span className="text-slate-200 font-medium truncate block">
-                        {selectedCoach.assistants.playerDevLead}
-                      </span>
-                    </div>
-                  </div>
                 </div>
               </div>
             )}
@@ -470,86 +383,10 @@ export const CoachesClient: React.FC<CoachesClientProps> = ({ initialData }) => 
                   }`}
                 >
                   <TeamLogo team={c.teamAbbr} size="xs" />
-                  <span>{c.headCoach.name}</span>
+                  <span>{c.teamName}</span>
                 </button>
               ))}
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Coaching Tree Genealogy Tab */}
-      {activeTab === 'genealogy' && (
-        <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-5 shadow-lg space-y-6">
-          <div className="flex items-center gap-2.5 pb-4 border-b border-slate-800">
-            <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
-              <GitBranch className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-white tracking-tight">
-                Coaching Tree Lineages & Pedagogical Ancestry
-              </h3>
-              <p className="text-xs text-slate-400">
-                Tracking how strategic philosophies and motion schemes propagate across modern NBA franchises.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {coachingTrees.filter((t) => t !== 'All').map((treeName) => {
-              const treeMembers = initialData.filter((c) => c.headCoach.coachingTree === treeName);
-              const ratedMembers = treeMembers.filter((c) => c.metrics.coachImpactRating !== null);
-              const avgCir =
-                ratedMembers.length > 0
-                  ? +(ratedMembers.reduce((sum, c) => sum + c.metrics.coachImpactRating!, 0) / ratedMembers.length).toFixed(1)
-                  : null;
-
-              return (
-                <div
-                  key={treeName}
-                  className="p-4 rounded-xl bg-surface/70 border border-slate-800 hover:border-slate-700 transition-all space-y-3"
-                >
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
-                    <div>
-                      <h4 className="text-sm font-bold text-white">{treeName} Tree</h4>
-                      <span className="text-[11px] sm:text-[10px] text-slate-400">{treeMembers.length} Active Head Coaches</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[11px] sm:text-[9px] text-slate-500 uppercase block">Avg CIR</span>
-                      <span className="text-xs font-mono font-bold text-amber-400">{avgCir}</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    {treeMembers.map((member) => (
-                      <div
-                        key={member.teamAbbr}
-                        onClick={() => {
-                          setSelectedCoach(member);
-                          setActiveTab('tierboard');
-                        }}
-                        className="p-2 rounded-lg bg-surface-raised/60 border border-slate-800/80 hover:bg-slate-850 hover:border-amber-500/40 cursor-pointer flex items-center justify-between transition-all"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <TeamLogo team={member.teamAbbr} size="xs" />
-                          <div className="min-w-0">
-                            <span className="text-xs font-semibold text-slate-200 block truncate">
-                              {member.headCoach.name}
-                            </span>
-                            <span className="text-[11px] sm:text-[10px] text-slate-400 truncate block">
-                              {member.teamName}
-                            </span>
-                          </div>
-                        </div>
-                        <span className="text-xs font-mono font-bold text-amber-400">
-                          {member.metrics.coachImpactRating}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </div>
       )}
