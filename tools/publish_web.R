@@ -420,25 +420,34 @@ if (!dir.exists(WEB_MEDIA_DIR)) dir.create(WEB_MEDIA_DIR, recursive = TRUE)
 }
 
 # ------------------------------------------------------------------------------
-# ASSERTION C - non-empty diff under the published tree.
-# Resolved against the RUNTIME git root, never a hardcoded path, so a worktree
-# is reported against its own repository.
+# ASSERTION C - non-empty diff under the published tree (web/public/data or
+# web/public/media). Resolved against the RUNTIME git root, never a hardcoded
+# path, so a worktree is reported against its own repository.
+# Media-only changes (e.g. Slot C regenerating nba_predictions_today.png on a
+# quiet night when JSON payloads are unchanged) are valid publishes (#130).
 # ------------------------------------------------------------------------------
 .assert_nonempty_diff <- function(repo_root) {
   if (is.na(repo_root)) {
-    return(list(id = "C", name = "non-empty diff under web/public/data",
+    return(list(id = "C", name = "non-empty diff under web/public/data or web/public/media",
                 pass = FALSE, fatal = TRUE, changed = character(0), paths = character(0),
                 detail = "    could not resolve a git repository for the working directory",
                 summary = "no git repo"))
   }
-  rel <- .pw_rel_to_repo(WEB_DATA_DIR, repo_root)
-  r <- .pw_git(repo_root, c("status", "--porcelain", "--", rel))
+  rel_data <- .pw_rel_to_repo(WEB_DATA_DIR, repo_root)
+  rel_media <- if (exists("WEB_MEDIA_DIR") && nzchar(WEB_MEDIA_DIR)) {
+    .pw_rel_to_repo(WEB_MEDIA_DIR, repo_root)
+  } else {
+    character(0)
+  }
+  watch_paths <- unique(c(rel_data, rel_media))
+  r <- .pw_git(repo_root, c("status", "--porcelain", "--", watch_paths))
   changed <- if (r$ok) r$out[nzchar(r$out)] else character(0)
-  list(id = "C", name = "non-empty diff under web/public/data",
-       pass = length(changed) > 0, fatal = TRUE, changed = changed, paths = rel,
+  list(id = "C", name = "non-empty diff under web/public/data or web/public/media",
+       pass = length(changed) > 0, fatal = TRUE, changed = changed, paths = rel_data,
        detail = if (length(changed)) paste0("    ", changed)
                 else sprintf("    CLEAN against HEAD - nothing to publish (repo: %s)", repo_root),
-       summary = sprintf("%d pending change(s) under %s", length(changed), rel))
+       summary = sprintf("%d pending change(s) under %s", length(changed),
+                         paste(watch_paths, collapse = ", ")))
 }
 
 # ------------------------------------------------------------------------------
