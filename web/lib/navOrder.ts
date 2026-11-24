@@ -6,6 +6,7 @@
 export const NAV_ORDER: readonly string[] = [
   'Season Standings',
   'Matchups',
+  'Momentum Board',
   'Playoff Simulator',
   '2026 Bracket',
   'Postseason & Bullpen',
