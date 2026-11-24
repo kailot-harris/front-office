@@ -139,26 +139,25 @@ run_mlb_clutch_engine <- function(
     clutch_woba <- round(woba + clutch_delta, 3)
     high_li_wpa <- round(wpa_total * 0.45 + (clutch_delta * 35), 2)
     
-    # Leverage Distribution Breakdown (%)
-    # Typical MLB: Low 58%, Med 27%, High 11%, Extreme 4%
-    high_pct <- round(pmax(7.0, pmin(18.0, 11.0 + (pli - 1.0) * 15)), 1)
-    extreme_pct <- round(pmax(2.5, pmin(7.5, 4.0 + (pli - 1.0) * 6)), 1)
-    med_pct <- round(pmax(22.0, pmin(32.0, 27.0 - (high_pct - 11.0) * 0.5)), 1)
-    low_pct <- round(100.0 - high_pct - extreme_pct - med_pct, 1)
+    # Leverage Distribution Breakdown (%): no empirical PA-level LI bucket source in repo; emit NA/null
+    high_pct <- NA_real_
+    extreme_pct <- NA_real_
+    med_pct <- NA_real_
+    low_pct <- NA_real_
     
-    # RISP 2-Out Situation Split
-    risp_pa <- round(pa * 0.24)
-    risp_woba <- round(woba + clutch_delta * 1.15, 3)
-    risp_avg <- round(pmax(0.200, pmin(0.380, (risp_woba - 0.070) * 0.90)), 3)
-    risp_obp <- round(pmax(0.280, pmin(0.480, obp + clutch_delta * 0.8)), 3)
-    risp_slg <- round(pmax(0.330, pmin(0.680, risp_avg + iso + clutch_delta * 0.7)), 3)
-    risp_ops <- round(risp_obp + risp_slg, 3)
+    # RISP 2-Out Situation Split: no empirical 2-out RISP split source in repo; emit NA/null
+    risp_pa <- NA_integer_
+    risp_woba <- NA_real_
+    risp_avg <- NA_real_
+    risp_obp <- NA_real_
+    risp_slg <- NA_real_
+    risp_ops <- NA_real_
     
     # Clutch Archetype Assignment
     archetype <- case_when(
       is.na(clutch_delta) ~ "Unclassified",
       clutch_delta >= 0.035 & high_li_wpa >= 2.0 ~ "Ice-in-Veins Walkoff Anchor",
-      clutch_delta >= 0.020 & risp_ops >= 0.880 ~ "Two-Out RISP Punisher",
+      clutch_delta >= 0.020 & !is.na(risp_ops) & risp_ops >= 0.880 ~ "Two-Out RISP Punisher",
       clutch_delta >= 0.010 ~ "High-Discipline Pressure Grinder",
       abs(clutch_delta) < 0.015 ~ "Steady-State Context Neutral",
       clutch_delta <= -0.025 ~ "Low-Leverage Run Padder",
@@ -212,8 +211,8 @@ run_mlb_clutch_engine <- function(
     workload <- num_or_na(p$proj_workload)
     is_reliever <- if (!is.na(workload)) workload < 95 else NA
     
-    # Expected wOBA against baseline
-    base_woba_against <- round(pmax(0.240, pmin(0.360, (proj_era * 0.055) + 0.110)), 3)
+    # Expected wOBA against baseline (linear ERA-to-wOBA conversion)
+    base_woba_against <- round((proj_era * 0.055) + 0.110, 3)
     
     # Ingest true FanGraphs pitcher metrics (cache/stats_sync/fg_pitchers.rds)
     fg_p_match <- if (nrow(fg_pitchers) > 0) {
@@ -241,19 +240,11 @@ run_mlb_clutch_engine <- function(
     clutch_woba_against <- round(base_woba_against + clutch_delta, 3)
     high_li_wpa <- round(wpa_total * 0.55 - (clutch_delta * 40), 2)
 
-    # Leverage Breakdown
-    high_pct <- if (!is.na(is_reliever)) {
-      round(pmax(10.0, pmin(35.0, if (is_reliever) 24.0 + (gmli - 1.5) * 20 else 12.0)), 1)
-    } else {
-      NA_real_
-    }
-    extreme_pct <- if (!is.na(is_reliever)) {
-      round(pmax(4.0, pmin(15.0, if (is_reliever) 9.0 + (gmli - 1.5) * 10 else 4.0)), 1)
-    } else {
-      NA_real_
-    }
-    med_pct <- if (!is.na(is_reliever)) round(pmax(20.0, pmin(32.0, 26.0)), 1) else NA_real_
-    low_pct <- round(100.0 - high_pct - extreme_pct - med_pct, 1)
+    # Leverage Breakdown: no empirical BF-level LI bucket source in repo; emit NA/null
+    high_pct <- NA_real_
+    extreme_pct <- NA_real_
+    med_pct <- NA_real_
+    low_pct <- NA_real_
 
     # Ingest inherited runners (IR) and inherited scored (IS) from boxscores or set to 0 when absent
     ir <- 0L
@@ -349,12 +340,12 @@ run_mlb_clutch_engine <- function(
         extremePct = extreme_pct
       ),
       rispSplit         = list(
-        pa   = round(workload * 0.8),
-        avg  = round(base_woba_against * 0.78, 3),
-        obp  = round(base_woba_against * 0.95, 3),
-        slg  = round(base_woba_against * 1.15, 3),
-        wOBA = clutch_woba_against,
-        ops  = round(base_woba_against * 2.10, 3)
+        pa   = NA_integer_,
+        avg  = NA_real_,
+        obp  = NA_real_,
+        slg  = NA_real_,
+        wOBA = NA_real_,
+        ops  = NA_real_
       ),
       firemanStats      = list(
         inheritedRunners = ir,

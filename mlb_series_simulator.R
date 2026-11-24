@@ -79,7 +79,7 @@ build_mlb_playoff_profiles <- function(teams_df, players_df, post_ops) {
       mutate(
         team_defense_percentile = percent_rank(team_defense) * 100,
         catcher_framing_percentile = percent_rank(catcher_framing) * 100,
-        def_composite = pmin(99, pmax(1, round(0.65 * team_defense_percentile + 0.35 * catcher_framing_percentile)))
+        def_composite = round(0.65 * team_defense_percentile + 0.35 * catcher_framing_percentile)
       )
     
     for (d in seq_len(nrow(team_def_df))) {
@@ -216,30 +216,25 @@ build_mlb_playoff_profiles <- function(teams_df, players_df, post_ops) {
       base_elo <- round(bullpen_lookup[[tm_code]]$elo_rating, 1)
     }
     
-    # Calculate 5 Sabermetric Tactical Ratings (0-100 Percentiles)
-    # 1. Rotation Depth: weighted rGS of top 4 starters
+    # Extract raw team metrics for empirical cross-team percent_rank() tactical ratings
     rgs_vals <- sapply(starters_list, function(x) as.numeric(x$rGS))
     mean_rgs <- if (all(is.na(rgs_vals))) NA_real_ else mean(rgs_vals, na.rm = TRUE)
-    rotation_rating <- if (is.na(mean_rgs)) NA_real_ else pmin(99, pmax(30, round((mean_rgs - 46) * 3.5 + 50)))
     
-    # 2. Bullpen Leverage: based on reliever fatigue & xFIP
     bp_data <- bullpen_lookup[[tm_code]]
-    bp_fatigue <- if (!is.null(bp_data)) bp_data$avg_bullpen_fatigue else 50
-    bp_vuln <- if (!is.null(bp_data)) bp_data$bullpen_vulnerability else 50
-    bullpen_rating <- pmin(99, pmax(25, round(100 - (bp_vuln * 0.55 + bp_fatigue * 0.25))))
+    bp_raw <- if (!is.null(bp_data) && !is.na(bp_data$bullpen_vulnerability) && !is.na(bp_data$avg_bullpen_fatigue)) {
+      -(bp_data$bullpen_vulnerability * 0.55 + bp_data$avg_bullpen_fatigue * 0.25)
+    } else {
+      NA_real_
+    }
     
-    # 3. Power / ISO: Lineup average ISO
     iso_vals <- sapply(lineup_list, function(x) as.numeric(x$iso))
     mean_iso <- if (all(is.na(iso_vals))) NA_real_ else mean(iso_vals, na.rm = TRUE)
-    power_rating <- if (is.na(mean_iso)) NA_real_ else pmin(99, pmax(30, round((mean_iso - 0.140) * 550 + 50)))
     
-    # 4. Contact & Plate Discipline: Lineup average K-avoidance & BB%
     k_vals <- sapply(lineup_list, function(x) as.numeric(x$kPct))
     mean_k <- if (all(is.na(k_vals))) NA_real_ else mean(k_vals, na.rm = TRUE)
-    contact_rating <- if (is.na(mean_k)) NA_real_ else pmin(99, pmax(30, round((25.0 - mean_k) * 3.8 + 50)))
     
-    # 5. Defensive Efficiency & Catcher Framing (Empirical composite from fg_batters.rds)
-    def_rating <- if (!is.null(defense_lookup[[tm_code]])) defense_lookup[[tm_code]] else 50
+    # Defensive Efficiency & Catcher Framing (Empirical composite from fg_batters.rds)
+    def_rating <- if (!is.null(defense_lookup[[tm_code]])) defense_lookup[[tm_code]] else NA_real_
     
     profiles[[tm_code]] <- list(
       teamAbbr        = tm_code,
@@ -250,16 +245,32 @@ build_mlb_playoff_profiles <- function(teams_df, players_df, post_ops) {
       regularWins     = round(tm_row$ensemble_mean_wins, 1),
       baseElo         = base_elo,
       tacticalRatings = list(
-        rotationDepth     = rotation_rating,
-        bullpenLeverage   = bullpen_rating,
-        powerIso          = power_rating,
-        contactDiscipline = contact_rating,
+        rotationDepth     = mean_rgs,
+        bullpenLeverage   = bp_raw,
+        powerIso          = mean_iso,
+        contactDiscipline = if (is.na(mean_k)) NA_real_ else -mean_k,
         defenseFielding   = def_rating
       ),
       starters        = starters_list,
       relievers       = relievers_list,
       lineupCore      = lineup_list
     )
+  }
+  
+  # Convert raw tactical metrics into empirical 0-100 percentiles via percent_rank()
+  if (length(profiles) > 0) {
+    tm_keys <- names(profiles)
+    rot_pct <- round(dplyr::percent_rank(vapply(tm_keys, function(k) as.numeric(profiles[[k]]$tacticalRatings$rotationDepth), numeric(1))) * 100)
+    bp_pct  <- round(dplyr::percent_rank(vapply(tm_keys, function(k) as.numeric(profiles[[k]]$tacticalRatings$bullpenLeverage), numeric(1))) * 100)
+    pwr_pct <- round(dplyr::percent_rank(vapply(tm_keys, function(k) as.numeric(profiles[[k]]$tacticalRatings$powerIso), numeric(1))) * 100)
+    cnt_pct <- round(dplyr::percent_rank(vapply(tm_keys, function(k) as.numeric(profiles[[k]]$tacticalRatings$contactDiscipline), numeric(1))) * 100)
+    for (idx in seq_along(tm_keys)) {
+      k <- tm_keys[idx]
+      profiles[[k]]$tacticalRatings$rotationDepth     <- rot_pct[idx]
+      profiles[[k]]$tacticalRatings$bullpenLeverage   <- bp_pct[idx]
+      profiles[[k]]$tacticalRatings$powerIso          <- pwr_pct[idx]
+      profiles[[k]]$tacticalRatings$contactDiscipline <- cnt_pct[idx]
+    }
   }
   
   profiles

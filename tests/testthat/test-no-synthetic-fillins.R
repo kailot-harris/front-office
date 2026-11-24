@@ -101,6 +101,7 @@ test_that("mlb_series_simulator emits NA/null instead of constant coalesce fill-
 
   # Base Elo is NA when variant_bottom_up_mean_wins is NA and bullpen_lookup is absent
   expect_true(is.na(aaa$baseElo))
+  expect_true(is.na(aaa$tacticalRatings$bullpenLeverage))
 
   # JSON round-trip with na = "null" emits null (not 52.0 / 3.50 / 0.315)
   parsed <- jsonlite::fromJSON(
@@ -108,6 +109,7 @@ test_that("mlb_series_simulator emits NA/null instead of constant coalesce fill-
     simplifyVector = FALSE
   )
   expect_null(parsed$baseElo)
+  expect_null(parsed$tacticalRatings$bullpenLeverage)
   expect_null(parsed$relievers[[2]]$xFip)
   expect_null(parsed$lineupCore[[2]]$wOBA)
 
@@ -188,6 +190,8 @@ test_that("mlb_clutch_leverage_engine handles missing files cleanly and emits NA
   # Missing batter fields must be JSON null (not 0.315 / 0.160 / 0.320 / 500 / "OF")
   expect_null(by_id$B1$position)
   expect_null(by_id$B1$baseMetricVal)
+  expect_null(by_id$B1$leverageBreakdown$lowPct)
+  expect_null(by_id$B1$leverageBreakdown$highPct)
   expect_null(by_id$B1$rispSplit$pa)
   expect_null(by_id$B1$rispSplit$avg)
 
@@ -195,5 +199,7 @@ test_that("mlb_clutch_leverage_engine handles missing files cleanly and emits NA
   expect_null(by_id$P1$position)
   expect_null(by_id$P1$baseMetricVal)
   expect_null(by_id$P1$avgLeverageIndex)
+  expect_null(by_id$P1$leverageBreakdown$highPct)
+  expect_null(by_id$P1$rispSplit$pa)
   expect_null(by_id$P1$firemanStats$shutdowns)
 })

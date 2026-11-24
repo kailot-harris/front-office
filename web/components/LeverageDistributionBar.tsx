@@ -62,7 +62,9 @@ export const LeverageDistributionBar: React.FC<LeverageDistributionBarProps> = (
             <span className="w-2 h-2 rounded-full bg-slate-500" />
             <span>Low (&lt;0.85)</span>
           </div>
-          <span className="text-sm font-bold text-white block mt-0.5">{breakdown.lowPct}%</span>
+          <span className="text-sm font-bold text-white block mt-0.5">
+            {breakdown.lowPct != null ? `${breakdown.lowPct}%` : '—'}
+          </span>
         </div>
 
         <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/60">
@@ -70,7 +72,9 @@ export const LeverageDistributionBar: React.FC<LeverageDistributionBarProps> = (
             <span className="w-2 h-2 rounded-full bg-sky-500" />
             <span>Med (0.85-1.5)</span>
           </div>
-          <span className="text-sm font-bold text-white block mt-0.5">{breakdown.medPct}%</span>
+          <span className="text-sm font-bold text-white block mt-0.5">
+            {breakdown.medPct != null ? `${breakdown.medPct}%` : '—'}
+          </span>
         </div>
 
         <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/60">
@@ -78,7 +82,9 @@ export const LeverageDistributionBar: React.FC<LeverageDistributionBarProps> = (
             <span className="w-2 h-2 rounded-full bg-amber-500" />
             <span>High (1.5-2.5)</span>
           </div>
-          <span className="text-sm font-bold text-white block mt-0.5">{breakdown.highPct}%</span>
+          <span className="text-sm font-bold text-white block mt-0.5">
+            {breakdown.highPct != null ? `${breakdown.highPct}%` : '—'}
+          </span>
         </div>
 
         <div className="bg-surface-raised/80 p-2 rounded-lg border border-slate-800/60">
@@ -86,7 +92,9 @@ export const LeverageDistributionBar: React.FC<LeverageDistributionBarProps> = (
             <span className="w-2 h-2 rounded-full bg-rose-500" />
             <span>Extreme (&ge;2.5)</span>
           </div>
-          <span className="text-sm font-bold text-rose-300 block mt-0.5">{breakdown.extremePct}%</span>
+          <span className="text-sm font-bold text-rose-300 block mt-0.5">
+            {breakdown.extremePct != null ? `${breakdown.extremePct}%` : '—'}
+          </span>
         </div>
       </div>
     </div>
