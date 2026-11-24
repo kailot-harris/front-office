@@ -31,7 +31,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ overview }) => {
 
   // Aggregate stats
   const totalTaxPayingTeams = useMemo(() => {
-    return overview.teams.filter((t) => t.payroll2026 > overview.baseThreshold).length;
+    return overview.teams.filter((t) => t.payroll2026 !== null && t.payroll2026 > overview.baseThreshold).length;
   }, [overview.teams, overview.baseThreshold]);
 
   const filteredTeams = useMemo(() => {
@@ -39,9 +39,9 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ overview }) => {
       const matchesLeague = leagueFilter === 'ALL' || t.league === leagueFilter;
       const matchesTier =
         selectedTierFilter === 'ALL' ||
-        (selectedTierFilter === 'OVER_CBT' && t.payroll2026 > overview.baseThreshold) ||
-        (selectedTierFilter === 'UNDER_CBT' && t.payroll2026 <= overview.baseThreshold) ||
-        (selectedTierFilter === 'REPEATER' && t.isRepeater);
+        (selectedTierFilter === 'OVER_CBT' && t.payroll2026 !== null && t.payroll2026 > overview.baseThreshold) ||
+        (selectedTierFilter === 'UNDER_CBT' && t.payroll2026 !== null && t.payroll2026 <= overview.baseThreshold) ||
+        (selectedTierFilter === 'REPEATER' && Boolean(t.isRepeater));
       return matchesLeague && matchesTier;
     });
   }, [overview.teams, leagueFilter, selectedTierFilter, overview.baseThreshold]);
@@ -155,7 +155,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ overview }) => {
             <div className="divide-y divide-slate-850 max-h-[640px] overflow-y-auto mt-2 pr-1 space-y-1">
               {filteredTeams.map((team, idx) => {
                 const isSelected = team.teamAbbr === selectedTeam.teamAbbr;
-                const isOver = team.payroll2026 > overview.baseThreshold;
+                const isOver = team.payroll2026 !== null && team.payroll2026 > overview.baseThreshold;
                 return (
                   <button
                     key={team.teamAbbr}
@@ -190,10 +190,12 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ overview }) => {
 
                     <div className="text-right flex-shrink-0">
                       <div className="font-mono font-bold text-sm text-white">
-                        {money(team.payroll2026)}
+                        {team.payroll2026 !== null ? money(team.payroll2026) : 'Unavailable'}
                       </div>
                       <div className="text-[11px] font-mono">
-                        {isOver ? (
+                        {team.payroll2026 === null ? (
+                          <span className="text-slate-400">No sourced payroll</span>
+                        ) : isOver ? (
                           <span className="text-rose-400 font-semibold">
                             +{money(team.cbtTaxBill)} tax
                           </span>

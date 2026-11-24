@@ -121,6 +121,7 @@ describe('Domain & mathematical invariants: cbt_payroll_sheet.json', () => {
 
   it('every team calculation for CBT space, tax bill, and total commitment is coherent', () => {
     for (const t of cbtSheet.teams) {
+      if (t.payroll2026 === null || t.cbtTaxBill === null) continue;
       expect(t.cbtSpace2026).toBeCloseTo(Math.max(0, cbtSheet.baseThreshold - t.payroll2026), 1);
       expect(t.totalCommitment).toBeCloseTo(t.payroll2026 + t.cbtTaxBill, 1);
       if (t.payroll2026 <= cbtSheet.baseThreshold) {
@@ -130,10 +131,14 @@ describe('Domain & mathematical invariants: cbt_payroll_sheet.json', () => {
   });
 
   it('league summary payroll and luxury tax totals match franchise rollups', () => {
-    const sumPayroll = sum(cbtSheet.teams.map((t) => t.payroll2026));
-    const sumTax = sum(cbtSheet.teams.map((t) => t.cbtTaxBill));
-    expect(cbtSheet.totalLeaguePayroll).toBeCloseTo(sumPayroll, 0);
-    expect(cbtSheet.totalLuxuryTaxCollected).toBeCloseTo(sumTax, 0);
+    const payrolls = cbtSheet.teams.map((t) => t.payroll2026).filter((v): v is number => v !== null);
+    const taxes = cbtSheet.teams.map((t) => t.cbtTaxBill).filter((v): v is number => v !== null);
+    if (payrolls.length > 0 && cbtSheet.totalLeaguePayroll !== null) {
+      expect(cbtSheet.totalLeaguePayroll).toBeCloseTo(sum(payrolls), 0);
+    }
+    if (taxes.length > 0 && cbtSheet.totalLuxuryTaxCollected !== null) {
+      expect(cbtSheet.totalLuxuryTaxCollected).toBeCloseTo(sum(taxes), 0);
+    }
   });
 });
 

@@ -124,10 +124,63 @@ get_cbt_tier <- function(payroll) {
   }, character(1))
 }
 
-run_mlb_cbt_payroll_engine <- function() {
+# Map franchise code aliases. Missing/empty input returns NA_character_
+# (never silently defaulting to any team such as "LAD").
+team_alias <- function(tm) {
+  if (is.null(tm) || length(tm) == 0) {
+    return(NA_character_)
+  }
+  tm_chr <- as.character(tm)
+  if (length(tm_chr) != 1 || is.na(tm_chr)) {
+    return(NA_character_)
+  }
+  tm_trim <- trimws(tm_chr)
+  if (!nzchar(tm_trim)) {
+    return(NA_character_)
+  }
+  if (tm_trim == "OAK") return("ATH")
+  if (tm_trim == "WAS") return("WSH")
+  if (tm_trim == "CHW" || tm_trim == "CWS") return("CHW")
+  if (tm_trim == "SFG") return("SF")
+  if (tm_trim == "KCR") return("KC")
+  if (tm_trim == "SDP") return("SD")
+  if (tm_trim == "TBR") return("TB")
+  tm_trim
+}
+
+# Load a sourced cached payroll dataset if present.
+# Requires non-empty `source` and `as_of_date` metadata plus a `teams` map.
+# Returns NULL when no sourced dataset exists so payroll/CBT fields publish as null.
+load_sourced_payroll <- function(source_path) {
+  if (is.null(source_path) || !nzchar(source_path) || !file.exists(source_path)) {
+    return(NULL)
+  }
+  raw <- jsonlite::fromJSON(source_path, simplifyVector = FALSE)
+  src_name <- raw$source
+  src_date <- raw$as_of_date
+  if (is.null(src_name) || !is.character(src_name) || !nzchar(trimws(src_name))) {
+    stop("Sourced payroll dataset must record a non-empty `source` field.")
+  }
+  if (is.null(src_date) || !is.character(src_date) || !nzchar(trimws(src_date))) {
+    stop("Sourced payroll dataset must record a non-empty `as_of_date` field.")
+  }
+  teams_list <- raw$teams
+  if (is.null(teams_list) || length(teams_list) == 0) {
+    stop("Sourced payroll dataset must contain a non-empty `teams` collection.")
+  }
+  list(
+    source = trimws(src_name),
+    as_of_date = trimws(src_date),
+    teams = teams_list
+  )
+}
+
+run_mlb_cbt_payroll_engine <- function(
+  root_dir = getwd(),
+  payroll_source_path = file.path(root_dir, "data", "cbt_payroll_source.json")
+) {
   message(">>> [CBT Engine] Initializing 2026 MLB Payroll & Luxury Tax Architect...")
   
-  root_dir <- getwd()
   out_path <- file.path(root_dir, "web", "public", "data", "cbt_payroll_sheet.json")
   teams_file <- file.path(root_dir, "web", "public", "data", "projections_season_teams.json")
   players_file <- file.path(root_dir, "web", "public", "data", "projections_season_players.json")
@@ -151,43 +204,15 @@ run_mlb_cbt_payroll_engine <- function() {
   TIER3_THRESHOLD  <- 304.0
   DOLLARS_PER_WAR  <- 8.5   # $8.5M per win market benchmark
   
-  # Historical repeater status (Clubs that exceeded CBT in 2024 and 2025 pay repeater tax rate)
-  repeater_teams <- c("LAD", "NYM", "NYY", "PHI")
-  
-  # Realistic baseline 2026 payroll anchor estimates for 30 MLB franchises
-  # Anchored on actual 2025-2026 payroll commitments
-  team_payroll_anchors <- list(
-    LAD = list(p26 = 338.5, p27 = 295.0, p28 = 260.0),
-    NYM = list(p26 = 318.0, p27 = 280.0, p28 = 240.0),
-    NYY = list(p26 = 308.5, p27 = 275.0, p28 = 250.0),
-    PHI = list(p26 = 278.0, p27 = 245.0, p28 = 210.0),
-    HOU = list(p26 = 252.0, p27 = 210.0, p28 = 175.0),
-    TOR = list(p26 = 248.5, p27 = 205.0, p28 = 160.0),
-    ATL = list(p26 = 236.0, p27 = 215.0, p28 = 190.0),
-    TEX = list(p26 = 232.0, p27 = 195.0, p28 = 165.0),
-    SF  = list(p26 = 224.0, p27 = 190.0, p28 = 150.0),
-    BOS = list(p26 = 218.0, p27 = 185.0, p28 = 145.0),
-    CHC = list(p26 = 215.0, p27 = 180.0, p28 = 140.0),
-    SD  = list(p26 = 210.0, p27 = 185.0, p28 = 160.0),
-    ARI = list(p26 = 195.0, p27 = 165.0, p28 = 135.0),
-    SEA = list(p26 = 186.0, p27 = 155.0, p28 = 130.0),
-    BAL = list(p26 = 182.0, p27 = 160.0, p28 = 145.0),
-    STL = list(p26 = 175.0, p27 = 140.0, p28 = 115.0),
-    MIN = list(p26 = 158.0, p27 = 130.0, p28 = 105.0),
-    DET = list(p26 = 154.0, p27 = 135.0, p28 = 110.0),
-    MIL = list(p26 = 148.0, p27 = 120.0, p28 = 95.0),
-    CIN = list(p26 = 142.0, p27 = 118.0, p28 = 92.0),
-    KC  = list(p26 = 138.0, p27 = 115.0, p28 = 90.0),
-    CLE = list(p26 = 126.0, p27 = 102.0, p28 = 82.0),
-    WSH = list(p26 = 122.0, p27 = 98.0,  p28 = 78.0),
-    COL = list(p26 = 118.0, p27 = 92.0,  p28 = 72.0),
-    LAA = list(p26 = 115.0, p27 = 90.0,  p28 = 70.0),
-    PIT = list(p26 = 98.0,  p27 = 82.0,  p28 = 65.0),
-    TB  = list(p26 = 95.0,  p27 = 78.0,  p28 = 62.0),
-    MIA = list(p26 = 88.0,  p27 = 72.0,  p28 = 58.0),
-    CHW = list(p26 = 82.0,  p27 = 68.0,  p28 = 52.0),
-    ATH = list(p26 = 78.0,  p27 = 64.0,  p28 = 50.0) # Athletics (Sacramento/Vegas)
-  )
+  # Payroll, future commitments, and repeater status come only from a sourced
+  # cached dataset (with source & as_of_date recorded). When absent, publish null.
+  sourced_payroll <- load_sourced_payroll(payroll_source_path)
+  if (is.null(sourced_payroll)) {
+    message(">>> [CBT Engine] No sourced payroll dataset found; publishing null for unsourced payroll/CBT fields.")
+  } else {
+    message(sprintf(">>> [CBT Engine] Loaded sourced payroll dataset (%s, as of %s).",
+                    sourced_payroll$source, sourced_payroll$as_of_date))
+  }
   
   # Standardized marquee contract database from verified published MLB contracts
   # (Cot's Baseball Contracts / Spotrac / MLBPA public disclosures)
@@ -279,66 +304,70 @@ run_mlb_cbt_payroll_engine <- function() {
     "Lawrence Butler"       = list(s26 = 0.85, s27 = 2.5,  s28 = 6.0,  type = "Pre-Arb",       notes = "Pre-arb core outfielder")
   )
   
-  # Group players by team to assign contracts
-  # Map aliases
-  team_alias <- function(tm) {
-    if (is.na(tm) || tm == "") return("LAD")
-    if (tm == "OAK") return("ATH")
-    if (tm == "WAS") return("WSH")
-    if (tm == "CHW" || tm == "CWS") return("CHW")
-    if (tm == "SFG") return("SF")
-    if (tm == "KCR") return("KC")
-    if (tm == "SDP") return("SD")
-    if (tm == "TBR") return("TB")
-    tm
-  }
-  
-  # compute_cbt_tax() / get_cbt_tier() are now defined at module level
-  # (top of file) so they are vectorised, guarded against bad input, and
-  # independently testable. They use the module-level CBT_*_THRESHOLD
-  # constants (same values as the local thresholds above).
-
-  # Process all 30 teams
+  # Process all 30 teams (team_alias() is defined at module level)
   franchise_profiles <- list()
   total_league_payroll <- 0
   total_luxury_tax <- 0
+  payroll_count <- 0L
   
   unique_teams <- teams_data %>% distinct(team, team_name, full_name, league, division)
+  
+  extract_num_or_na <- function(val) {
+    if (is.null(val) || length(val) == 0 || is.na(val)) return(NA_real_)
+    num_val <- suppressWarnings(as.numeric(val))
+    if (length(num_val) != 1 || is.na(num_val) || !is.finite(num_val)) return(NA_real_)
+    num_val
+  }
   
   for (i in seq_len(nrow(unique_teams))) {
     row <- unique_teams[i, ]
     tm_abbr <- team_alias(row$team)
-    is_rep <- tm_abbr %in% repeater_teams
-    
-    # Verify franchise payroll anchor exists (all 30 MLB franchises are defined above)
-    anchor <- team_payroll_anchors[[tm_abbr]]
-    if (is.null(anchor)) {
-      stop(sprintf("Missing payroll anchor for franchise: %s", tm_abbr))
+    if (is.na(tm_abbr)) {
+      next
     }
     
-    p26 <- anchor$p26
-    p27 <- anchor$p27
-    p28 <- anchor$p28
+    src_team <- if (!is.null(sourced_payroll)) sourced_payroll$teams[[tm_abbr]] else NULL
+    p26 <- if (!is.null(src_team)) extract_num_or_na(src_team$payroll2026) else NA_real_
+    p27 <- if (!is.null(src_team)) extract_num_or_na(src_team$payroll2027) else NA_real_
+    p28 <- if (!is.null(src_team)) extract_num_or_na(src_team$payroll2028) else NA_real_
+    is_rep <- if (!is.null(src_team) && !is.null(src_team$isRepeater) && length(src_team$isRepeater) == 1 && !is.na(src_team$isRepeater)) {
+      isTRUE(src_team$isRepeater)
+    } else {
+      NA
+    }
     
-    tax_bill <- compute_cbt_tax(p26, is_rep)
+    has_payroll <- !is.na(p26)
+    tax_bill <- if (has_payroll) compute_cbt_tax(p26, is_rep) else NA_real_
     tier_label <- get_cbt_tier(p26)
-    cbt_space <- max(0, round(BASE_THRESHOLD - p26, 2))
-    total_commit <- round(p26 + tax_bill, 2)
+    cbt_space <- if (has_payroll) max(0, round(BASE_THRESHOLD - p26, 2)) else NA_real_
+    total_commit <- if (has_payroll && !is.na(tax_bill)) round(p26 + tax_bill, 2) else NA_real_
     
-    total_league_payroll <- total_league_payroll + p26
-    total_luxury_tax <- total_luxury_tax + tax_bill
+    if (has_payroll) {
+      payroll_count <- payroll_count + 1L
+      total_league_payroll <- total_league_payroll + p26
+      if (!is.na(tax_bill)) {
+        total_luxury_tax <- total_luxury_tax + tax_bill
+      }
+    }
     
     # Penalties
-    draft_drop <- p26 >= TIER2_THRESHOLD
-    intl_pool_slash <- p26 >= TIER3_THRESHOLD
-    rev_share <- p26 <= BASE_THRESHOLD
-    
-    tax_desc <- if (p26 <= BASE_THRESHOLD) {
-      "None (Tax Free)"
-    } else if (is_rep) {
-      if (p26 > TIER3_THRESHOLD) "110% Repeater Mega Tax Rate" else "62% - 95% Repeater Surcharge Rate"
+    if (has_payroll) {
+      draft_drop <- p26 >= TIER2_THRESHOLD
+      intl_pool_slash <- p26 >= TIER3_THRESHOLD
+      rev_share <- p26 <= BASE_THRESHOLD
+      
+      tax_desc <- if (p26 <= BASE_THRESHOLD) {
+        "None (Tax Free)"
+      } else if (isTRUE(is_rep)) {
+        if (p26 > TIER3_THRESHOLD) "110% Repeater Mega Tax Rate" else "62% - 95% Repeater Surcharge Rate"
+      } else {
+        if (p26 > TIER3_THRESHOLD) "80% First-time Cohen Surcharge Rate" else "20% - 62.5% First-time Surcharge Rate"
+      }
     } else {
-      if (p26 > TIER3_THRESHOLD) "80% First-time Cohen Surcharge Rate" else "20% - 62.5% First-time Surcharge Rate"
+      draft_drop <- NA
+      intl_pool_slash <- NA
+      rev_share <- NA
+      tax_desc <- NA_character_
     }
     
     # Find players belonging to this team in projections
@@ -411,21 +440,24 @@ run_mlb_cbt_payroll_engine <- function() {
     }
     
     # Deterministic remainder for active 26-man depth & minor league obligations
-    depth_s26 <- round(max(5.0, p26 - allocated_s26), 1)
-    depth_s27 <- round(max(0.0, p27 - allocated_s27), 1)
-    depth_s28 <- round(max(0.0, p28 - allocated_s28), 1)
-    team_contracts[[length(team_contracts) + 1]] <- list(
-      playerId     = paste0("DEPTH_", tm_abbr),
-      playerName   = "Active 26-Man Depth & Minor Allocations",
-      position     = "Depth",
-      salary2026   = depth_s26,
-      salary2027   = depth_s27,
-      salary2028   = depth_s28,
-      contractType = "Guaranteed",
-      projectedWar = 1.8,
-      surplusValue = round((1.8 * DOLLARS_PER_WAR) - depth_s26, 2),
-      notes        = "Pre-arb minimums, 40-man roster insurance & retained commitments"
-    )
+    # Only emitted when sourced franchise payroll totals exist.
+    if (has_payroll) {
+      depth_s26 <- round(max(5.0, p26 - allocated_s26), 1)
+      depth_s27 <- if (!is.na(p27)) round(max(0.0, p27 - allocated_s27), 1) else NA_real_
+      depth_s28 <- if (!is.na(p28)) round(max(0.0, p28 - allocated_s28), 1) else NA_real_
+      team_contracts[[length(team_contracts) + 1]] <- list(
+        playerId     = paste0("DEPTH_", tm_abbr),
+        playerName   = "Active 26-Man Depth & Minor Allocations",
+        position     = "Depth",
+        salary2026   = depth_s26,
+        salary2027   = depth_s27,
+        salary2028   = depth_s28,
+        contractType = "Guaranteed",
+        projectedWar = 1.8,
+        surplusValue = round((1.8 * DOLLARS_PER_WAR) - depth_s26, 2),
+        notes        = "Pre-arb minimums, 40-man roster insurance & retained commitments"
+      )
+    }
     
     franchise_profiles[[length(franchise_profiles) + 1]] <- list(
       teamAbbr        = tm_abbr,
@@ -455,8 +487,13 @@ run_mlb_cbt_payroll_engine <- function() {
     )
   }
   
-  # Sort teams by 2026 payroll descending
-  franchise_profiles <- franchise_profiles[order(sapply(franchise_profiles, function(x) x$payroll2026), decreasing = TRUE)]
+  # Sort teams by 2026 payroll descending (null/NA payrolls sort last)
+  payroll_vals <- vapply(
+    franchise_profiles,
+    function(x) if (is.null(x$payroll2026) || is.na(x$payroll2026)) NA_real_ else as.numeric(x$payroll2026),
+    numeric(1)
+  )
+  franchise_profiles <- franchise_profiles[order(payroll_vals, decreasing = TRUE, na.last = TRUE)]
   
   catalog <- list(
     # generated_at is what tools/publish_web.R's assertion F reads: UTC, ISO-8601,
@@ -465,16 +502,19 @@ run_mlb_cbt_payroll_engine <- function() {
     # the format string is inline here, matching tools/export_web_data.R.
     generated_at            = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
     season                  = "2026",
+    payrollSource           = if (!is.null(sourced_payroll)) sourced_payroll$source else NA_character_,
+    payrollAsOfDate         = if (!is.null(sourced_payroll)) sourced_payroll$as_of_date else NA_character_,
     baseThreshold           = BASE_THRESHOLD,
     tier1Threshold          = TIER1_THRESHOLD,
     tier2Threshold          = TIER2_THRESHOLD,
     tier3Threshold          = TIER3_THRESHOLD,
-    totalLeaguePayroll      = round(total_league_payroll, 2),
-    totalLuxuryTaxCollected = round(total_luxury_tax, 2),
+    totalLeaguePayroll      = if (payroll_count > 0L) round(total_league_payroll, 2) else NA_real_,
+    totalLuxuryTaxCollected = if (payroll_count > 0L) round(total_luxury_tax, 2) else NA_real_,
     teams                   = franchise_profiles
   )
   
-  jsonlite::write_json(catalog, out_path, pretty = TRUE, auto_unbox = TRUE)
+  dir.create(dirname(out_path), recursive = TRUE, showWarnings = FALSE)
+  jsonlite::write_json(catalog, out_path, pretty = TRUE, auto_unbox = TRUE, na = "null")
   message(sprintf(">>> [SUCCESS] CBT & Payroll Sheet catalog written to: %s (%.2f MB)", 
                   out_path, file.info(out_path)$size / (1024 * 1024)))
   
