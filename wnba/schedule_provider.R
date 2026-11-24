@@ -48,6 +48,9 @@ get_upcoming_wnba_slate <- function(season = CURRENT_SEASON) {
   } else if ("status_type_completed" %in% names(upcoming)) {
     upcoming <- upcoming |> filter(!as.logical(status_type_completed))
   }
+  if ("status_type_name" %in% names(upcoming)) {
+    upcoming <- upcoming |> filter(!grepl("postpon|cancel", tolower(dplyr::coalesce(as.character(status_type_name), ""))))
+  }
 
   upcoming
 }

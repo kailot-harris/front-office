@@ -79,6 +79,13 @@ filter_real_franchises <- function(df) {
 # quantities and only make sense in long form.
 # ==============================================================================
 
+# ESPN/wehoop status_type_name values for games that were postponed or cancelled
+# and therefore never played (and involved no team travel).
+is_non_played_schedule_status <- function(status_type_name) {
+  s <- tolower(dplyr::coalesce(as.character(status_type_name), ""))
+  grepl("postpon|cancel", s)
+}
+
 # Long-form (one row per team per game) view of the raw wehoop schedule.
 schedule_to_long <- function(sched) {
   req <- c("game_id", "game_date", "home_abbreviation", "away_abbreviation")
@@ -96,17 +103,18 @@ schedule_to_long <- function(sched) {
     home_abbreviation = sched$home_abbreviation,
     away_abbreviation = sched$away_abbreviation,
     is_completed = dplyr::coalesce(completed, FALSE),
+    status_type_name = if ("status_type_name" %in% names(sched)) as.character(sched$status_type_name) else NA_character_,
     notes_headline = if ("notes_headline" %in% names(sched)) sched$notes_headline else NA_character_
   )
 
   home_rows <- base |>
-    transmute(game_id, game_date, season, season_type, is_completed, notes_headline,
+    transmute(game_id, game_date, season, season_type, is_completed, status_type_name, notes_headline,
               team_abbreviation = home_abbreviation,
               opponent_team_abbreviation = away_abbreviation,
               is_home = TRUE,
               venue_team = home_abbreviation)
   away_rows <- base |>
-    transmute(game_id, game_date, season, season_type, is_completed, notes_headline,
+    transmute(game_id, game_date, season, season_type, is_completed, status_type_name, notes_headline,
               team_abbreviation = away_abbreviation,
               opponent_team_abbreviation = home_abbreviation,
               is_home = FALSE,
@@ -115,30 +123,48 @@ schedule_to_long <- function(sched) {
   bind_rows(home_rows, away_rows)
 }
 
+# For each row i, return the value from the most recent prior row j < i where active[j] is TRUE.
+.carry_forward_active <- function(vals, active) {
+  out <- rep(vals[NA_integer_], length(vals))
+  last_val <- vals[NA_integer_]
+  for (i in seq_along(vals)) {
+    out[i] <- last_val
+    if (isTRUE(active[i])) last_val <- vals[i]
+  }
+  out
+}
+
 # days_rest / is_back_to_back per team per scheduled game.
 #
-# days_rest = calendar days between a team's previous scheduled game and this one,
-# MINUS 1 (so consecutive calendar days -> 0 days of rest, i.e. a back-to-back; one
-# idle day in between -> 1). is_back_to_back is exactly days_rest == 0, which is the
-# condition calculate_travel_fatigue()'s b2b_tax and altitude tax already branch on.
-# A team's first game of the season has no predecessor: days_rest is left NA and
-# is_back_to_back FALSE (no fabricated rest value).
+# days_rest = calendar days between a team's previous active (non-postponed/cancelled)
+# scheduled game and this one, MINUS 1 (so consecutive calendar days -> 0 days of rest,
+# i.e. a back-to-back; one idle day in between -> 1). is_back_to_back is exactly
+# days_rest == 0, which is the condition calculate_travel_fatigue()'s b2b_tax and
+# altitude tax already branch on. A team's first game of the season has no predecessor:
+# days_rest is left NA and is_back_to_back FALSE (no fabricated rest value).
+#
+# Postponed/cancelled games (e.g. 2026-07-16 DAL vs NY game_id 401857072, STATUS_POSTPONED,
+# made up 2026-07-20 under 401892393; #259) were never played and involved no travel, so
+# they are skipped when carrying forward prev_game_date/prev_venue and receive NA rest.
 #
 # last_played_at = the TEAM CODE OF THE VENUE of that team's previous game (the previous
 # game's home team), which is the travel ORIGIN argument calculate_travel_fatigue()
 # expects. For a team's first game it falls back to its own code (i.e. zero travel).
 derive_rest_features <- function(sched_long) {
+  has_status <- "status_type_name" %in% names(sched_long)
   sched_long |>
+    mutate(.active_game = if (has_status) !is_non_played_schedule_status(status_type_name) else TRUE) |>
     arrange(team_abbreviation, game_date, game_id) |>
     group_by(team_abbreviation) |>
     mutate(
-      prev_game_date = dplyr::lag(game_date),
-      prev_venue     = dplyr::lag(venue_team),
-      days_rest      = as.integer(as.numeric(game_date - prev_game_date) - 1),
-      is_back_to_back = dplyr::coalesce(days_rest == 0, FALSE),
-      last_played_at = dplyr::coalesce(prev_venue, team_abbreviation)
+      prev_game_date = .carry_forward_active(game_date, .active_game),
+      prev_venue     = .carry_forward_active(venue_team, .active_game),
+      days_rest      = if_else(.active_game, as.integer(as.numeric(game_date - prev_game_date) - 1), NA_integer_),
+      is_back_to_back = if_else(.active_game, dplyr::coalesce(days_rest == 0, FALSE), FALSE),
+      last_played_at = if_else(.active_game, dplyr::coalesce(prev_venue, team_abbreviation), NA_character_)
     ) |>
     ungroup() |>
+    select(-".active_game") |>
     arrange(game_date, game_id, desc(is_home))
 }
 

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Metadata } from 'next';
-import { getTeamsData, getMetadata, getPlayoffBracketData } from '@/lib/data';
+import { getTeamsData, getMetadata, getPlayoffBracketData, getActualTeamRecords } from '@/lib/data';
 import { StandingsClient } from '@/components/StandingsClient';
 import { TeamLogo } from '@/components/TeamLogo';
 import { BracketSeries } from '@/lib/playoffTypes';
@@ -15,6 +15,7 @@ export default function HomePage() {
   const teams = getTeamsData();
   const metadata = getMetadata();
   const bracketData = getPlayoffBracketData();
+  const actualRecords = getActualTeamRecords();
 
   const finalsSeries = bracketData?.series?.find((s: BracketSeries) => s.round === 'Finals');
   const championAbbr = bracketData?.champion || (finalsSeries?.seriesComplete ? finalsSeries.winner : null);
@@ -98,7 +99,7 @@ export default function HomePage() {
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-violet-400 via-violet-500/40 to-transparent" />
       </div>
 
-      <StandingsClient teams={teams} metadata={metadata} initialTab="visualizer" />
+      <StandingsClient teams={teams} metadata={metadata} actualRecords={actualRecords} initialTab="visualizer" />
     </div>
   );
 }

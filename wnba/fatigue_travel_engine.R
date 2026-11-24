@@ -178,7 +178,12 @@ load_unplayed_schedule_slate <- function(schedule_path = CACHE_WNBA_SCHEDULE) {
 
   slate <- sched %>%
     filter(!is_completed) %>%
-    filter(team_abbreviation %in% names(WNBA_TEAMS)) %>%
+    filter(team_abbreviation %in% names(WNBA_TEAMS))
+  if ("status_type_name" %in% names(slate)) {
+    slate <- slate %>%
+      filter(!grepl("postpon|cancel", tolower(dplyr::coalesce(as.character(status_type_name), ""))))
+  }
+  slate <- slate %>%
     arrange(game_date, game_id, desc(is_home))
 
   if (nrow(slate) == 0) {
