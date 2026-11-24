@@ -209,7 +209,9 @@ if (!dir.exists(WEB_MEDIA_DIR)) dir.create(WEB_MEDIA_DIR, recursive = TRUE)
   if (nzchar(up) && file.exists(file.path(up, ".gitconfig"))) {
     Sys.setenv(HOME = up)
   }
-  if (identical(args[1], "commit")) {
+  # `git rebase` writes commits too (the publish push step rebases onto
+  # origin), so it gets the same explicit identity as `git commit`.
+  if (args[1] %in% c("commit", "rebase")) {
     user_name <- Sys.getenv("GIT_AUTHOR_NAME", Sys.getenv("GIT_COMMITTER_NAME", ""))
     user_email <- Sys.getenv("GIT_AUTHOR_EMAIL", Sys.getenv("GIT_COMMITTER_EMAIL", ""))
     if (!nzchar(user_name) || !nzchar(user_email)) {
@@ -1003,27 +1005,118 @@ if (!dir.exists(WEB_MEDIA_DIR)) dir.create(WEB_MEDIA_DIR, recursive = TRUE)
 # Commit / push sequence. ONLY reached when dry_run = FALSE and every fatal
 # assertion passed. Commits the published tree and pushes NBA_analytics --
 # nothing more. The deploy belongs to the aggregator's sync-sports.yml.
+#
+# Commits can land on origin/<publish_branch> while the pipeline runs (on
+# 2026-11-24 two dependency PRs merged mid-run, the plain push was rejected
+# with "fetch first", and the publish commit was stranded locally). So after
+# committing, the push step:
+#   1. fetches origin/<publish_branch>;
+#   2. if that tip is not already an ancestor of HEAD, rebases the publish
+#      commit onto it (publish commits only touch generated data, so a rebase
+#      is right; never a merge commit, never an autostash);
+#   3. pushes; if the push is rejected, repeats 1-2 once and pushes once more.
+# Any failure after the commit (fetch error, rebase conflict, second push
+# rejection) aborts the rebase if one is in progress and moves the branch back
+# to origin/<publish_branch> with `git reset --mixed`, which touches no
+# working-tree file. No local commit is left behind, the checkout is in step
+# with origin, and the regenerated files stay in the working tree for the next
+# run. Never `reset --hard`, never `git stash` (the stash stack is shared by
+# every checkout of the repo).
 # ------------------------------------------------------------------------------
-.pw_do_publish <- function(repo_root, rel_paths, commit_message) {
+.pw_short_sha <- function(repo_root, ref) {
+  r <- .pw_git(repo_root, c("rev-parse", "--short=12", ref))
+  if (r$ok && length(r$out)) r$out[[1]] else "<unknown>"
+}
+
+.pw_do_publish <- function(repo_root, rel_paths, commit_message, publish_branch = "main") {
   steps <- list()
-  record <- function(label, res) {
+  note <- function(label, res) {
     steps[[length(steps) + 1L]] <<- list(label = label, ok = res$ok, out = res$out)
+    invisible(res$ok)
+  }
+  record <- function(label, res) {
+    note(label, res)
     if (!res$ok) stop(sprintf("publish_web: step failed: %s\n%s", label,
-                              paste(res$out, collapse = "\n")))
+                              paste(res$out, collapse = "\n")), call. = FALSE)
     invisible(TRUE)
   }
+  remote_ref <- paste0("origin/", publish_branch)
+
+  # Undo the local publish commit without touching the working tree, then fail.
+  abandon <- function(label, res) {
+    note(label, res)
+    # Harmless when no rebase is in progress; its result is recorded either way.
+    note("git rebase --abort (NBA_analytics)",
+         .pw_git(repo_root, c("rebase", "--abort")))
+    reset <- .pw_git(repo_root, c("reset", "--mixed", "-q", remote_ref))
+    note(sprintf("git reset --mixed %s (NBA_analytics)", remote_ref), reset)
+    state <- if (reset$ok) {
+      sprintf(paste0("The local %s branch was moved back to %s (%s), so the checkout is ",
+                     "in step with origin and no local publish commit is left behind. ",
+                     "The regenerated files are still in the working tree for the next run."),
+              publish_branch, remote_ref, .pw_short_sha(repo_root, remote_ref))
+    } else {
+      sprintf(paste0("ALSO, moving the local %s branch back to %s FAILED, so the local ",
+                     "publish commit may still be on the branch; inspect `git status` ",
+                     "and `git log %s..HEAD` before the next run.\n%s"),
+              publish_branch, remote_ref, remote_ref, paste(reset$out, collapse = "\n"))
+    }
+    stop(sprintf(paste0("publish_web: step failed: %s\n%s\n",
+                        "publish_web: the publish commit was NOT pushed to NBA_analytics %s. %s"),
+                 label, paste(res$out, collapse = "\n"), publish_branch, state),
+         call. = FALSE)
+  }
+
+  # Steps 1-2: fetch the remote tip and rebase the publish commit onto it.
+  sync_onto_remote <- function() {
+    fetch_label <- sprintf("git fetch origin %s (NBA_analytics)", publish_branch)
+    fetched <- .pw_git(repo_root, c("fetch", "origin", publish_branch))
+    if (!fetched$ok) abandon(fetch_label, fetched)
+    note(fetch_label, fetched)
+    tip <- .pw_short_sha(repo_root, remote_ref)
+    message(sprintf(">>> publish_web: fetched %s (remote tip %s).", remote_ref, tip))
+    anc <- .pw_git(repo_root, c("merge-base", "--is-ancestor", remote_ref, "HEAD"))
+    if (anc$ok) {
+      message(sprintf(">>> publish_web: HEAD already contains %s %s; no rebase needed.",
+                      remote_ref, tip))
+      return(invisible(TRUE))
+    }
+    rebase_label <- sprintf("git rebase %s (NBA_analytics)", remote_ref)
+    rebased <- .pw_git(repo_root, c("rebase", "--no-autostash", remote_ref))
+    if (!rebased$ok) abandon(sprintf("%s - conflict or error, rebase aborted", rebase_label), rebased)
+    note(rebase_label, rebased)
+    message(sprintf(">>> publish_web: rebased the publish commit onto the remote tip %s %s (HEAD now %s).",
+                    remote_ref, tip, .pw_short_sha(repo_root, "HEAD")))
+    invisible(TRUE)
+  }
+
   rel_media <- .pw_rel_to_repo(WEB_MEDIA_DIR, repo_root)
-  # Landing-digest ratings history (NBA#213): tracked, outside web/public, and
-  # staged by its exact path without -f (it must never be gitignored).
-  rel_hist <- if (file.exists(file.path(repo_root, "data", "history", "ratings_history.csv")))
-    "data/history/ratings_history.csv" else character(0)
+  # Landing-digest ratings history (NBA#213) and the Momentum Board's rank
+  # history (MOMENTUM_RANK_HISTORY in config.R): tracked, outside web/public,
+  # and staged by their exact paths without -f (they must never be gitignored),
+  # each only when it exists.
+  hist_paths <- c("data/history/ratings_history.csv",
+                  "data/history/momentum_rank_history.csv")
+  rel_hist <- hist_paths[file.exists(file.path(repo_root, hist_paths))]
   all_paths <- unique(c(rel_paths, rel_media, rel_hist))
   record("git add web/public/data & web/public/media",
          .pw_git(repo_root, c("add", "-A", "--", all_paths)))
   record("git commit (NBA_analytics)",
          .pw_git(repo_root, c("commit", "-m", shQuote(commit_message))))
-  record("git push origin HEAD (NBA_analytics)",
-         .pw_git(repo_root, c("push", "origin", "HEAD")))
+
+  sync_onto_remote()
+  push_label <- "git push origin HEAD (NBA_analytics)"
+  pushed <- .pw_git(repo_root, c("push", "origin", "HEAD"))
+  if (!pushed$ok) {
+    note(sprintf("%s - rejected, retrying once after fetch + rebase", push_label), pushed)
+    message(sprintf(">>> publish_web: push to %s was rejected; fetching and rebasing once more.",
+                    remote_ref))
+    sync_onto_remote()
+    pushed <- .pw_git(repo_root, c("push", "origin", "HEAD"))
+    if (!pushed$ok) abandon(sprintf("%s - rejected a second time", push_label), pushed)
+  }
+  note(push_label, pushed)
+  message(sprintf(">>> publish_web: pushed %s to %s.", .pw_short_sha(repo_root, "HEAD"), remote_ref))
   steps
 }
 
@@ -1482,7 +1575,7 @@ publish_web <- function(dry_run = TRUE,
   cat(sprintf("  %d dataset(s) asserted from %s:\n", length(WEB_DATA_FILES), WEB_DATA_DIR))
   for (f in WEB_DATA_FILES) cat(sprintf("    - %s\n", basename(f)))
   cat(sprintf("  commit message   : %s\n", commit_message))
-  cat(sprintf("  push sequence    : commit -> push NBA_analytics %s (deploy belongs to the aggregator's sync-sports.yml)\n",
+  cat(sprintf("  push sequence    : commit -> fetch + rebase onto origin -> push NBA_analytics %s (deploy belongs to the aggregator's sync-sports.yml)\n",
               publish_branch))
 
   cat("\n-- Verdict -----------------------------------------------------\n")
@@ -1527,7 +1620,7 @@ publish_web <- function(dry_run = TRUE,
     return(invisible(result))
   }
 
-  result$steps <- .pw_do_publish(repo_root, checks[[3]]$paths, commit_message)
+  result$steps <- .pw_do_publish(repo_root, checks[[3]]$paths, commit_message, publish_branch)
   result$published <- TRUE
   message(sprintf(">>> publish_web: web artifacts committed and pushed to NBA_analytics %s. The site changes when the aggregator's sync-sports.yml next pulls; this script does not deploy.",
                   publish_branch))

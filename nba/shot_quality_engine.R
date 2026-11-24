@@ -23,13 +23,6 @@ message(">>> [SHOT QUALITY] Initializing 15-Game Rolling Shot Quality Engine..."
 # last completed season and label it as such.
 MIN_CURRENT_SEASON_GAMES <- 10L
 
-# Synthetic shot distributions are opt-in only. Without real shot data this engine
-# fails loudly rather than writing invented profiles that read as model output
-# downstream (season_simulator.R ingests regression_edge_pts with no provenance check).
-ALLOW_SYNTHETIC_SHOT_QUALITY <- isTRUE(as.logical(
-  Sys.getenv("ALLOW_SYNTHETIC_SHOT_QUALITY", "FALSE")
-))
-
 # ESPN abbreviations -> project team codes (same mapping as season_simulator.R)
 ESPN_ABBR_FIXUPS <- c(GS = "GSW", SA = "SAS", NY = "NYK", UTAH = "UTA",
                       NO = "NOP", WSH = "WAS")
@@ -200,12 +193,9 @@ generate_team_shot_profiles <- function(n_rolling_games = 15) {
     msg <- sprintf(paste0(
       "No real shot data available (tried %s/shot_locations.rds, cached nba_shots_<season>.rds ",
       "for seasons %s, and a hoopR fetch). Refusing to write synthetic shot profiles: ",
-      "season_simulator.R consumes team_shot_quality.rds as if it were observed. ",
-      "Set ALLOW_SYNTHETIC_SHOT_QUALITY=TRUE to override for offline testing."),
+      "season_simulator.R consumes team_shot_quality.rds as if it were observed."),
       .cache_dir, paste(seasons, collapse = ", "))
-    if (!ALLOW_SYNTHETIC_SHOT_QUALITY) stop(msg)
-    message(">>> [WARN] ", msg)
-    return(generate_synthetic_shot_profiles(n_rolling_games))
+    stop(msg)
   }
 
   shots <- real$data
@@ -315,94 +305,6 @@ generate_team_shot_profiles <- function(n_rolling_games = 15) {
     ">>> [SHOT QUALITY] League residual check: mean %+.2f pts/gm, sd %.2f, range %+.1f to %+.1f.",
     mean(shot_profiles$shooting_luck_pts), sd(shot_profiles$shooting_luck_pts),
     min(shot_profiles$shooting_luck_pts), max(shot_profiles$shooting_luck_pts)))
-  return(shot_profiles)
-}
-
-# ------------------------------------------------------------------------------
-# Synthetic profiles (opt-in only -- see ALLOW_SYNTHETIC_SHOT_QUALITY)
-# ------------------------------------------------------------------------------
-generate_synthetic_shot_profiles <- function(n_rolling_games = 15) {
-  message(sprintf(">>> [WARN] Using SYNTHETIC_FALLBACK: simulating %d-game shot distributions for 30 teams.", n_rolling_games))
-
-  teams <- c("BOS", "OKC", "DEN", "MIN", "NYK", "MIL", "PHI", "CLE", "IND", "DAL",
-             "PHX", "LAC", "NOP", "LAL", "GSW", "SAC", "MIA", "ORL", "HOU", "CHI",
-             "ATL", "MEM", "BKN", "TOR", "UTA", "SAS", "POR", "CHA", "DET", "WAS")
-
-  set.seed(42)
-
-  shot_profiles <- lapply(teams, function(tm) {
-    is_3pt_heavy <- tm %in% c("BOS", "GSW", "DAL", "MIL", "SAC")
-    rim_freq  <- if (is_3pt_heavy) 0.28 else 0.35
-    mid_freq  <- if (is_3pt_heavy) 0.18 else 0.27
-    three_freq <- 1 - (rim_freq + mid_freq)
-
-    game_actual_pts <- numeric(n_rolling_games)
-    game_x_pts      <- numeric(n_rolling_games)
-
-    talent_tier <- case_when(
-      tm %in% c("BOS", "DEN", "OKC") ~ 1.04,
-      tm %in% c("CHA", "DET", "WAS", "POR") ~ 0.96,
-      TRUE ~ 1.00
-    )
-
-    for (g in 1:n_rolling_games) {
-      n_fga <- round(rnorm(1, 88.5, 3))
-      distances <- c(
-        runif(round(n_fga * rim_freq), 0, 4),
-        runif(round(n_fga * mid_freq), 5, 21),
-        runif(round(n_fga * three_freq), 22.5, 29)
-      )
-
-      actual_fga <- length(distances)
-      is_3pt <- distances >= 22
-      shot_vals <- ifelse(is_3pt, 3, 2)
-
-      x_probs <- calc_expected_shot_prob(distances, FALSE) * talent_tier
-      exp_fg_pts <- sum(x_probs * shot_vals)
-
-      game_luck <- rnorm(1, mean = 0, sd = 0.04)
-      actual_probs <- pmin(pmax(x_probs + game_luck, 0.05), 0.95)
-      makes <- rbinom(actual_fga, 1, actual_probs)
-      act_fg_pts <- sum(makes * shot_vals)
-
-      fta <- round(rnorm(1, 22.0, 2.5))
-      ft_pts <- round(fta * 0.778)
-
-      game_actual_pts[g] <- act_fg_pts + ft_pts
-      game_x_pts[g]      <- exp_fg_pts + ft_pts
-    }
-
-    avg_actual <- round(mean(game_actual_pts), 1)
-    avg_expected <- round(mean(game_x_pts), 1)
-
-    tibble(
-      team = tm,
-      games_sampled = n_rolling_games,
-      current_season_games = 0L,
-      fga_per_game = NA_real_,
-      actual_pts_per_game = avg_actual,
-      x_pts_per_game = avg_expected
-    )
-  }) %>% bind_rows()
-
-  shot_profiles <- shot_profiles %>%
-    mutate(
-      shooting_luck_pts = round(actual_pts_per_game - x_pts_per_game, 2),
-      regression_edge_pts = -shooting_luck_pts,
-      regression_signal = case_when(
-        shooting_luck_pts >= 2.0  ~ "OVERVALUED (Fade Shooting Luck)",
-        shooting_luck_pts <= -2.0 ~ "UNDERVALUED (Buy Positive Regression)",
-        TRUE ~ "NEUTRAL"
-      ),
-      data_source = "SYNTHETIC_FALLBACK",
-      xfg_method = "parametric_prior",
-      source_seasons = NA_character_,
-      generated_at = format(Sys.time(), "%Y-%m-%d %H:%M:%S")
-    ) %>%
-    arrange(desc(shooting_luck_pts))
-
-  saveRDS(shot_profiles, file.path(.cache_dir, "team_shot_quality.rds"))
-  message(sprintf(">>> [SHOT QUALITY] Wrote SYNTHETIC profiles for 30 teams over %d-game windows.", n_rolling_games))
   return(shot_profiles)
 }
 

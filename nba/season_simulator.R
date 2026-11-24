@@ -755,10 +755,30 @@ sim_reb_mat   <- matrix(0.0, nrow = n_players, ncol = N_SIMS)
 sim_ast_mat   <- matrix(0.0, nrow = n_players, ncol = N_SIMS)
 sim_mpg_mat   <- matrix(0.0, nrow = n_players, ncol = N_SIMS)
 
+injury_df <- if (exists("CACHE_INJURY_DATA") && file.exists(CACHE_INJURY_DATA)) {
+  tryCatch(readRDS(CACHE_INJURY_DATA), error = function(e) NULL)
+} else {
+  NULL
+}
+injury_penalty_map <- c(
+  "Out" = 0.45, "Doubtful" = 0.25, "Questionable" = 0.15,
+  "Day-To-Day" = 0.10, "Probable" = 0.05
+)
+
 for (p in 1:n_players) {
-  # Durability / load management prior: Beta distribution centered around ~72 games (0.878)
-  # High minute starters face slightly more load management variance
-  base_avail <- pmax(0.70, pmin(0.95, 0.88 - (player_base$avg_min[p] - 20) * 0.002))
+  # Durability / load management prior: Beta distribution centered around ~72 games (0.88),
+  # adjusted by current injury report status when available.
+  inj_penalty <- 0.0
+  if (!is.null(injury_df) && nrow(injury_df) > 0) {
+    inj_match <- injury_df$status[
+      (!is.na(injury_df$player_id) & as.character(injury_df$player_id) == as.character(player_base$player_id[p])) |
+      (!is.na(injury_df$player_name) & tolower(trimws(injury_df$player_name)) == tolower(trimws(player_base$player_name[p])))
+    ]
+    if (length(inj_match) > 0 && inj_match[1] %in% names(injury_penalty_map)) {
+      inj_penalty <- unname(injury_penalty_map[inj_match[1]])
+    }
+  }
+  base_avail <- 0.88 * (1.0 - inj_penalty)
   p_avail <- rbeta(N_SIMS, shape1 = base_avail * 30, shape2 = (1 - base_avail) * 30)
   
   # Occasional severe injury shock (3% probability of missing substantial time)
