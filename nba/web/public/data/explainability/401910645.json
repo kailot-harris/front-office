@@ -1,12 +1,12 @@
 {
   "schema_version": "1.0",
   "game_id": "401910645",
-  "generated_at": "2026-11-23T14:03:24Z",
+  "generated_at": "2026-11-24T05:14:51Z",
   "data": {
     "projection_basis": "primary_ensemble",
-    "predicted_margin": 3.68,
-    "predicted_home_win_prob": 0.6222,
-    "sigma_game": 11.8206,
+    "predicted_margin": 3.71,
+    "predicted_home_win_prob": 0.6232,
+    "sigma_game": 11.8191,
     "margin_waterfall": [
       {
         "key": "bottom_up",
@@ -17,8 +17,8 @@
       {
         "key": "rapm",
         "label": "Regularized APM",
-        "points": -0.19,
-        "detail": "25% RAPM blend (SAC -7.58 vs WAS -6.84)"
+        "points": -0.15,
+        "detail": "25% RAPM blend (SAC -7.46 vs WAS -6.85)"
       },
       {
         "key": "shot_fatigue",
@@ -43,6 +43,12 @@
         "label": "Schedule & travel",
         "points": 0.9,
         "detail": "WAS fatigue 2.25 minus SAC fatigue 1.35"
+      },
+      {
+        "key": "rounding",
+        "label": "Component rounding",
+        "points": -0.01,
+        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,

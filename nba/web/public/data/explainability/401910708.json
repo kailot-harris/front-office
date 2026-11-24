@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "game_id": "401910708",
-  "generated_at": "2026-11-23T14:03:24Z",
+  "generated_at": "2026-11-24T05:14:51Z",
   "data": {
     "projection_basis": "primary_ensemble",
     "predicted_margin": 6.62,
@@ -17,8 +17,8 @@
       {
         "key": "rapm",
         "label": "Regularized APM",
-        "points": 1.53,
-        "detail": "25% RAPM blend (ATL +0.53 vs BKN -5.57)"
+        "points": 1.52,
+        "detail": "25% RAPM blend (ATL +0.52 vs BKN -5.57)"
       },
       {
         "key": "shot_fatigue",
@@ -43,6 +43,12 @@
         "label": "Schedule & travel",
         "points": -2.26,
         "detail": "BKN fatigue 0.30 minus ATL fatigue 2.56"
+      },
+      {
+        "key": "rounding",
+        "label": "Component rounding",
+        "points": 0.01,
+        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,

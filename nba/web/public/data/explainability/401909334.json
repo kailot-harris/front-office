@@ -1,48 +1,48 @@
 {
   "schema_version": "1.0",
   "game_id": "401909334",
-  "generated_at": "2026-11-23T14:03:24Z",
+  "generated_at": "2026-11-24T05:14:51Z",
   "data": {
-    "projection_basis": "primary_ensemble",
+    "projection_basis": "logged_model_margin",
     "predicted_margin": -9.83,
     "predicted_home_win_prob": 0.2157,
-    "sigma_game": 12.4958,
+    "sigma_game": 12.4926,
     "margin_waterfall": [
       {
         "key": "bottom_up",
         "label": "Bottom-up BPM",
         "points": -4.77,
-        "detail": "35% BPM blend (UTA -8.91 vs DEN +4.72)"
+        "detail": "Logged pregame 35% BPM blend differential"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
         "points": -0.78,
-        "detail": "25% RAPM blend (UTA -0.20 vs DEN +2.94)"
+        "detail": "Logged pregame 25% RAPM blend differential"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": -2.33,
-        "detail": "20% Shot/Fatigue blend (UTA -10.00 vs DEN +1.65)"
+        "detail": "Logged pregame 20% Shot/Fatigue blend differential"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
         "points": -2.71,
-        "detail": "20% Embeddings blend (UTA -8.90 vs DEN +4.67)"
+        "detail": "Logged pregame 20% Embeddings blend differential"
       },
       {
         "key": "home_court",
         "label": "Home court advantage",
         "points": 2.4,
-        "detail": "UTA home-court constant (+2.40 pts)"
+        "detail": "Logged pregame home-court constant"
       },
       {
         "key": "schedule",
         "label": "Schedule & travel",
         "points": -1.63,
-        "detail": "DEN fatigue 0.15 minus UTA fatigue 1.78"
+        "detail": "Logged pregame schedule & travel drag differential"
       },
       {
         "key": "rounding",
@@ -52,7 +52,12 @@
       }
     ],
     "schedule_context_available": true,
-    "logged_forecast": null,
+    "logged_forecast": {
+      "prediction_timestamp": "2026-11-24T05:14:09Z",
+      "log_source": "LOGGED_PREGAME",
+      "brier_component": null,
+      "log_loss_component": null
+    },
     "entering_baselines": null,
     "xgboost_shap": {
       "model_id": "xgboost_feature_fusion_v1",

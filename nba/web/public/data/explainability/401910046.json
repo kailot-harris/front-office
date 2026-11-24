@@ -1,52 +1,63 @@
 {
   "schema_version": "1.0",
   "game_id": "401910046",
-  "generated_at": "2026-11-23T14:03:24Z",
+  "generated_at": "2026-11-24T05:14:51Z",
   "data": {
-    "projection_basis": "primary_ensemble",
+    "projection_basis": "logged_model_margin",
     "predicted_margin": -4.65,
-    "predicted_home_win_prob": 0.3471,
-    "sigma_game": 11.8234,
+    "predicted_home_win_prob": 0.347,
+    "sigma_game": 11.8229,
     "margin_waterfall": [
       {
         "key": "bottom_up",
         "label": "Bottom-up BPM",
         "points": -2.8,
-        "detail": "35% BPM blend (WAS -8.01 vs ORL -0.01)"
+        "detail": "Logged pregame 35% BPM blend differential"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
-        "points": -1.77,
-        "detail": "25% RAPM blend (WAS -6.84 vs ORL +0.26)"
+        "points": -1.78,
+        "detail": "Logged pregame 25% RAPM blend differential"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": -1.17,
-        "detail": "20% Shot/Fatigue blend (WAS -6.74 vs ORL -0.91)"
+        "detail": "Logged pregame 20% Shot/Fatigue blend differential"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
         "points": -1.61,
-        "detail": "20% Embeddings blend (WAS -8.07 vs ORL -0.03)"
+        "detail": "Logged pregame 20% Embeddings blend differential"
       },
       {
         "key": "home_court",
         "label": "Home court advantage",
         "points": 2.4,
-        "detail": "WAS home-court constant (+2.40 pts)"
+        "detail": "Logged pregame home-court constant"
       },
       {
         "key": "schedule",
         "label": "Schedule & travel",
         "points": 0.3,
-        "detail": "ORL fatigue 0.30 minus WAS fatigue 0.00"
+        "detail": "Logged pregame schedule & travel drag differential"
+      },
+      {
+        "key": "rounding",
+        "label": "Component rounding",
+        "points": 0.01,
+        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,
-    "logged_forecast": null,
+    "logged_forecast": {
+      "prediction_timestamp": "2026-11-24T05:14:09Z",
+      "log_source": "LOGGED_PREGAME",
+      "brier_component": null,
+      "log_loss_component": null
+    },
     "entering_baselines": null,
     "xgboost_shap": {
       "model_id": "xgboost_feature_fusion_v1",
