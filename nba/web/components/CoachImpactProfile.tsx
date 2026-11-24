@@ -41,7 +41,7 @@ const PROVENANCE_STYLE: Record<
 const signed = (value: number): string => (value > 0 ? `+${value}` : `${value}`);
 
 export const CoachImpactProfile: React.FC<CoachImpactProfileProps> = ({ coach }) => {
-  const { metrics, headCoach, teamAbbr, provenance } = coach;
+  const { metrics, teamName, teamAbbr, provenance } = coach;
 
   const talentWins = metrics.talentExpectedWins;
   const ensembleWins = metrics.actualProjectedWins;
@@ -95,7 +95,7 @@ export const CoachImpactProfile: React.FC<CoachImpactProfileProps> = ({ coach })
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-base font-bold text-white tracking-tight">
-                Coaching Impact Profile: {headCoach.name}
+                Coaching Impact Profile: {teamName}
               </h3>
               <span
                 className={`px-2 py-0.5 rounded-full text-xs font-mono font-bold border ${

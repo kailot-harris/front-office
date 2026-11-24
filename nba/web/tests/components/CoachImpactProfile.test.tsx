@@ -20,7 +20,7 @@ describe('CoachImpactProfile', () => {
     render(<CoachImpactProfile coach={coach} />);
 
     expect(
-      screen.getByText(`Coaching Impact Profile: ${coach.headCoach.name}`),
+      screen.getByText(`Coaching Impact Profile: ${coach.teamName}`),
     ).toBeInTheDocument();
     expect(screen.getByText(/Projection gap/)).toBeInTheDocument();
     // getAllBy*, not getBy*: the two variants are independent projections of

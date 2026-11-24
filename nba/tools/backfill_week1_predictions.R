@@ -217,7 +217,7 @@ main <- function() {
   new_rows <- tibble(
     game_id                 = as.character(s$game_id),
     game_date               = BF_TARGET_DATE,
-    season                  = 2026L,   # the log labels BOTH seasons 2026; joins are by DATE
+    season                  = if (exists("nba_season_end_year", mode = "function")) nba_season_end_year(BF_TARGET_DATE, fallback_season = 2027L) else 2027L,
     home_team               = hn,
     away_team               = an,
     prediction_timestamp    = BF_CUTOFF,

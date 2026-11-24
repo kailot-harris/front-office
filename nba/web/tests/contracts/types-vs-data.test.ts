@@ -152,6 +152,45 @@ const parityCases: ParityCase[] = [
     iface: 'MatchupSlate',
     pick: (j) => (j as { slates: Record<string, unknown>[] }).slates,
   },
+  { file: 'momentum_methodology.json', tsFile: 'lib/momentumMethodologyTypes.ts', iface: 'MomentumMethodologyPayload', pick: (j) => [j as Record<string, unknown>] },
+  { file: 'momentum_methodology.json', tsFile: 'lib/momentumMethodologyTypes.ts', iface: 'StudyInfo', pick: (j) => [(j as { study: Record<string, unknown> }).study] },
+  { file: 'momentum_methodology.json', tsFile: 'lib/momentumMethodologyTypes.ts', iface: 'StudySeason', pick: (j) => (j as { study: { seasons: Record<string, unknown>[] } }).study.seasons },
+  { file: 'momentum_methodology.json', tsFile: 'lib/momentumMethodologyTypes.ts', iface: 'StudyTarget', pick: (j) => (j as { targets: Record<string, unknown>[] }).targets },
+  { file: 'momentum_methodology.json', tsFile: 'lib/momentumMethodologyTypes.ts', iface: 'StudyMeasure', pick: (j) => (j as { measures: Record<string, unknown>[] }).measures },
+  { file: 'momentum_methodology.json', tsFile: 'lib/momentumMethodologyTypes.ts', iface: 'StudySeries', pick: (j) => (j as { series: Record<string, unknown>[] }).series },
+  { file: 'momentum_methodology.json', tsFile: 'lib/momentumMethodologyTypes.ts', iface: 'SingleFeatureResult', pick: (j) => (j as { single_feature_results: Record<string, unknown>[] }).single_feature_results },
+  { file: 'momentum_methodology.json', tsFile: 'lib/momentumMethodologyTypes.ts', iface: 'SensitivityResult', pick: (j) => (j as { single_feature_sensitivity_primary: Record<string, unknown>[] }).single_feature_sensitivity_primary },
+  { file: 'momentum_methodology.json', tsFile: 'lib/momentumMethodologyTypes.ts', iface: 'StudyFamilies', pick: (j) => [(j as { families: Record<string, unknown> }).families] },
+  { file: 'momentum_methodology.json', tsFile: 'lib/momentumMethodologyTypes.ts', iface: 'CombinationSearch', pick: (j) => [(j as { combination_search: Record<string, unknown> }).combination_search] },
+  {
+    file: 'momentum_methodology.json',
+    tsFile: 'lib/momentumMethodologyTypes.ts',
+    iface: 'CombinationFold',
+    pick: (j) => (j as { combination_search: { folds: Record<string, unknown>[] } }).combination_search.folds,
+  },
+  {
+    file: 'momentum_methodology.json',
+    tsFile: 'lib/momentumMethodologyTypes.ts',
+    iface: 'SelectionStability',
+    pick: (j) => [(j as { combination_search: { selection_stability: Record<string, unknown> } }).combination_search.selection_stability],
+  },
+  {
+    file: 'momentum_methodology.json',
+    tsFile: 'lib/momentumMethodologyTypes.ts',
+    iface: 'CombinationSensitivity',
+    pick: (j) => [(j as { combination_search: { sensitivity_without_2019_20_2020_21: Record<string, unknown> } }).combination_search.sensitivity_without_2019_20_2020_21],
+  },
+  { file: 'momentum_methodology.json', tsFile: 'lib/momentumMethodologyTypes.ts', iface: 'BlendWindowResult', pick: (j) => (j as { blend_weights: Record<string, unknown>[] }).blend_weights },
+  { file: 'momentum_methodology.json', tsFile: 'lib/momentumMethodologyTypes.ts', iface: 'StudyHoldout', pick: (j) => [(j as { holdout: Record<string, unknown> }).holdout] },
+  {
+    file: 'momentum_methodology.json',
+    tsFile: 'lib/momentumMethodologyTypes.ts',
+    iface: 'HoldoutCell',
+    pick: (j) => {
+      const h = (j as { holdout: { part_a: Record<string, Record<string, unknown>>; part_b: Record<string, Record<string, Record<string, unknown>>> } }).holdout;
+      return [h.part_a.primary, h.part_a.next5, ...Object.values(h.part_b).flatMap((w) => Object.values(w))];
+    },
+  },
   {
     file: 'matchups_slates.json',
     tsFile: 'lib/matchupTypes.ts',
@@ -260,6 +299,10 @@ describe('String-literal unions in lib/*Types.ts cover every value in the data',
       slates: { status: string }[];
       matchups: { projection_basis: string | null }[];
     }>('matchups_slates.json'),
+    methodology: readJsonFile<{
+      single_feature_results: { verdict: string }[];
+      single_feature_sensitivity_primary: { verdict: string }[];
+    }>('momentum_methodology.json'),
   };
 
   const cases: { label: string; declared: () => string[]; values: () => string[] }[] = [
@@ -288,6 +331,14 @@ describe('String-literal unions in lib/*Types.ts cover every value in the data',
       label: 'ProjectionBasis',
       declared: () => extractTypeAliasUnion('lib/matchupTypes.ts', 'ProjectionBasis'),
       values: () => d.matchups.matchups.map((m) => m.projection_basis).filter((v): v is string => v !== null),
+    },
+    {
+      label: 'MomentumVerdict',
+      declared: () => extractTypeAliasUnion('lib/momentumMethodologyTypes.ts', 'MomentumVerdict'),
+      values: () => [
+        ...d.methodology.single_feature_results.map((r) => r.verdict),
+        ...d.methodology.single_feature_sensitivity_primary.map((r) => r.verdict),
+      ],
     },
   ];
 

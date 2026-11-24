@@ -62,6 +62,18 @@ ok("Deliberate non-members stay excluded from WEB_DATA_FILES",
      !(cfg_env$WEB_JSON_SHOTS_INDEX %in% cfg_env$WEB_DATA_FILES) &&
      !(cfg_env$WEB_JSON_SHOTS_METADATA %in% cfg_env$WEB_DATA_FILES))
 
+# momentum_methodology.json is a frozen research artifact copied by
+# tools/publish_momentum_methodology.R, not a pipeline output: it has a path
+# constant in WEB_DATA_DIR but is not a WEB_DATA_FILES member (static in the manifest).
+mm_path <- cfg_env$WEB_JSON_MOMENTUM_METHODOLOGY
+ok("WEB_JSON_MOMENTUM_METHODOLOGY is defined under WEB_DATA_DIR",
+   is.character(mm_path) && length(mm_path) == 1L &&
+     identical(basename(mm_path), "momentum_methodology.json") &&
+     identical(normalizePath(dirname(mm_path), winslash = "/", mustWork = FALSE),
+               normalizePath(cfg_env$WEB_DATA_DIR, winslash = "/", mustWork = FALSE)))
+ok("WEB_JSON_MOMENTUM_METHODOLOGY stays out of WEB_DATA_FILES",
+   !(mm_path %in% cfg_env$WEB_DATA_FILES))
+
 cfg_lines <- readLines(file.path(REPO_ROOT, "config.R"), warn = FALSE)
 ok("Stale 'written by nothing' claim removed from config.R comments",
    !any(grepl("written by\\s+nothing|no writer, in any stage", cfg_lines, perl = TRUE)))

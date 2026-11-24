@@ -1,4 +1,4 @@
-import { getTeamsData, getMetadata } from '@/lib/data';
+import { getTeamsData, getMetadata, getActualTeamRecords } from '@/lib/data';
 import { StandingsClient } from '@/components/StandingsClient';
 import { SeasonSourceBadge } from '@/components/SeasonSourceBadge';
 import { SEASON_SOURCES } from '@/lib/season';
@@ -14,6 +14,7 @@ export const metadata = {
 export default function HomePage() {
   const teams = getTeamsData();
   const metadata = getMetadata();
+  const actualRecords = getActualTeamRecords();
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -57,7 +58,12 @@ export default function HomePage() {
         sortable standings.
       </HowToReadDisclosure>
 
-      <StandingsClient teams={teams} metadata={metadata} initialTab="visualizer" />
+      <StandingsClient
+        teams={teams}
+        metadata={metadata}
+        actualRecords={actualRecords}
+        initialTab="visualizer"
+      />
     </div>
   );
 }

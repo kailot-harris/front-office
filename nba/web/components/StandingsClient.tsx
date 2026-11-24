@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { TeamProjection, ModelMetadata } from '@/lib/types';
+import { TeamProjection, ModelMetadata, ActualTeamRecord } from '@/lib/types';
 import {
   Trophy,
   TrendingUp,
@@ -25,11 +25,11 @@ import { TeamLogo } from '@/components/TeamLogo';
 import { PlayoffContendersBoxWhisker } from '@/components/PlayoffContendersBoxWhisker';
 import { AnimatedMediaCard } from '@/components/AnimatedMediaCard';
 import { exportToCsv } from '@/lib/exportToCsv';
-import { NBA_ACTUAL_TEAM_RECORDS, ActualTeamRecord } from '@/lib/actualRecords';
 
 interface StandingsClientProps {
   teams: TeamProjection[];
   metadata?: ModelMetadata;
+  actualRecords?: Record<string, ActualTeamRecord>;
   initialTab?: 'visualizer' | 'table' | 'divisions';
 }
 
@@ -58,7 +58,11 @@ export interface EnrichedNbaTeam extends TeamProjection {
   point_diff: number;
 }
 
-export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initialTab = 'visualizer' }) => {
+export const StandingsClient: React.FC<StandingsClientProps> = ({
+  teams,
+  actualRecords = {},
+  initialTab = 'visualizer',
+}) => {
   const [activeTab, setActiveTab] = useState<'visualizer' | 'table' | 'divisions'>(initialTab);
   const [selectedConference, setSelectedConference] = useState<'All' | 'East' | 'West'>('All');
   const [selectedDivision, setSelectedDivision] = useState<string>('All');
@@ -127,7 +131,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
   // Enrich teams with real actual games and win pace calculations
   const enrichedTeams: EnrichedNbaTeam[] = useMemo(() => {
     return teams.map((team) => {
-      const actual = NBA_ACTUAL_TEAM_RECORDS[team.team] || {
+      const actual = actualRecords[team.team] ?? {
         wins: 0,
         losses: 0,
         pointsFor: 0,
@@ -135,8 +139,9 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
       };
       const actual_gp = actual.wins + actual.losses;
       const actual_win_pct = actual_gp > 0 ? actual.wins / actual_gp : 0;
-      const current_pace = actual_win_pct * 82;
-      const performance_delta = current_pace - team.ensemble_mean_wins;
+      const current_pace = Number.isFinite(actual_win_pct) ? actual_win_pct * 82 : 0;
+      const projMean = Number.isFinite(team.ensemble_mean_wins) ? team.ensemble_mean_wins : 0;
+      const performance_delta = current_pace - projMean;
       const point_diff = actual.pointsFor - actual.pointsAgainst;
 
       return {
@@ -149,7 +154,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({ teams, initial
         point_diff,
       };
     });
-  }, [teams]);
+  }, [teams, actualRecords]);
 
   // Outperformers and underperformers callouts
   const topOverperformers = useMemo(() => {

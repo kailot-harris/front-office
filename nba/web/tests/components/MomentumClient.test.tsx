@@ -4,7 +4,7 @@ import path from 'path';
 import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MomentumClient, sortRows } from '@/components/MomentumClient';
+import { MOMENTUM_COLUMN_COUNT, MomentumClient, sortRows } from '@/components/MomentumClient';
 import type { MomentumPayload } from '@/lib/momentumTypes';
 
 const DATA: MomentumPayload = JSON.parse(
@@ -86,6 +86,34 @@ describe('MomentumClient: sorting', () => {
       const flags = teamRows().map((r) => r.dataset.ranked === 'true');
       expect(flags.lastIndexOf(true)).toBeLessThan(flags.indexOf(false));
     }
+  });
+});
+
+describe('MomentumClient: every sort has a visible column', () => {
+  it('keeps the same columns for every sort and marks the sorted one', async () => {
+    const user = userEvent.setup();
+    render(<MomentumClient data={DATA} />);
+    const headerTexts = () => screen.getAllByRole('columnheader').map((th) => th.textContent ?? '');
+    const first = headerTexts();
+    for (const o of DATA.sort_options) {
+      await user.selectOptions(screen.getByRole('combobox', { name: 'Sort by' }), o.key);
+      expect(headerTexts()).toEqual(first);
+      const sorted = screen.getAllByRole('columnheader').filter((th) => th.getAttribute('aria-sort') === 'descending');
+      expect(sorted).toHaveLength(1);
+    }
+    for (const label of ['Momentum score', 'Elo 7d', 'Elo 14d', 'Beat model expectation by', 'Net rating change', 'Schedule strength faced']) {
+      expect(first.some((t) => t.startsWith(label))).toBe(true);
+    }
+  });
+
+  it('shows schedule strength faced next to the Elo 7d change', async () => {
+    const user = userEvent.setup();
+    render(<MomentumClient data={DATA} />);
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Sort by' }), 'elo_change_7d');
+    const d = DATA.default_window;
+    const top = sortRows(DATA.boards[String(d)].rows, DATA.sort_options.find((o) => o.key === 'elo_change_7d')!)[0];
+    const cell = rowFor(top.team).querySelector('td[data-col="schedule_strength"]')!;
+    expect(cell.textContent).toBe(`${(top.sort_keys.schedule_strength! * 100).toFixed(1)}%`);
   });
 });
 
@@ -206,7 +234,7 @@ describe('MomentumClient: tooltips, methods panel, language', () => {
     const user = userEvent.setup();
     render(<MomentumClient data={DATA} />);
     const headers = screen.getAllByRole('columnheader');
-    expect(headers).toHaveLength(7);
+    expect(headers).toHaveLength(MOMENTUM_COLUMN_COUNT);
     for (const th of headers) {
       await user.click(within(th).getByRole('button', { name: /^About / }));
       expect(within(th).getByRole('tooltip')).toBeInTheDocument();
@@ -260,5 +288,13 @@ describe('MomentumClient: tooltips, methods panel, language', () => {
   it('renders a message when the data file is unavailable', () => {
     render(<MomentumClient data={null} />);
     expect(screen.getByText(/unavailable/i)).toBeInTheDocument();
+  });
+});
+
+describe('MomentumClient: methodology link', () => {
+  it('links to the methodology page through next/link (basePath-relative href)', () => {
+    render(<MomentumClient data={DATA} />);
+    const link = screen.getByRole('link', { name: 'Full methodology and everything we tested' });
+    expect(link).toHaveAttribute('href', '/momentum/methodology');
   });
 });

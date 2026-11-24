@@ -44,6 +44,22 @@ season_label <- function(end_year = CURRENT_SEASON) {
   sprintf("%d-%02d", as.integer(end_year) - 1L, as.integer(end_year) %% 100L)
 }
 
+# Derive hoopR end-year season integer from game_date (NBA season runs Oct-Jun;
+# month >= 7 belongs to year + 1L, month <= 6 belongs to year).
+# Falls back to fallback_season when game_date is missing/NA.
+nba_season_end_year <- function(game_date, fallback_season = CURRENT_SEASON) {
+  gd <- suppressWarnings(as.Date(game_date))
+  yr <- suppressWarnings(as.integer(format(gd, "%Y")))
+  mo <- suppressWarnings(as.integer(format(gd, "%m")))
+  derived <- yr + ifelse(mo >= 7L, 1L, 0L)
+  if (!is.null(fallback_season)) {
+    fb <- suppressWarnings(as.integer(fallback_season))
+    if (length(fb) == 1L) fb <- rep(fb, length(derived))
+    derived <- ifelse(is.na(derived), fb, derived)
+  }
+  as.integer(derived)
+}
+
 # Current-season cache inputs (front-office#191). Missing file => stop(), never a
 # fallback to another season.
 current_season_cache <- function(kind = c("pbp", "player_box")) {
@@ -166,6 +182,13 @@ MAX_RETRIES          <- 3
 #     build_shot_chart_dataset.R, which is NOT one of run_full_pipeline.R's
 #     stages. They are refreshed out of band, so a run-start mtime assertion
 #     over them would be red on a healthy pipeline.
+#   * momentum_methodology.json -- a frozen research artifact behind the
+#     /momentum/methodology page: the momentum measures study's results file
+#     plus provenance, copied (never recomputed) by
+#     tools/publish_momentum_methodology.R. That script is NOT a
+#     run_full_pipeline.R stage; it runs only when the study is re-run, so a
+#     run-start mtime assertion over it would be red on a healthy pipeline.
+#     data_manifest.json marks it static (tools/write_data_manifest.R).
 WEB_PUBLIC_DIR <- file.path(PROJECT_DIR, "web", "public")
 
 WEB_JSON_PROJECTIONS_SEASON_TEAMS    <- file.path(WEB_DATA_DIR, "projections_season_teams.json")
@@ -191,6 +214,7 @@ MOMENTUM_RANK_HISTORY <- file.path(PROJECT_DIR, "data", "history", "momentum_ran
 WEB_JSON_OFFSEASON_TRANSACTIONS      <- file.path(WEB_DATA_DIR, "offseason_transactions.json")
 WEB_JSON_SHOTS_INDEX                 <- file.path(WEB_DATA_DIR, "shots_index.json")
 WEB_JSON_SHOTS_METADATA              <- file.path(WEB_DATA_DIR, "shots_metadata.json")
+WEB_JSON_MOMENTUM_METHODOLOGY        <- file.path(WEB_DATA_DIR, "momentum_methodology.json")
 
 WEB_DATA_FILES <- c(
   WEB_JSON_PROJECTIONS_SEASON_TEAMS,

@@ -224,3 +224,10 @@ export interface ModelDiagnostics {
   historicalBacktest?: DiagnosticsBlock | null;
   rowCounts?: DiagnosticsRowCounts;
 }
+
+export interface ActualTeamRecord {
+  wins: number;
+  losses: number;
+  pointsFor: number;
+  pointsAgainst: number;
+}

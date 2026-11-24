@@ -48,7 +48,7 @@ describe('SVG accessibility across NBA visualization components', () => {
       container,
       new RegExp(`ATO offensive vs\\. defensive PPP.*${selectedCoach.teamAbbr}`, 'i'),
     );
-    expect(selectedSvg.getAttribute('aria-label')).toContain(selectedCoach.headCoach.name);
+    expect(selectedSvg.getAttribute('aria-label')).toContain(selectedCoach.teamName);
 
     rerender(
       <AtoEfficiencyScatter

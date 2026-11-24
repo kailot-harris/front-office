@@ -256,10 +256,24 @@ run_nba_accuracy_governance <- function(log_df = NULL,
       })
 
       drift_list <- list()
-      if ("season" %in% names(d) && nrow(d) > 0) {
-        seasons <- sort(unique(d$season))
+      if (("season" %in% names(d) || "game_date" %in% names(d)) && nrow(d) > 0) {
+        fb_season <- if ("season" %in% names(d)) suppressWarnings(as.integer(d$season)) else rep(NA_integer_, nrow(d))
+        norm_season <- if ("game_date" %in% names(d)) {
+          if (exists("nba_season_end_year", mode = "function")) {
+            nba_season_end_year(d$game_date, fallback_season = fb_season)
+          } else {
+            gd <- suppressWarnings(as.Date(d$game_date))
+            yr <- suppressWarnings(as.integer(format(gd, "%Y")))
+            mo <- suppressWarnings(as.integer(format(gd, "%m")))
+            derived <- yr + ifelse(mo >= 7L, 1L, 0L)
+            as.integer(ifelse(is.na(derived), fb_season, derived))
+          }
+        } else {
+          fb_season
+        }
+        seasons <- sort(unique(norm_season[!is.na(norm_season)]))
         for (s in seasons) {
-          s_df <- d |> filter(season == s)
+          s_df <- d[!is.na(norm_season) & norm_season == s, , drop = FALSE]
           s_y <- as.integer(s_df$actual_winner == s_df$home_team)
           s_p <- s_df$predicted_home_win_prob
           drift_list[[length(drift_list) + 1]] <- list(

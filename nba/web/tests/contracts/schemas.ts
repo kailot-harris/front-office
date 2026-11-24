@@ -404,22 +404,6 @@ export const CoachingStaffMetricSchema = z
   .object({
     teamAbbr: teamEnum,
     teamName: z.string().min(2),
-    headCoach: z
-      .object({
-        name: z.string().min(2),
-        tenureYears: z.number().int().min(0),
-        coachingTree: z.string().min(2),
-        tacticalArchetype: z.string().min(2),
-      })
-      .strict(),
-    assistants: z
-      .object({
-        associateHC: z.string().min(2),
-        offensiveCoord: z.string().min(2),
-        defensiveCoord: z.string().min(2),
-        playerDevLead: z.string().min(2),
-      })
-      .strict(),
     metrics: z
       .object({
         coachImpactRating: pct.nullable(),
@@ -1177,5 +1161,299 @@ export const GameDetailEnvelopeSchema = z
     season: z.number().int().positive(),
     season_label: seasonSpan,
     data: GameDetailPayloadSchema,
+  })
+  .strict();
+
+// ---------------------------------------------------------------------------
+// momentum_methodology.json (lib/momentumMethodologyTypes.ts): the momentum
+// measures study results plus provenance, written by
+// tools/publish_momentum_methodology.R. Read by /momentum/methodology.
+// ---------------------------------------------------------------------------
+const mmInterval = z
+  .tuple([num, num])
+  .refine(([lo, hi]) => lo <= hi, 'interval low must not exceed high');
+const mmId = z.string().regex(/^[a-z0-9_]+$/);
+const mmFeatureId = z.string().regex(/^[a-z0-9_]+__[a-z0-9_]+$/);
+const mmSeasonLabel = z.string().regex(/^\d{4}-\d{2}$/);
+const mmIsoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const mmVerdict = z.enum(['kept', 'discarded', 'inconclusive']);
+const mmWeights = z.object({ form: prob, trend: prob, elo: prob }).strict();
+const mmDelta = z
+  .object({ delta: num, ci_lo: num, ci_hi: num })
+  .strict()
+  .refine((d) => d.ci_lo <= d.ci_hi, 'ci_lo must not exceed ci_hi');
+const mmFlatness = z
+  .object({ within_ci_of_best: z.number().int().nonnegative(), of: z.number().int().positive() })
+  .strict()
+  .refine((f) => f.within_ci_of_best <= f.of, 'within_ci_of_best cannot exceed of');
+const mmCount = z.number().int().nonnegative();
+const mmFamilyGroup = z.union([mmId, z.array(mmId).min(1)]);
+const mmClusterGroup = z.union([mmFeatureId, z.array(mmFeatureId).min(1)]);
+
+export const MmSingleFeatureResultSchema = z
+  .object({
+    feature: mmFeatureId,
+    series: mmId,
+    measure: mmId,
+    target: mmId,
+    incremental_ic: num,
+    ic_metric: z.string().min(1),
+    r2_gain: num,
+    gain_metric: z.string().min(1),
+    ci_95: mmInterval,
+    fdr_q_value: prob,
+    p_value: prob,
+    n: z.number().int().positive(),
+    missing_count: mmCount,
+    verdict: mmVerdict,
+    reason: z.string().min(1),
+  })
+  .strict();
+
+const mmFold = z
+  .object({
+    held_out: mmSeasonLabel,
+    series: z.array(mmId).min(1),
+    measures: z.array(mmId).min(1),
+    ridge_alpha: num.positive(),
+    top6_series: z.array(mmId).min(1),
+    top6_measures: z.array(mmId).min(1),
+    inner_r2_gain: num,
+    held_out_r2_gain: num,
+    held_out_rows: z.number().int().positive(),
+  })
+  .strict();
+const mmComparison = z.object({ r2_gain: num, ci: mmInterval, ic: num }).strict();
+const mmStability = z
+  .object({
+    series_counts: z.record(mmCount),
+    measure_counts: z.record(mmCount),
+    series_family_counts: z.record(mmCount),
+    measure_family_counts: z.record(mmCount),
+    distinct_combinations: mmCount,
+    combination_counts: z.record(mmCount),
+    folds_needed: mmCount,
+    stable_exact: z.boolean(),
+    stable_family: z.boolean(),
+    seasons_with_positive_gain: mmCount,
+    of_seasons: z.number().int().positive(),
+  })
+  .strict();
+const mmByFoldWeights = z.record(mmSeasonLabel, mmWeights);
+const mmHoldoutCell = z
+  .object({
+    target: mmId,
+    rows: mmCount,
+    teams: mmCount.optional(),
+    best_weights: mmWeights.optional(),
+    current_r2_gain: num.optional(),
+    best_r2_gain: num.optional(),
+    result: z.string().min(1),
+  })
+  .strict();
+
+export const MmBlendWindowSchema = z
+  .object({
+    window: z.number().int().positive(),
+    target: mmId,
+    rows: z.number().int().positive(),
+    current_weights: mmWeights,
+    current_r2_gain: num,
+    current_incremental_ic: num,
+    best_weights: mmWeights,
+    best_r2_gain: num,
+    best_incremental_ic: num,
+    best_vs_current: mmDelta,
+    flatness: mmFlatness,
+    loso_selected: z.object({ weights_by_fold: mmByFoldWeights, r2_gain: num, vs_current: mmDelta }).strict(),
+    nonnegative_regression: z.object({ weights_by_fold: mmByFoldWeights, r2_gain: num, vs_current: mmDelta }).strict(),
+    component_alone_r2_gain: z.object({ form: num, trend: num, elo: num }).strict(),
+    next5: z
+      .object({ current_r2_gain: num, best_weights: mmWeights, best_r2_gain: num, best_vs_current: mmDelta })
+      .strict(),
+    residual_small_sample_check: z
+      .object({
+        label: z.string().min(1),
+        rows: mmCount,
+        teams: mmCount,
+        ic_current_4: num.optional(),
+        ic_current_3_no_residual: num.optional(),
+        ic_residual_alone: num.optional(),
+        ic_4_minus_3: mmDelta.optional(),
+      })
+      .strict(),
+    trend_swap: z
+      .object({
+        feature: mmFeatureId,
+        rows: z.number().int().positive(),
+        best_3_component_on_same_rows: z.object({ weights: mmWeights, r2_gain: num }).strict(),
+        swap: z
+          .object({
+            weights: z.record(prob),
+            r2_gain: num,
+            vs_best_3_component: mmDelta,
+            loso_selected_vs_current_swap: mmDelta.optional(),
+          })
+          .strict(),
+        join: z
+          .object({
+            weights: z.record(prob),
+            r2_gain: num,
+            vs_best_3_component: mmDelta,
+            flatness: mmFlatness.optional(),
+          })
+          .strict(),
+      })
+      .strict(),
+    sensitivity_without_2019_20_2020_21: z
+      .object({
+        best_weights: mmWeights,
+        current_r2_gain: num,
+        best_vs_current: mmDelta,
+        loso_selected_vs_current: mmDelta,
+      })
+      .strict(),
+    recommendation: z.string().min(1),
+  })
+  .strict();
+
+export const MomentumMethodologySchema = z
+  .object({
+    source_commit: z.string().regex(/^[0-9a-f]{40}$/),
+    source_sha256: z.string().regex(/^[0-9a-f]{64}$/),
+    published_at: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/),
+    study: z
+      .object({
+        title: z.string().min(1),
+        run_date: mmIsoDate,
+        seasons: z
+          .array(
+            z
+              .object({
+                season: mmSeasonLabel,
+                hoopr_season: z.number().int(),
+                role: z.string().min(1),
+                games: z.number().int().positive(),
+                team_games: z.number().int().positive(),
+                teams: z.number().int().positive(),
+                first: mmIsoDate,
+                last: mmIsoDate,
+                neutral_games: mmCount,
+              })
+              .strict(),
+          )
+          .min(1),
+        holdout: z.string().min(1),
+        protocol: z.array(z.string().min(1)).min(1),
+        seeds: z.object({ study: z.number().int(), permutation: z.number().int(), bootstrap: z.string().min(1) }).strict(),
+        runtime_minutes: num.positive(),
+        permutation_minutes: num.positive(),
+      })
+      .strict(),
+    targets: z.array(z.object({ id: mmId, definition: z.string().min(1), primary: z.boolean() }).strict()).min(1),
+    measures: z
+      .array(
+        z
+          .object({
+            id: mmId,
+            name: z.string().min(1),
+            field_of_origin: z.string().min(1),
+            forward_only_definition: z.string().min(1),
+          })
+          .strict(),
+      )
+      .min(1),
+    series: z.array(z.object({ id: mmId, name: z.string().min(1), definition: z.string().min(1) }).strict()).min(1),
+    single_feature_results: z.array(MmSingleFeatureResultSchema).min(1),
+    single_feature_sensitivity_primary: z.array(
+      z
+        .object({
+          feature: mmFeatureId,
+          r2_gain: num,
+          ci_95: mmInterval,
+          fdr_q_value: prob,
+          n: z.number().int().positive(),
+          verdict: mmVerdict,
+        })
+        .strict(),
+    ),
+    families: z
+      .object({
+        feature_clusters_abs_r_0_7: z.array(mmClusterGroup),
+        measure_families: z.array(mmFamilyGroup),
+        series_families: z.array(mmFamilyGroup),
+        measure_mean_abs_r: z.record(z.array(prob)),
+        series_mean_abs_r: z.record(z.array(prob)),
+      })
+      .strict(),
+    combination_search: z
+      .object({
+        target: mmId,
+        rows: z.number().int().positive(),
+        folds: z.array(mmFold).min(1),
+        pooled_r2_gain: num,
+        pooled_ci_95: mmInterval,
+        pooled_incremental_ic: num,
+        comparisons: z.record(mmComparison),
+        combination_vs_board_score: z.object({ r2_gain: num, ci_95: mmInterval }).strict(),
+        greedy_selected_by_fold: z.record(mmSeasonLabel, z.array(mmFeatureId)),
+        elastic_net_nonzero_by_fold: z.record(mmSeasonLabel, mmCount),
+        selection_stability: mmStability,
+        permutation: z
+          .object({
+            runs: z.number().int().positive(),
+            p95: num,
+            mean: num,
+            max: num,
+            share_at_or_above_real: prob,
+            minutes: num.positive(),
+          })
+          .strict(),
+        final_choice: z
+          .object({
+            series: z.array(mmId).min(1),
+            measures: z.array(mmId).min(1),
+            ridge_alpha: num.positive(),
+            inner_r2_gain: num,
+            tied_with_best_within_ci: mmCount,
+            of_combinations: z.number().int().positive(),
+          })
+          .strict(),
+        reliability_checks: z.record(z.boolean()),
+        final_verdict: z.string().min(1),
+        sensitivity_without_2019_20_2020_21: z
+          .object({
+            rows: z.number().int().positive(),
+            folds: z.array(mmFold).min(1),
+            pooled_r2_gain: num,
+            pooled_ci_95: mmInterval,
+            comparisons: z.record(z.object({ r2_gain: num, ic: num, ci: mmInterval.optional() }).strict()),
+            selection_stability: mmStability,
+          })
+          .strict(),
+      })
+      .strict(),
+    blend_weights: z.array(MmBlendWindowSchema).min(1),
+    holdout: z
+      .object({
+        note: z.string().min(1),
+        part_a: z
+          .object({
+            choice: z
+              .object({
+                series: z.array(mmId).min(1),
+                measures: z.array(mmId).min(1),
+                ridge_alpha: num.positive(),
+                reliable: z.boolean(),
+              })
+              .strict(),
+            primary: mmHoldoutCell,
+            next5: mmHoldoutCell,
+          })
+          .strict(),
+        part_b: z.record(z.string().regex(/^w\d+$/), z.record(mmId, mmHoldoutCell)),
+      })
+      .strict(),
+    limits: z.array(z.string().min(1)).min(1),
   })
   .strict();

@@ -60,7 +60,7 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
       c.metrics.atoOffensivePpp !== null
   );
   const svgAriaLabel = selectedCoach
-    ? `In-game ATO offensive vs. defensive PPP scatter plot (${plottedCoaches.length} teams, selected: ${selectedCoach.headCoach.name}, ${selectedCoach.teamAbbr})`
+    ? `In-game ATO offensive vs. defensive PPP scatter plot (${plottedCoaches.length} teams, selected: ${selectedCoach.teamName}, ${selectedCoach.teamAbbr})`
     : `In-game ATO offensive vs. defensive PPP scatter plot (${plottedCoaches.length} teams)`;
 
   return (
@@ -331,10 +331,10 @@ export const AtoEfficiencyScatter: React.FC<AtoEfficiencyScatterProps> = ({
               <TeamLogo team={hoveredCoach.teamAbbr} size="sm" />
               <div className="min-w-0">
                 <div className="text-xs font-bold text-white truncate">
-                  {hoveredCoach.headCoach.name}
+                  {hoveredCoach.teamName}
                 </div>
                 <div className="text-[11px] sm:text-[10px] text-slate-400">
-                  {hoveredCoach.teamAbbr} • {hoveredCoach.headCoach.coachingTree} Tree
+                  {hoveredCoach.teamAbbr}
                 </div>
               </div>
               <div className="ml-auto text-right">
