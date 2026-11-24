@@ -33,6 +33,12 @@
 #                          why, and the gate checks generated_at freshness instead.
 #   through_date is NEVER derived from generated_at.
 # salary_cap_profiles.json is an annual CBA snapshot and is declared static.
+#
+# lifecycle (NFL_analytics#214):
+#   Each entry also carries `lifecycle` ("live" | "season_final" | "archived"),
+#   assigned via config.R's nfl_data_lifecycle() (all "live" in season). When
+#   `season_final`, entries also carry season, final_through_date,
+#   frozen_sha256, and frozen_at. publish_web.R Assertion L verifies these.
 # ==============================================================================
 
 DATA_MANIFEST_FILENAME       <- "data_manifest.json"
@@ -168,14 +174,32 @@ dm_schedule_through_date <- function(schedules_path = if (exists("CACHE_SCHEDULE
   .dm_date(as.character(s$gameday[done]))
 }
 
+DM_LIFECYCLE_FIELDS <- c("season", "final_through_date", "frozen_sha256", "frozen_at")
+
+.dm_default_lifecycle_fn <- function() {
+  if (exists("nfl_data_lifecycle", mode = "function")) {
+    get("nfl_data_lifecycle", mode = "function")
+  } else {
+    function(files) {
+      files <- basename(files)
+      out <- lapply(files, function(f) list(lifecycle = "live"))
+      names(out) <- files
+      out
+    }
+  }
+}
+
 # Build (but do not write) the manifest list. `previous` is the prior manifest
 # (parsed list) used for content-hash carry-forward; defaults to the one on disk.
 build_data_manifest <- function(data_dir = if (exists("WEB_DATA_DIR")) WEB_DATA_DIR else file.path("web", "public", "data"),
                                 schedule_through_date = dm_schedule_through_date(),
                                 now = Sys.time(),
-                                previous = dm_read_previous(data_dir)) {
+                                previous = dm_read_previous(data_dir),
+                                lifecycle_fn = .dm_default_lifecycle_fn()) {
+  files <- dm_list_payloads(data_dir)
+  lifecycles <- if (is.function(lifecycle_fn)) lifecycle_fn(files) else list()
   datasets <- list()
-  for (f in dm_list_payloads(data_dir)) {
+  for (f in files) {
     p <- file.path(data_dir, f)
     spec <- DATA_MANIFEST_SPECS[[f]]
     if (is.null(spec)) spec <- list(builder = "unknown", note = "No coverage extractor registered for this file")
@@ -209,6 +233,13 @@ build_data_manifest <- function(data_dir = if (exists("WEB_DATA_DIR")) WEB_DATA_
       entry$static <- FALSE
       entry$max_lag_days <- DATA_MANIFEST_DEFAULT_MAX_LAG_DAYS
     }
+    lc <- lifecycles[[f]]
+    if (!is.null(lc) && !is.null(lc$lifecycle)) {
+      entry$lifecycle <- lc$lifecycle
+      if (identical(lc$lifecycle, "season_final")) {
+        for (k in DM_LIFECYCLE_FIELDS) if (!is.null(lc[[k]])) entry[[k]] <- lc[[k]]
+      }
+    }
     if (is.null(entry$coverage_note)) entry["coverage_note"] <- list(NULL)
     datasets[[f]] <- entry
   }
@@ -232,8 +263,9 @@ dm_read_previous <- function(data_dir) {
 
 write_data_manifest <- function(data_dir = if (exists("WEB_DATA_DIR")) WEB_DATA_DIR else file.path("web", "public", "data"),
                                 schedule_through_date = dm_schedule_through_date(),
-                                now = Sys.time()) {
-  m <- build_data_manifest(data_dir, schedule_through_date, now)
+                                now = Sys.time(),
+                                lifecycle_fn = .dm_default_lifecycle_fn()) {
+  m <- build_data_manifest(data_dir, schedule_through_date, now, lifecycle_fn = lifecycle_fn)
   if (is.null(m$schedule_through_date)) m["schedule_through_date"] <- list(NULL)
   out <- file.path(data_dir, DATA_MANIFEST_FILENAME)
   txt <- jsonlite::toJSON(m, auto_unbox = TRUE, pretty = TRUE, null = "null")

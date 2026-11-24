@@ -752,7 +752,8 @@ export default function PlayerDnaClient({ initialProfiles, totalCount, season, t
             </div>
 
             <p className="text-xs text-slate-400">
-              Interactive stylistic landscape. Click any node to instantly inspect their DNA radar profile.
+              Interactive stylistic landscape. Click any node to instantly inspect their DNA radar profile. Keyboard
+              and screen-reader users can pick the same players from the list.
             </p>
 
             <div className="relative h-64 w-full bg-slate-950 rounded-xl border border-slate-800/80 overflow-hidden flex items-center justify-center">
@@ -780,9 +781,14 @@ export default function PlayerDnaClient({ initialProfiles, totalCount, season, t
                   const left = Math.max(5, Math.min(95, 50 + ((p.manifoldX ?? 0) * 0.8)));
                   const top = Math.max(5, Math.min(95, 50 - ((p.manifoldY ?? 0) * 0.8)));
 
+                  // Mouse-only shortcut: nearby players overlap here, so these dots can't meet the 24px
+                  // target-size rule. The player list above offers the same selection to keyboard and
+                  // screen-reader users (WCAG 2.5.8's "equivalent control" exception), so the dots are
+                  // kept out of the tab order and the accessibility tree.
                   return (
-                    <button
+                    <div
                       key={p.playerId}
+                      aria-hidden="true"
                       onClick={() => {
                         if (isCompareMode) {
                           if (p.playerId !== selectedPlayer.playerId) setComparePlayerId(p.playerId);
@@ -792,8 +798,8 @@ export default function PlayerDnaClient({ initialProfiles, totalCount, season, t
                       }}
                       title={`${p.playerName} (${p.team}) - ${p.archetype ?? 'Insufficient data'}`}
                       style={{ left: `${left}%`, top: `${top}%` }}
-                      aria-label={`${p.playerName} (${p.team})`}
-                      className={`group absolute -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center ${
+                      data-player-id={p.playerId}
+                      className={`group absolute -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer ${
                         isPrimary || isCompare ? 'z-20' : 'z-10'
                       }`}
                     >
@@ -807,7 +813,7 @@ export default function PlayerDnaClient({ initialProfiles, totalCount, season, t
                             : 'w-2 h-2 bg-slate-600 group-hover:bg-slate-300'
                         }`}
                       />
-                    </button>
+                    </div>
                   );
                 })}
             </div>
