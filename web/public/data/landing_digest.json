@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "sport": "nba",
-  "generated_at": "2026-11-24T05:16:34Z",
+  "generated_at": "2026-11-24T14:05:23Z",
   "slate_date": "2026-11-24",
   "season_state": "regular",
   "next_milestone": {
@@ -178,15 +178,15 @@
       "start_time_utc": "2026-11-24T03:00:00Z",
       "home": "LAL",
       "away": "UTA",
-      "status": "scheduled",
+      "status": "final",
       "home_win_prob": 0.8035,
       "away_win_prob": 0.1965,
       "prediction_status": "available",
-      "home_score": null,
-      "away_score": null,
-      "final": false,
+      "home_score": 109,
+      "away_score": 94,
+      "final": true,
       "predicted_winner": "LAL",
-      "hit": null
+      "hit": true
     },
     {
       "game_id": "401910045",
@@ -194,26 +194,26 @@
       "start_time_utc": "2026-11-24T03:00:00Z",
       "home": "SAC",
       "away": "SAS",
-      "status": "scheduled",
+      "status": "final",
       "home_win_prob": 0.167,
       "away_win_prob": 0.833,
       "prediction_status": "available",
-      "home_score": null,
-      "away_score": null,
-      "final": false,
+      "home_score": 107,
+      "away_score": 123,
+      "final": true,
       "predicted_winner": "SAS",
-      "hit": null
+      "hit": true
     }
   ],
   "record": {
     "season": {
-      "hits": 158,
-      "games": 247,
+      "hits": 160,
+      "games": 249,
       "excluded": 0
     },
     "last_7": {
-      "hits": 28,
-      "games": 51,
+      "hits": 30,
+      "games": 53,
       "excluded": 0
     }
   },
@@ -242,9 +242,9 @@
     {
       "lo": 80,
       "hi": 90,
-      "predicted_mean": 0.8411,
-      "actual_rate": 0.8056,
-      "games": 36
+      "predicted_mean": 0.8399,
+      "actual_rate": 0.8158,
+      "games": 38
     },
     {
       "lo": 90,
@@ -262,34 +262,34 @@
         "compared_to": "2026-11-23",
         "items": [
           {
-            "team": "SAC",
-            "previous": -7.1,
-            "current": -7.07,
-            "delta": 0.03
+            "team": "OKC",
+            "previous": 9.32,
+            "current": 9.61,
+            "delta": 0.29
           },
           {
-            "team": "DAL",
-            "previous": -3.3,
-            "current": -3.31,
-            "delta": -0.01
-          },
-          {
-            "team": "ATL",
-            "previous": -0.01,
-            "current": -0.01,
-            "delta": 0
+            "team": "CHA",
+            "previous": -2.53,
+            "current": -2.76,
+            "delta": -0.23
           },
           {
             "team": "BKN",
             "previous": -6.49,
-            "current": -6.49,
-            "delta": 0
+            "current": -6.68,
+            "delta": -0.19
           },
           {
-            "team": "BOS",
-            "previous": 8.06,
-            "current": 8.06,
-            "delta": 0
+            "team": "MIN",
+            "previous": 0.44,
+            "current": 0.26,
+            "delta": -0.18
+          },
+          {
+            "team": "LAC",
+            "previous": -5.2,
+            "current": -5.36,
+            "delta": -0.16
           }
         ]
       },
