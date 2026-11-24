@@ -355,7 +355,9 @@ for /f "delims=" %%S in ('git rev-parse HEAD 2^>nul') do set PUB_HEAD_AFTER=%%S
 echo ------------------------------------------------------------------ >> "%LOG_FILE%"
 if not "%PUBLISH_RC%"=="0" (
     echo [ERROR] Publish gate FAILED with exit code %PUBLISH_RC% in mode %MODE_LABEL%. >> "%LOG_FILE%"
-    echo [ERROR] At least one fatal assertion failed - NOTHING WAS PUBLISHED. >> "%LOG_FILE%"
+    echo [ERROR] Either a fatal assertion failed or the commit/push step failed - nothing was pushed to NBA_analytics. >> "%LOG_FILE%"
+    echo [ERROR] If the push step failed, its publish commit was undone: the local branch is back in step with origin >> "%LOG_FILE%"
+    echo [ERROR] and the regenerated files are still in the working tree. See the "publish_web: step failed" lines above. >> "%LOG_FILE%"
     echo [ERROR] Yesterday's correct site stays up rather than a half-updated one. >> "%LOG_FILE%"
     echo [ERROR] Read the "-- Assertions --" block above: every failing assertion >> "%LOG_FILE%"
     echo [ERROR] is on a "[FAIL]" line with its id, name, summary and the >> "%LOG_FILE%"
