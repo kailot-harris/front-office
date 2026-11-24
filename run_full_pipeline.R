@@ -237,6 +237,14 @@ run_stage("xgboost_shap_engine.R",
 run_stage("build_matchups_dataset.R", "Assemble Weekly Matchup Slates, Projections & Graded Results",
           output = file.path(CACHE_DIR, "matchups_cache.rds"))
 
+# 9.1. Momentum Board data layer (NBA_analytics#237). Must run AFTER the team-box
+# refresh (8.55), the prediction log (8), the matchups schedule cache (9) and the
+# PBP / shots / player-box caches written by the ingest and shot-quality stages.
+# Writes momentum_board.json, the persisted Elo series and the weekly rank history.
+run_stage("build_momentum_dataset.R", "Build Momentum Board (Rolling Windows, Elo Series, Flags)",
+          output = c(WEB_JSON_MOMENTUM_BOARD,
+                     file.path(CACHE_DIR, sprintf("elo_daily_%d.rds", MATCHUPS_HOOPR_SEASON))))
+
 # 9.2. Landing digest (front-office#200). Reads the matchups payload written just
 # above plus the schedule and ensemble-ratings caches; appends today's ratings to
 # data/history/ratings_history.csv (tracked) and writes web/public/data/landing_digest.json.

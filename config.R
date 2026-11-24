@@ -183,6 +183,10 @@ WEB_JSON_MATCHUPS_SLATES             <- file.path(WEB_DATA_DIR, "matchups_slates
 WEB_GAMES_DIR                        <- file.path(WEB_DATA_DIR, "games")
 WEB_JSON_PLAYOFF_SERIES_MATCHUPS     <- file.path(WEB_DATA_DIR, "playoff_series_matchups.json")
 WEB_JSON_LANDING_DIGEST              <- file.path(WEB_DATA_DIR, "landing_digest.json")
+WEB_JSON_MOMENTUM_BOARD              <- file.path(WEB_DATA_DIR, "momentum_board.json")
+# Weekly momentum rank snapshots (NBA_analytics#237), tracked in git like
+# data/history/ratings_history.csv; written by build_momentum_dataset.R.
+MOMENTUM_RANK_HISTORY <- file.path(PROJECT_DIR, "data", "history", "momentum_rank_history.csv")
 # Non-members (see above), named so no caller re-types them.
 WEB_JSON_OFFSEASON_TRANSACTIONS      <- file.path(WEB_DATA_DIR, "offseason_transactions.json")
 WEB_JSON_SHOTS_INDEX                 <- file.path(WEB_DATA_DIR, "shots_index.json")
@@ -202,7 +206,8 @@ WEB_DATA_FILES <- c(
   WEB_JSON_CLUTCH_LEVERAGE_METRICS,
   WEB_JSON_MATCHUPS_SLATES,
   WEB_JSON_PLAYOFF_SERIES_MATCHUPS,
-  WEB_JSON_LANDING_DIGEST
+  WEB_JSON_LANDING_DIGEST,
+  WEB_JSON_MOMENTUM_BOARD
 )
 
 # CACHE_COACHING_JSON, CACHE_CBA_JSON, CACHE_MATCHUPS_JSON and
