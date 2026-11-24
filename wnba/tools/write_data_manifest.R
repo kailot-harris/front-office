@@ -21,6 +21,11 @@
 # through_date_source = "not_game_dated" and a coverage_note; it is never
 # derived from generated_at.
 #
+# Lifecycle (WNBA#250): each entry also carries `lifecycle` (live | season_final
+# | archived) as config.R's wnba_data_lifecycle() assigns it; season_final
+# entries add season, final_through_date, frozen_sha256 and frozen_at from the
+# registry tools/freeze_season.R writes. publish_web.R Assertion L reads them.
+#
 # Usage:
 #   Rscript tools/write_data_manifest.R          # writes the manifest
 #   source("tools/write_data_manifest.R")        # defines functions only
@@ -77,7 +82,28 @@ DM_STAMP_FIELDS <- list(
   NULL
 }
 
-.dm_sha256 <- function(path) digest::digest(file = path, algo = "sha256")
+# Raw-byte sha256. tools::sha256sum (base R >= 4.5) when present, so the writer needs
+# no extra package; digest is the fallback for older R. Both hash the file's bytes.
+.dm_sha256 <- function(path) {
+  if (exists("sha256sum", envir = asNamespace("tools"), inherits = FALSE)) {
+    unname(as.character(tools::sha256sum(path)))
+  } else {
+    digest::digest(file = path, algo = "sha256")
+  }
+}
+
+# ------------------------------------------------------------------------------
+# Lifecycle (WNBA#250). Assigned by config.R's wnba_data_lifecycle(), which reads
+# the freeze/thaw registry tools/freeze_season.R writes. The writer only copies
+# what config.R assigns; it never decides a lifecycle itself. When config.R is
+# not loaded the entries carry no lifecycle, and publish_web.R's assertion L
+# fails on that rather than guessing.
+# ------------------------------------------------------------------------------
+DM_LIFECYCLE_FIELDS <- c("season", "final_through_date", "frozen_sha256", "frozen_at")
+
+.dm_default_lifecycle_fn <- function() {
+  if (exists("wnba_data_lifecycle", mode = "function")) get("wnba_data_lifecycle", mode = "function") else NULL
+}
 
 # ------------------------------------------------------------------------------
 # Coverage extractors: latest game date genuinely present in each payload.
@@ -165,9 +191,11 @@ build_data_manifest <- function(data_dir = file.path("web", "public", "data"),
                                 static_datasets = DM_STATIC_DATASETS,
                                 now = Sys.time(),
                                 previous = .dm_read_previous(file.path(data_dir, DM_MANIFEST_NAME)),
-                                extractors = DM_COVERAGE_EXTRACTORS) {
+                                extractors = DM_COVERAGE_EXTRACTORS,
+                                lifecycle_fn = .dm_default_lifecycle_fn()) {
   files <- sort(list.files(data_dir, pattern = "\\.json$", full.names = FALSE))
   files <- setdiff(files, DM_MANIFEST_NAME)
+  lifecycles <- if (is.function(lifecycle_fn)) lifecycle_fn(files) else list()
   sched_date <- dm_latest_completed_schedule_date(schedule_path)
   prev_entries <- if (!is.null(previous)) previous$datasets else list()
   names(prev_entries) <- vapply(prev_entries, function(e) as.character(.dm_or(e$file, "")), character(1))
@@ -211,6 +239,13 @@ build_data_manifest <- function(data_dir = file.path("web", "public", "data"),
     )
     if (is_static) entry$static_reason <- DM_STATIC_REASON
     if (!is.null(lag)) entry$lag_days <- lag
+    lc <- lifecycles[[f]]
+    if (!is.null(lc) && !is.null(lc$lifecycle)) {
+      entry$lifecycle <- lc$lifecycle
+      if (identical(lc$lifecycle, "season_final")) {
+        for (k in DM_LIFECYCLE_FIELDS) if (!is.null(lc[[k]])) entry[[k]] <- lc[[k]]
+      }
+    }
     entry
   })
 
@@ -254,7 +289,10 @@ local({
   if (interactive() || !any(grepl("write_data_manifest\\.R$", f))) return(invisible(NULL))
   if (nzchar(Sys.getenv("WNBA_SKIP_MANIFEST_AUTORUN"))) return(invisible(NULL))
   root <- normalizePath(dirname(dirname(f[1])), winslash = "/", mustWork = FALSE)
-  if (file.exists(file.path(root, "config.R"))) setwd(root)
+  if (file.exists(file.path(root, "config.R"))) {
+    setwd(root)
+    source("config.R")  # lifecycle assignment (WNBA#250)
+  }
   out <- write_data_manifest()
   m <- jsonlite::fromJSON(out, simplifyVector = FALSE)
   cat(sprintf("Wrote %s (%d datasets, schedule_through_date=%s)\n", out, length(m$datasets),

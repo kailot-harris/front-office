@@ -29,7 +29,19 @@ RUN <- c(
   "tools/test_pure_functions.R",
   "tools/test_phase4_foundation.R",
   "tools/test_logging_fault_injection.R",
-  "tools/test_db_logs.R"
+  "tools/test_db_logs.R",
+  "tests/unit/test_schedule_completed_reconcile.R"
+)
+
+# Scripts under tests/ that run on a hosted runner too. Listed by path, not
+# globbed: most of tests/unit/ uses testthat, which is not in
+# .github/r-dependencies.txt. These are base R + jsonlite, print the same
+# [PASS]/[FAIL] lines and exit non-zero on failure. Each must exist on disk.
+#   WNBA#250: off-season lifecycle scoping of publish_web.R F/I + assertion L,
+#             and tools/freeze_season.R freeze/thaw.
+RUN_TESTS_DIR <- c(
+  "tests/unit/test_offseason_lifecycle_gate.R",
+  "tests/unit/test_season_lifecycle_freeze.R"
 )
 
 # Deliberately not run, and why. Every entry here is a measured reason, not a
@@ -56,7 +68,8 @@ SKIP <- c(
 # 64 vendored third-party suites under renv/library/ or the agent worktree
 # copies under .claude/, so the exclusion the brief asks for is structural
 # here rather than a pattern someone has to remember to maintain.
-present <- sort(Sys.glob(file.path("tools", "test_*.R")))
+present <- sort(c(Sys.glob(file.path("tools", "test_*.R")),
+                  Sys.glob(file.path("tests", "unit", "test_schedule_completed_reconcile.R"))))
 
 if (length(present) == 0L) {
   stop("No tools/test_*.R found - is this running from the repository root?")
@@ -78,6 +91,12 @@ if (length(vanished)) {
   stop(sprintf("Classified but missing from disk - remove from this script:\n  %s",
                paste(vanished, collapse = "\n  ")))
 }
+missing_tests_dir <- RUN_TESTS_DIR[!file.exists(RUN_TESTS_DIR)]
+if (length(missing_tests_dir)) {
+  stop(sprintf("RUN_TESTS_DIR lists files missing from disk:\n  %s",
+               paste(missing_tests_dir, collapse = "\n  ")))
+}
+RUN <- c(RUN, RUN_TESTS_DIR)
 
 # ------------------------------------------------------------------- run -----
 
@@ -109,7 +128,7 @@ failed <- results[results$status != 0L, , drop = FALSE]
 
 lines <- c(
   sprintf("### R tests: %d of %d file(s) run, %d assertion(s) passed, %d failed, %d file-level failure(s)",
-          nrow(results), length(present), sum(results$pass), sum(results$fail), nrow(failed)),
+          nrow(results), length(present) + length(RUN_TESTS_DIR), sum(results$pass), sum(results$fail), nrow(failed)),
   "",
   "| test file | exit code | [PASS] | [FAIL] |",
   "| --- | --- | --- | --- |",

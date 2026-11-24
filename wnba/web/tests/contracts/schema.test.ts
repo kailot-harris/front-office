@@ -193,3 +193,63 @@ describe('Strict Zod schema contracts against public/data/*.json', () => {
     }
   });
 });
+
+// The infoSets count rule depends on whether the series is decided: one set per
+// decision point means games + 1 while it is live, and exactly games once a team
+// has 4 wins (nothing is left to forecast after the deciding game). Fixtures are
+// derived from the shipped payload so every other refine still holds.
+describe('FinalsSeriesBacktestSetSchema infoSets count vs series state', () => {
+  type Backtest = z.infer<typeof FinalsSeriesBacktestSetSchema>;
+  const base = loadAllDatasets().finalsSeriesBacktest as Backtest;
+  const COUNT_MSG = 'infoSets must number one more than the games played';
+  const clone = (): Backtest => JSON.parse(JSON.stringify(base));
+  const countIssue = (p: Backtest) => {
+    const r = FinalsSeriesBacktestSetSchema.safeParse(p);
+    return !r.success && r.error.issues.some((i) => i.message.startsWith(COUNT_MSG));
+  };
+  const wins = (p: Backtest) => {
+    const high = p.games.filter((g) => g.highWon).length;
+    return { high, low: p.games.length - high };
+  };
+  // The first k games of the real series, chosen so neither team has 4 wins yet.
+  const undecided = (k: number): Backtest => {
+    const p = clone();
+    p.games = p.games.slice(0, k);
+    p.infoSets = p.infoSets.slice(0, k + 1);
+    return p;
+  };
+
+  it('fixture sanity: the shipped series is decided, its 4-game prefix is not', () => {
+    const w = wins(base);
+    expect(Math.max(w.high, w.low)).toBe(4);
+    const u = wins(undecided(4));
+    expect(Math.max(u.high, u.low)).toBeLessThan(4);
+  });
+
+  it('undecided series requires games + 1 information sets', () => {
+    const ok = undecided(4);
+    expect(ok.infoSets.length).toBe(ok.games.length + 1);
+    expect(FinalsSeriesBacktestSetSchema.safeParse(ok).success).toBe(true);
+
+    const short = undecided(4);
+    short.infoSets = short.infoSets.slice(0, short.games.length);
+    expect(countIssue(short)).toBe(true);
+  });
+
+  it('decided series accepts exactly games information sets', () => {
+    const p = clone();
+    expect(p.infoSets.length).toBe(p.games.length);
+    expect(FinalsSeriesBacktestSetSchema.safeParse(p).success).toBe(true);
+  });
+
+  it('decided series rejects games + 1 and games - 1 information sets', () => {
+    const plus = clone();
+    plus.infoSets = [...plus.infoSets, { ...plus.infoSets[plus.infoSets.length - 1] }];
+    expect(plus.infoSets.length).toBe(plus.games.length + 1);
+    expect(countIssue(plus)).toBe(true);
+
+    const minus = clone();
+    minus.infoSets = minus.infoSets.slice(0, minus.games.length - 1);
+    expect(countIssue(minus)).toBe(true);
+  });
+});
