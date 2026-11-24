@@ -11,7 +11,9 @@ import {
   PlayerSpatialMap,
   PlayerSpatialIndexEntry,
   WorldSeriesData,
+  ActualTeamRecord,
 } from './types';
+import { deriveActualTeamRecords } from './standings';
 
 export function getTeamsData(): TeamProjection[] {
   const filePath = path.join(process.cwd(), 'public', 'data', 'projections_season_teams.json');
@@ -114,6 +116,18 @@ export function getMatchupsWeek(week: number): Matchup[] {
   if (!fs.existsSync(filePath)) return [];
   const fileContent = fs.readFileSync(filePath, 'utf-8');
   return JSON.parse(fileContent) as Matchup[];
+}
+
+/**
+ * Aggregate regular-season W-L and run differential across all matchup slates.
+ */
+export function getActualTeamRecords(): Record<string, ActualTeamRecord> {
+  const index = getMatchupsIndex();
+  const allMatchups: Matchup[] = [];
+  for (const slate of index.available_weeks) {
+    allMatchups.push(...getMatchupsWeek(slate.week));
+  }
+  return deriveActualTeamRecords(allMatchups);
 }
 
 export function getPlayoffSeriesCatalog(): PlayoffMatchupsCatalog {

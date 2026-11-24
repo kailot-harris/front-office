@@ -528,4 +528,12 @@ export interface PlayerSpatialMap {
 
 export type PlayerSpatialDictionary = Record<string, PlayerSpatialMap>;
 
+export interface ActualTeamRecord {
+  wins: number;
+  losses: number;
+  runsFor: number;
+  runsAgainst: number;
+}
+
+
 
