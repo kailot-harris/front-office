@@ -50,5 +50,39 @@ check("row count and columns unchanged", nrow(out3) == nrow(inp) && identical(na
 check("NULL schedule passes through", is.null(reconcile_schedule_completed(NULL, box = box)))
 check("box lacking team_score is ignored", !done(reconcile_schedule_completed(mk(1L, FALSE), box = box["game_id"]), 1L))
 
+# Postponed / cancelled games (#259): 2026-07-16 DAL vs NY (401857072) was postponed
+# and made up on 2026-07-20 under 401892393. schedule_to_long() preserves status_type_name,
+# reconcile_schedule_completed() leaves it uncompleted, and derive_rest_features() skips it
+# so it does not fabricate rest/travel for subsequent games.
+raw_pp <- tibble::tibble(
+  game_id = c("100", "401857072", "102"),
+  game_date = as.Date(c("2026-07-12", "2026-07-16", "2026-07-18")),
+  season = c(2026L, 2026L, 2026L),
+  season_type = c(2L, 2L, 2L),
+  home_abbreviation = c("TOR", "DAL", "IND"),
+  away_abbreviation = c("NY", "NY", "NY"),
+  status_type_completed = c(TRUE, FALSE, TRUE),
+  status_type_name = c("STATUS_FINAL", "STATUS_POSTPONED", "STATUS_FINAL"),
+  notes_headline = c(NA_character_, "Travel Issues - Makeup date July 20", NA_character_)
+)
+long_pp <- schedule_to_long(raw_pp)
+check("schedule_to_long preserves status_type_name",
+      "status_type_name" %in% names(long_pp) &&
+        all(long_pp$status_type_name[long_pp$game_id == "401857072"] == "STATUS_POSTPONED"))
+
+rest_pp <- derive_rest_features(long_pp)
+ny_18 <- rest_pp[rest_pp$team_abbreviation == "NY" & rest_pp$game_id == "102", ]
+ny_pp <- rest_pp[rest_pp$team_abbreviation == "NY" & rest_pp$game_id == "401857072", ]
+check("derive_rest_features skips postponed game for NY days_rest (5, not 1)",
+      nrow(ny_18) == 1L && identical(ny_18$days_rest, 5L))
+check("derive_rest_features skips postponed game for NY last_played_at (TOR, not DAL)",
+      nrow(ny_18) == 1L && identical(ny_18$last_played_at, "TOR"))
+check("derive_rest_features leaves postponed row days_rest = NA and is_back_to_back = FALSE",
+      nrow(ny_pp) == 1L && is.na(ny_pp$days_rest) && identical(ny_pp$is_back_to_back, FALSE))
+
+rec_pp <- reconcile_schedule_completed(rest_pp, box = box)
+check("reconcile_schedule_completed keeps postponed game with 0 box rows uncompleted",
+      !done(rec_pp, "401857072"))
+
 if (fails > 0L) quit(status = 1L)
 cat("All schedule reconcile assertions passed.\n")
