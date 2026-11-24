@@ -24,10 +24,11 @@ test.describe('search inputs are live after hydration', () => {
       const input = page.locator('input[type="text"]').first();
       await expect(input, `${route.path} has no text filter`).toBeVisible();
 
-      const before = await page.locator('tbody tr, [class*="rounded-xl"]').count();
+      const rows = route.resultRows ?? 'tbody tr, [class*="rounded-xl"]';
+      const before = await page.locator(rows).count();
       await input.fill('zzzznotarealthing');
       await page.waitForTimeout(250);
-      const after = await page.locator('tbody tr, [class*="rounded-xl"]').count();
+      const after = await page.locator(rows).count();
 
       expect(
         after,
@@ -37,7 +38,7 @@ test.describe('search inputs are live after hydration', () => {
 
       await input.fill('');
       await page.waitForTimeout(250);
-      expect(await page.locator('tbody tr, [class*="rounded-xl"]').count()).toBeGreaterThanOrEqual(after);
+      expect(await page.locator(rows).count()).toBeGreaterThanOrEqual(after);
     });
   }
 });

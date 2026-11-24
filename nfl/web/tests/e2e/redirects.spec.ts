@@ -1,12 +1,8 @@
 import { test, expect } from '@playwright/test';
-import { linkHref } from './routes';
+import { MOVED_ROUTES, linkHref } from './routes';
 
 /** #211: every renamed page keeps its old address as a forwarding stub. */
-const MOVED: Array<[string, string]> = [
-  ['/dna', '/player-dna'],
-  ['/coaching', '/coaches'],
-  ['/salary-cap', '/cap-sheet'],
-];
+const MOVED = MOVED_ROUTES;
 
 for (const [from, to] of MOVED) {
   test(`${from} forwards to ${to}`, async ({ page }) => {

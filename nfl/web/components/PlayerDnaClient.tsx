@@ -46,7 +46,11 @@ interface RadarChartProps {
 
 const RadarChart: React.FC<RadarChartProps> = ({ playerA, playerB, size = 320 }) => {
   const center = size / 2;
-  const radius = size * 0.36;
+  const radius = size * 0.3;
+  // Axis labels sit outside the ring. Widen the drawing box so the longest label
+  // ("Touchdown efficiency", 20 chars) stays inside the SVG instead of spilling
+  // past the card and off a phone screen.
+  const padX = 80;
   const axes = playerA.radarAxes;
   const numAxes = axes.length;
 
@@ -65,7 +69,7 @@ const RadarChart: React.FC<RadarChartProps> = ({ playerA, playerB, size = 320 })
   // Label coordinates slightly outside the outer ring
   const getLabelCoords = (index: number, total: number) => {
     const angle = -Math.PI / 2 + (index * 2 * Math.PI) / total;
-    const r = radius + 24;
+    const r = radius + 16;
     return {
       x: center + r * Math.cos(angle),
       y: center + r * Math.sin(angle),
@@ -101,12 +105,12 @@ const RadarChart: React.FC<RadarChartProps> = ({ playerA, playerB, size = 320 })
   return (
     <div className="relative flex flex-col items-center justify-center p-4 bg-slate-950/80 rounded-2xl border border-slate-800/80 shadow-inner">
       <svg
-        width={size}
+        width={size + 2 * padX}
         height={size}
         role="img"
         aria-label={radarLabel}
-        className="overflow-visible select-none max-w-full"
-        viewBox={`0 0 ${size} ${size}`}
+        className="select-none max-w-full h-auto"
+        viewBox={`${-padX} 0 ${size + 2 * padX} ${size}`}
       >
         {/* Concentric grid polygons (25%, 50%, 75%, 100%) */}
         {[0.25, 0.5, 0.75, 1.0].map((level) => {
@@ -207,11 +211,14 @@ const RadarChart: React.FC<RadarChartProps> = ({ playerA, playerB, size = 320 })
             <text
               key={`label-${i}`}
               x={x}
-              y={y + 4}
+              y={y - 2}
               textAnchor={anchor}
               className="text-[10.5px] font-mono font-medium fill-slate-300 pointer-events-none"
             >
-              {axis.label} ({axis.value === null ? 'n/a' : axis.value.toFixed(0)})
+              {axis.label}
+              <tspan x={x} dy="12" className="fill-slate-400">
+                {axis.value === null ? 'n/a' : axis.value.toFixed(0)}
+              </tspan>
             </text>
           );
         })}
