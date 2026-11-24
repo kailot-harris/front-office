@@ -151,6 +151,30 @@
       "rule": "hardcoded_metric_vector",
       "pattern": "c\\(34\\.0, 32\\.5, 30\\.5, 28\\.5, 26\\.5, 20\\.0, 15\\.5, 12\\.5\\)",
       "justification": "Standard 8-player WNBA 40-minute regulation playoff rotation minute template (sums to 200 team minutes)."
+    },
+    {
+      "file": "nba/build_momentum_dataset.R",
+      "rule": "player_name_override",
+      "pattern": "grepl\\(\"Technical\", tt, ignore\\.case = TRUE\\)",
+      "justification": "Matches the ESPN play-by-play event type 'Technical Free Throw' to leave technical free throws out of free-throw attempt counts; it filters an event type, not a player name."
+    },
+    {
+      "file": "nba/build_momentum_dataset.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(form = 0\\.7, trend = 0\\.1, residual = 0\\.1, elo = 0\\.1\\)",
+      "justification": "Momentum score component weights: a documented design choice (comment above the constant), published on the page in methods.combined_score.weights; not observed data."
+    },
+    {
+      "file": "nba/build_momentum_dataset.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(rim = 2, mid = 2, three = 3\\)",
+      "justification": "Points per made field goal by shot zone (rim and mid-range are two-point shots, three-pointers score 3): basketball scoring rules."
+    },
+    {
+      "file": "nba/build_momentum_dataset.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(2L, 3L, 5L\\)",
+      "justification": "ESPN season-type codes (2 regular season, 3 postseason, 5 play-in) selecting the prior season's games that seed the Elo carry-over."
     }
   ]
 }
