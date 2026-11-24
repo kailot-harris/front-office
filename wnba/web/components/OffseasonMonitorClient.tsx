@@ -531,7 +531,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                 Weekly Pulse
               </span>
               <span className="text-xs text-slate-400 font-mono">
-                Phase: <strong className="text-slate-200">{initialDataset.activePhase}</strong>
+                Offseason stage: <strong className="text-slate-200">{initialDataset.activePhase}</strong>
               </span>
               <span className="text-slate-400">•</span>
               <span className="text-xs text-slate-400 font-mono">
@@ -885,7 +885,7 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                 <div className="flex items-center justify-between text-xs text-slate-400 font-mono pb-2 border-b border-slate-800">
                   <div className="flex items-center gap-2">
                     <FileText className="w-3.5 h-3.5 text-violet-400" />
-                    <span>Raw Markdown Memo (Phase 4 Spec)</span>
+                    <span>Raw memo (Markdown)</span>
                   </div>
                   <button
                     onClick={handleCopyMemo}
