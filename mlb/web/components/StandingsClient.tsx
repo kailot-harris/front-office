@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { TeamProjection, ModelMetadata } from '@/lib/types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { TeamProjection, ModelMetadata, ActualTeamRecord } from '@/lib/types';
+import { enrichTeamsWithActuals } from '@/lib/standings';
 import {
   Trophy,
   TrendingUp,
+  TrendingDown,
   Filter,
   ArrowUpDown,
   ArrowUp,
@@ -16,6 +18,9 @@ import {
   ArrowRight,
   Download,
   Film,
+  Activity,
+  Flame,
+  Snowflake,
 } from 'lucide-react';
 import { TeamLogo } from '@/components/TeamLogo';
 import { PlayoffContendersBoxWhisker } from '@/components/PlayoffContendersBoxWhisker';
@@ -29,7 +34,9 @@ interface StandingsClientProps {
   metadata?: ModelMetadata;
   /** GIF items from visual_media_index.json (loaded by the server page). */
   mediaItems: VisualMediaItem[];
+  actualRecords?: Record<string, ActualTeamRecord>;
   initialTab?: 'visualizer' | 'table' | 'gallery';
+  initialTableMode?: 'projections' | 'reality';
 }
 
 export type StandingsSortField =
@@ -43,28 +50,111 @@ export type StandingsSortField =
   | 'luck_wins'
   | 'percentile_range'
   | 'ensemble_playoff_prob'
-  | 'ensemble_title_prob';
+  | 'ensemble_title_prob'
+  | 'actual_record'
+  | 'actual_win_pct'
+  | 'actual_run_diff'
+  | 'current_pace'
+  | 'performance_delta';
 
 export const StandingsClient: React.FC<StandingsClientProps> = ({
   teams,
   mediaItems,
+  actualRecords = {},
   initialTab = 'visualizer',
+  initialTableMode = 'projections',
 }) => {
   const [activeTab, setActiveTab] = useState<'visualizer' | 'table' | 'gallery'>(initialTab);
+  const [tableMode, setTableMode] = useState<'projections' | 'reality'>(initialTableMode);
   const [selectedLeague, setSelectedLeague] = useState<'All' | 'AL' | 'NL'>('All');
   const [selectedDivision, setSelectedDivision] = useState<string>('All');
   const [selectedGifId, setSelectedGifId] = useState<string>(mediaItems[0]?.id ?? '');
-  const [sortBy, setSortBy] = useState<StandingsSortField>('ensemble_mean_wins');
+  const [sortBy, setSortBy] = useState<StandingsSortField>(
+    initialTableMode === 'reality' ? 'performance_delta' : 'ensemble_mean_wins'
+  );
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const { scrollRef: tableScrollRef, showScrollHint, onScroll: handleTableScroll } = useTableScrollHint<HTMLDivElement>();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('view') || params.get('tab');
+      if (tabParam === 'table' || tabParam === 'visualizer' || tabParam === 'gallery') {
+        setActiveTab(tabParam);
+      }
+      const modeParam = params.get('mode');
+      if (modeParam === 'reality' || modeParam === 'projections') {
+        setTableMode(modeParam);
+        setSortBy(modeParam === 'reality' ? 'performance_delta' : 'ensemble_mean_wins');
+        setSortOrder('desc');
+        if (modeParam === 'reality' && !tabParam) {
+          setActiveTab('table');
+        }
+      }
+    }
+  }, []);
+
+  const handleTabChange = (tab: 'visualizer' | 'table' | 'gallery') => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('view', tab);
+      url.searchParams.delete('tab');
+      window.history.replaceState(null, '', url.toString());
+    }
+  };
+
+  const handleModeChange = (mode: 'projections' | 'reality') => {
+    setTableMode(mode);
+    if (mode === 'reality') {
+      setActiveTab('table');
+      setSortBy('performance_delta');
+      setSortOrder('desc');
+    } else {
+      setSortBy('ensemble_mean_wins');
+      setSortOrder('desc');
+    }
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('mode', mode);
+      if (mode === 'reality') {
+        url.searchParams.set('view', 'table');
+      }
+      window.history.replaceState(null, '', url.toString());
+    }
+  };
 
   const divisions = useMemo(() => {
     const set = new Set(teams.map((t) => t.division));
     return Array.from(set).sort();
   }, [teams]);
 
+  const enrichedTeams = useMemo(
+    () => enrichTeamsWithActuals(teams, actualRecords),
+    [teams, actualRecords]
+  );
+
+  const hasActualGames = useMemo(
+    () => enrichedTeams.some((t) => t.actual_gp > 0),
+    [enrichedTeams]
+  );
+
+  const topOverperformers = useMemo(() => {
+    return [...enrichedTeams]
+      .filter((t) => t.actual_gp > 0)
+      .sort((a, b) => b.performance_delta - a.performance_delta)
+      .slice(0, 3);
+  }, [enrichedTeams]);
+
+  const topUnderperformers = useMemo(() => {
+    return [...enrichedTeams]
+      .filter((t) => t.actual_gp > 0)
+      .sort((a, b) => a.performance_delta - b.performance_delta)
+      .slice(0, 3);
+  }, [enrichedTeams]);
+
   const filteredTeams = useMemo(() => {
-    return teams
+    return enrichedTeams
       .filter((t) => {
         if (selectedLeague !== 'All' && t.league !== selectedLeague) return false;
         if (selectedDivision !== 'All' && t.division !== selectedDivision) return false;
@@ -84,6 +174,16 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
           const rangeA = a.ensemble_p90 - a.ensemble_p10;
           const rangeB = b.ensemble_p90 - b.ensemble_p10;
           cmp = rangeA - rangeB;
+        } else if (sortBy === 'actual_record') {
+          cmp = (a.actual.wins - a.actual.losses) - (b.actual.wins - b.actual.losses) || a.actual_win_pct - b.actual_win_pct;
+        } else if (sortBy === 'actual_win_pct') {
+          cmp = a.actual_win_pct - b.actual_win_pct;
+        } else if (sortBy === 'actual_run_diff') {
+          cmp = a.actual_run_diff - b.actual_run_diff;
+        } else if (sortBy === 'current_pace') {
+          cmp = a.current_pace - b.current_pace;
+        } else if (sortBy === 'performance_delta') {
+          cmp = a.performance_delta - b.performance_delta;
         } else {
           const valA = (a[sortBy as keyof TeamProjection] as number) ?? 0;
           const valB = (b[sortBy as keyof TeamProjection] as number) ?? 0;
@@ -91,7 +191,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
         }
         return sortOrder === 'desc' ? -cmp : cmp;
       });
-  }, [teams, selectedLeague, selectedDivision, sortBy, sortOrder]);
+  }, [enrichedTeams, selectedLeague, selectedDivision, sortBy, sortOrder]);
 
   const handleSort = (field: StandingsSortField) => {
     if (sortBy === field) {
@@ -120,6 +220,37 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
   };
 
   const handleExportCsv = () => {
+    if (tableMode === 'reality') {
+      exportToCsv(
+        filteredTeams.map((t) => ({
+          team: t.team,
+          full_name: t.full_name,
+          league: t.league,
+          division: t.division,
+          actual_record: `${t.actual.wins}-${t.actual.losses}`,
+          actual_win_pct: `.${Math.round(t.actual_win_pct * 1000).toString().padStart(3, '0')}`,
+          run_diff: t.actual_run_diff > 0 ? `+${t.actual_run_diff}` : `${t.actual_run_diff}`,
+          projected_wins: t.projected_wins.toFixed(1),
+          current_pace_162g: t.current_pace.toFixed(1),
+          performance_delta: (t.performance_delta > 0 ? '+' : '') + t.performance_delta.toFixed(1),
+        })),
+        [
+          { key: 'team', label: 'Team' },
+          { key: 'full_name', label: 'Franchise' },
+          { key: 'league', label: 'League' },
+          { key: 'division', label: 'Division' },
+          { key: 'actual_record', label: 'Actual Record' },
+          { key: 'actual_win_pct', label: 'Win %' },
+          { key: 'run_diff', label: 'Run Diff' },
+          { key: 'projected_wins', label: 'Projected Wins (162G)' },
+          { key: 'current_pace_162g', label: '162G Win Pace' },
+          { key: 'performance_delta', label: 'Performance Delta' },
+        ],
+        'mlb-standings-vs-projections'
+      );
+      return;
+    }
+
     exportToCsv(
       filteredTeams as unknown as Record<string, unknown>[],
       [
@@ -248,7 +379,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
       </div>
 
       {/* View Switcher: Playoff Contenders Snapshot vs Full League Standings Table */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-800 pb-3">
         <div
           className="flex flex-wrap sm:inline-flex rounded-xl bg-surface p-1.5 border border-slate-800/80 shadow-inner relative z-20 w-full sm:w-auto gap-1 sm:gap-0"
           role="tablist"
@@ -258,7 +389,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
             role="tab"
             id="tab-btn-visualizer"
             aria-selected={activeTab === 'visualizer'}
-            onClick={() => setActiveTab('visualizer')}
+            onClick={() => handleTabChange('visualizer')}
             className={`cursor-pointer select-none touch-manipulation flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-20 ${
               activeTab === 'visualizer'
                 ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
@@ -283,7 +414,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
             role="tab"
             id="tab-btn-gallery"
             aria-selected={activeTab === 'gallery'}
-            onClick={() => setActiveTab('gallery')}
+            onClick={() => handleTabChange('gallery')}
             className={`cursor-pointer select-none touch-manipulation flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-20 ${
               activeTab === 'gallery'
                 ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
@@ -306,7 +437,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
             role="tab"
             id="tab-btn-table"
             aria-selected={activeTab === 'table'}
-            onClick={() => setActiveTab('table')}
+            onClick={() => handleTabChange('table')}
             className={`cursor-pointer select-none touch-manipulation flex-1 sm:flex-initial flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all relative z-20 ${
               activeTab === 'table'
                 ? 'bg-accent-600 text-fo-on-accent shadow-lg shadow-accent-600/40 ring-1 ring-accent-400/50'
@@ -325,16 +456,51 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
           </button>
         </div>
 
-        {activeTab === 'visualizer' && (
-          <button
-            type="button"
-            onClick={() => setActiveTab('table')}
-            className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 self-end sm:self-auto"
+        <div className="flex flex-wrap items-center justify-between lg:justify-end gap-3">
+          {/* Projections vs. Actual View Toggle */}
+          <div
+            className="inline-flex rounded-lg bg-surface p-1 border border-slate-800"
+            role="group"
+            aria-label="Standings table mode"
           >
-            <span>Explore all 30 franchises & Pythagenpat / Elo metrics</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        )}
+            <button
+              type="button"
+              onClick={() => handleModeChange('projections')}
+              aria-pressed={tableMode === 'projections'}
+              className={`cursor-pointer select-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                tableMode === 'projections'
+                  ? 'bg-accent-600 text-fo-on-accent shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Model Projections
+            </button>
+            <button
+              type="button"
+              onClick={() => handleModeChange('reality')}
+              aria-pressed={tableMode === 'reality'}
+              className={`cursor-pointer select-none px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                tableMode === 'reality'
+                  ? 'bg-accent-600 text-fo-on-accent shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Activity className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Projections vs. Actual</span>
+            </button>
+          </div>
+
+          {activeTab === 'visualizer' && (
+            <button
+              type="button"
+              onClick={() => handleTabChange('table')}
+              className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1"
+            >
+              <span>Explore all 30 franchises</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tab 3: Animated GIF Visual Media Dropdown & Player */}
@@ -453,6 +619,96 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
       {/* Tab 2: Full Standings Table */}
       {activeTab === 'table' && (
         <div className="space-y-4">
+          {tableMode === 'reality' && hasActualGames && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Overperformers Podium */}
+              <div className="bg-gradient-to-br from-emerald-950/30 via-surface-raised/80 to-surface-raised/60 border border-emerald-500/30 rounded-2xl p-4 shadow-lg">
+                <div className="flex items-center justify-between mb-3 border-b border-emerald-500/20 pb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+                      <Flame className="w-4 h-4" />
+                    </div>
+                    <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-emerald-300">
+                      League Overperformers (vs Projections)
+                    </h3>
+                  </div>
+                  <span className="text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    162G Pace Delta &gt; 0
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {topOverperformers.map((t, idx) => (
+                    <div
+                      key={t.team}
+                      className="bg-surface/70 border border-slate-800/90 rounded-xl p-3 flex flex-col justify-between hover:border-emerald-500/40 transition-colors shadow-sm"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[11px] sm:text-[10px] font-mono font-bold text-slate-400 w-3">#{idx + 1}</span>
+                        <TeamLogo team={t.team} size="sm" />
+                        <div className="min-w-0">
+                          <span className="font-bold text-xs text-white block truncate">{t.team_name}</span>
+                          <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">
+                            {t.actual.wins}-{t.actual.losses} (.{Math.round(t.actual_win_pct * 1000).toString().padStart(3, '0')})
+                          </span>
+                        </div>
+                      </div>
+                      <div className="pt-1.5 border-t border-slate-800/80 flex items-center justify-between font-mono text-xs">
+                        <span className="text-[11px] sm:text-[10px] text-slate-400">Pace: {t.current_pace.toFixed(1)}W</span>
+                        <span className="font-bold text-emerald-400 flex items-center gap-0.5">
+                          <TrendingUp className="w-3 h-3" />
+                          +{t.performance_delta.toFixed(1)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Underperformers Podium */}
+              <div className="bg-gradient-to-br from-rose-950/30 via-surface-raised/80 to-surface-raised/60 border border-rose-500/30 rounded-2xl p-4 shadow-lg">
+                <div className="flex items-center justify-between mb-3 border-b border-rose-500/20 pb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-rose-500/20 text-rose-400">
+                      <Snowflake className="w-4 h-4" />
+                    </div>
+                    <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-rose-300">
+                      League Underperformers (vs Projections)
+                    </h3>
+                  </div>
+                  <span className="text-[11px] sm:text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                    162G Pace Delta &lt; 0
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {topUnderperformers.map((t, idx) => (
+                    <div
+                      key={t.team}
+                      className="bg-surface/70 border border-slate-800/90 rounded-xl p-3 flex flex-col justify-between hover:border-rose-500/40 transition-colors shadow-sm"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[11px] sm:text-[10px] font-mono font-bold text-slate-400 w-3">#{idx + 1}</span>
+                        <TeamLogo team={t.team} size="sm" />
+                        <div className="min-w-0">
+                          <span className="font-bold text-xs text-white block truncate">{t.team_name}</span>
+                          <span className="text-[11px] sm:text-[10px] font-mono text-slate-400">
+                            {t.actual.wins}-{t.actual.losses} (.{Math.round(t.actual_win_pct * 1000).toString().padStart(3, '0')})
+                          </span>
+                        </div>
+                      </div>
+                      <div className="pt-1.5 border-t border-slate-800/80 flex items-center justify-between font-mono text-xs">
+                        <span className="text-[11px] sm:text-[10px] text-slate-400">Pace: {t.current_pace.toFixed(1)}W</span>
+                        <span className="font-bold text-rose-400 flex items-center gap-0.5">
+                          <TrendingDown className="w-3 h-3" />
+                          {t.performance_delta.toFixed(1)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Filter & Sort Controls */}
           <div className="bg-surface-raised/80 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3">
@@ -464,6 +720,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                 {(['All', 'AL', 'NL'] as const).map((lg) => (
                   <button
                     key={lg}
+                    type="button"
                     onClick={() => {
                       setSelectedLeague(lg);
                       setSelectedDivision('All');
@@ -491,6 +748,33 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                   </option>
                 ))}
               </select>
+
+              {tableMode === 'reality' && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold uppercase text-slate-400">Sort:</span>
+                  <div className="inline-flex rounded-lg bg-surface p-1 border border-slate-800" role="group" aria-label="Sort projections vs actual">
+                    {([
+                      { field: 'performance_delta', label: 'Delta' },
+                      { field: 'actual_win_pct', label: 'Win %' },
+                      { field: 'actual_run_diff', label: 'Run Diff' },
+                    ] as const).map(({ field, label }) => (
+                      <button
+                        key={field}
+                        type="button"
+                        onClick={() => handleSort(field)}
+                        aria-pressed={sortBy === field}
+                        className={`px-2.5 py-1 min-h-[24px] text-xs font-semibold rounded-md transition-all ${
+                          sortBy === field
+                            ? 'bg-accent-600 text-fo-on-accent shadow-sm'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-3">
@@ -541,6 +825,20 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                         {renderSortIndicator('team')}
                       </div>
                     </th>
+                    {tableMode === 'reality' && (
+                      <th
+                        aria-sort={sortBy === 'league' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                        tabIndex={0}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('league'); } }}
+                        onClick={() => handleSort('league')}
+                        className="py-3.5 px-3 text-center cursor-pointer hover:text-white group select-none hidden sm:table-cell"
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          <span>League</span>
+                          {renderSortIndicator('league')}
+                        </div>
+                      </th>
+                    )}
                     <th
                       aria-sort={sortBy === 'division' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
                       tabIndex={0}
@@ -553,94 +851,173 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                         {renderSortIndicator('division')}
                       </div>
                     </th>
-                    <th
-                      aria-sort={sortBy === 'ensemble_mean_wins' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
-                      tabIndex={0}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('ensemble_mean_wins'); } }}
-                      onClick={() => handleSort('ensemble_mean_wins')}
-                      className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none"
-                    >
-                      <div className="flex items-center justify-end gap-1">
-                        <span>Proj W-L</span>
-                        {renderSortIndicator('ensemble_mean_wins')}
-                      </div>
-                    </th>
-                    <th
-                      aria-sort={sortBy === 'win_pct' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
-                      tabIndex={0}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('win_pct'); } }}
-                      onClick={() => handleSort('win_pct')}
-                      className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none"
-                    >
-                      <div className="flex items-center justify-end gap-1">
-                        <span>Win%</span>
-                        {renderSortIndicator('win_pct')}
-                      </div>
-                    </th>
-                    <th
-                      aria-sort={sortBy === 'elo_rating' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
-                      tabIndex={0}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('elo_rating'); } }}
-                      onClick={() => handleSort('elo_rating')}
-                      className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none hidden sm:table-cell"
-                    >
-                      <div className="flex items-center justify-end gap-1">
-                        <span>Elo (rGS)</span>
-                        {renderSortIndicator('elo_rating')}
-                      </div>
-                    </th>
-                    <th
-                      aria-sort={sortBy === 'luck_wins' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
-                      tabIndex={0}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('luck_wins'); } }}
-                      onClick={() => handleSort('luck_wins')}
-                      className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none hidden sm:table-cell"
-                    >
-                      <div className="flex items-center justify-end gap-1">
-                        <span>Pythag Luck</span>
-                        {renderSortIndicator('luck_wins')}
-                      </div>
-                    </th>
-                    <th
-                      aria-sort={sortBy === 'percentile_range' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
-                      tabIndex={0}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('percentile_range'); } }}
-                      onClick={() => handleSort('percentile_range')}
-                      className="py-3.5 px-4 text-center cursor-pointer hover:text-white group select-none min-w-[170px] hidden sm:table-cell"
-                    >
-                      <div className="flex items-center justify-center gap-1">
-                        <span>10th – 90th Pct Range</span>
-                        {renderSortIndicator('percentile_range')}
-                      </div>
-                    </th>
-                    <th
-                      aria-sort={sortBy === 'ensemble_playoff_prob' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
-                      tabIndex={0}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('ensemble_playoff_prob'); } }}
-                      onClick={() => handleSort('ensemble_playoff_prob')}
-                      className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none"
-                    >
-                      <div className="flex items-center justify-end gap-1">
-                        <span>Playoff %</span>
-                        {renderSortIndicator('ensemble_playoff_prob')}
-                      </div>
-                    </th>
-                    <th
-                      aria-sort={sortBy === 'ensemble_title_prob' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
-                      tabIndex={0}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('ensemble_title_prob'); } }}
-                      onClick={() => handleSort('ensemble_title_prob')}
-                      className="py-3.5 px-4 text-right cursor-pointer hover:text-white group select-none"
-                    >
-                      <div className="flex items-center justify-end gap-1">
-                        <span>World Series %</span>
-                        {renderSortIndicator('ensemble_title_prob')}
-                      </div>
-                    </th>
+                    {tableMode === 'reality' ? (
+                      <>
+                        <th
+                          aria-sort={sortBy === 'actual_record' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                          tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('actual_record'); } }}
+                          onClick={() => handleSort('actual_record')}
+                          className="py-3.5 px-3 text-center cursor-pointer hover:text-white group select-none"
+                        >
+                          <div className="flex items-center justify-center gap-1">
+                            <span>Actual Record (W-L)</span>
+                            {renderSortIndicator('actual_record')}
+                          </div>
+                        </th>
+                        <th
+                          aria-sort={sortBy === 'actual_win_pct' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                          tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('actual_win_pct'); } }}
+                          onClick={() => handleSort('actual_win_pct')}
+                          className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none"
+                        >
+                          <div className="flex items-center justify-end gap-1">
+                            <span>Win %</span>
+                            {renderSortIndicator('actual_win_pct')}
+                          </div>
+                        </th>
+                        <th
+                          aria-sort={sortBy === 'actual_run_diff' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                          tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('actual_run_diff'); } }}
+                          onClick={() => handleSort('actual_run_diff')}
+                          className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none"
+                        >
+                          <div className="flex items-center justify-end gap-1">
+                            <span>Run Diff</span>
+                            {renderSortIndicator('actual_run_diff')}
+                          </div>
+                        </th>
+                        <th
+                          aria-sort={sortBy === 'ensemble_mean_wins' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                          tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('ensemble_mean_wins'); } }}
+                          onClick={() => handleSort('ensemble_mean_wins')}
+                          className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none"
+                        >
+                          <div className="flex items-center justify-end gap-1">
+                            <span>Projected Wins (162G)</span>
+                            {renderSortIndicator('ensemble_mean_wins')}
+                          </div>
+                        </th>
+                        <th
+                          aria-sort={sortBy === 'current_pace' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                          tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('current_pace'); } }}
+                          onClick={() => handleSort('current_pace')}
+                          className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none"
+                        >
+                          <div className="flex items-center justify-end gap-1">
+                            <span>162G Win Pace</span>
+                            {renderSortIndicator('current_pace')}
+                          </div>
+                        </th>
+                        <th
+                          aria-sort={sortBy === 'performance_delta' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                          tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('performance_delta'); } }}
+                          onClick={() => handleSort('performance_delta')}
+                          className="py-3.5 px-4 text-right cursor-pointer hover:text-white group select-none"
+                        >
+                          <div className="flex items-center justify-end gap-1">
+                            <span>Performance Delta</span>
+                            {renderSortIndicator('performance_delta')}
+                          </div>
+                        </th>
+                      </>
+                    ) : (
+                      <>
+                        <th
+                          aria-sort={sortBy === 'ensemble_mean_wins' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                          tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('ensemble_mean_wins'); } }}
+                          onClick={() => handleSort('ensemble_mean_wins')}
+                          className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none"
+                        >
+                          <div className="flex items-center justify-end gap-1">
+                            <span>Proj W-L</span>
+                            {renderSortIndicator('ensemble_mean_wins')}
+                          </div>
+                        </th>
+                        <th
+                          aria-sort={sortBy === 'win_pct' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                          tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('win_pct'); } }}
+                          onClick={() => handleSort('win_pct')}
+                          className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none"
+                        >
+                          <div className="flex items-center justify-end gap-1">
+                            <span>Win%</span>
+                            {renderSortIndicator('win_pct')}
+                          </div>
+                        </th>
+                        <th
+                          aria-sort={sortBy === 'elo_rating' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                          tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('elo_rating'); } }}
+                          onClick={() => handleSort('elo_rating')}
+                          className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none hidden sm:table-cell"
+                        >
+                          <div className="flex items-center justify-end gap-1">
+                            <span>Elo (rGS)</span>
+                            {renderSortIndicator('elo_rating')}
+                          </div>
+                        </th>
+                        <th
+                          aria-sort={sortBy === 'luck_wins' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                          tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('luck_wins'); } }}
+                          onClick={() => handleSort('luck_wins')}
+                          className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none hidden sm:table-cell"
+                        >
+                          <div className="flex items-center justify-end gap-1">
+                            <span>Pythag Luck</span>
+                            {renderSortIndicator('luck_wins')}
+                          </div>
+                        </th>
+                        <th
+                          aria-sort={sortBy === 'percentile_range' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                          tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('percentile_range'); } }}
+                          onClick={() => handleSort('percentile_range')}
+                          className="py-3.5 px-4 text-center cursor-pointer hover:text-white group select-none min-w-[170px] hidden sm:table-cell"
+                        >
+                          <div className="flex items-center justify-center gap-1">
+                            <span>10th – 90th Pct Range</span>
+                            {renderSortIndicator('percentile_range')}
+                          </div>
+                        </th>
+                        <th
+                          aria-sort={sortBy === 'ensemble_playoff_prob' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                          tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('ensemble_playoff_prob'); } }}
+                          onClick={() => handleSort('ensemble_playoff_prob')}
+                          className="py-3.5 px-3 text-right cursor-pointer hover:text-white group select-none"
+                        >
+                          <div className="flex items-center justify-end gap-1">
+                            <span>Playoff %</span>
+                            {renderSortIndicator('ensemble_playoff_prob')}
+                          </div>
+                        </th>
+                        <th
+                          aria-sort={sortBy === 'ensemble_title_prob' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                          tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort('ensemble_title_prob'); } }}
+                          onClick={() => handleSort('ensemble_title_prob')}
+                          className="py-3.5 px-4 text-right cursor-pointer hover:text-white group select-none"
+                        >
+                          <div className="flex items-center justify-end gap-1">
+                            <span>World Series %</span>
+                            {renderSortIndicator('ensemble_title_prob')}
+                          </div>
+                        </th>
+                      </>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 text-sm">
-                  {filteredTeams.map((team) => {
+                  {filteredTeams.map((team, idx) => {
                     const minBar = 55;
                     const maxBar = 112;
                     const span = maxBar - minBar;
@@ -660,7 +1037,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                         className="hover:bg-slate-800/40 transition-colors"
                       >
                         <td className="py-3 px-3 font-mono text-xs text-slate-400 hidden sm:table-cell">
-                          #{team.rank}
+                          #{tableMode === 'reality' ? idx + 1 : team.rank}
                         </td>
                         <td className="py-3 px-4 sticky left-0 z-10 bg-surface-raised border-r border-slate-800">
                           <div className="flex items-center gap-3">
@@ -673,12 +1050,26 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                                 </span>
                               </div>
                               <div className="text-[11px] text-slate-400 font-mono">
-                                wOBA {team.team_woba_pooled.toFixed(3)} • xFIP{' '}
-                                {team.team_xfip_pooled.toFixed(2)}
+                                {tableMode === 'reality'
+                                  ? `${team.actual_gp} GP • RF ${team.actual.runsFor} / RA ${team.actual.runsAgainst}`
+                                  : `wOBA ${team.team_woba_pooled.toFixed(3)} • xFIP ${team.team_xfip_pooled.toFixed(2)}`}
                               </div>
                             </div>
                           </div>
                         </td>
+                        {tableMode === 'reality' && (
+                          <td className="py-3 px-3 text-center hidden sm:table-cell">
+                            <span
+                              className={`text-xs font-mono font-semibold px-2 py-0.5 rounded border ${
+                                team.league === 'AL'
+                                  ? 'bg-sky-500/10 text-sky-300 border-sky-500/20'
+                                  : 'bg-amber-500/10 text-amber-300 border-amber-500/20'
+                              }`}
+                            >
+                              {team.league}
+                            </span>
+                          </td>
+                        )}
                         <td className="py-3 px-3 hidden sm:table-cell">
                           <span
                             className={`text-xs font-mono px-2 py-0.5 rounded border ${
@@ -690,85 +1081,139 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                             {team.division}
                           </span>
                         </td>
-                        <td className="py-3 px-3 text-right font-mono">
-                          <span className="font-bold text-white">
-                            {team.ensemble_mean_wins.toFixed(1)}
-                          </span>
-                          <span className="text-slate-400">
-                            –{team.proj_losses.toFixed(1)}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-right font-mono text-slate-300">
-                          .{Math.round(team.win_pct * 1000).toString().padStart(3, '0')}
-                        </td>
-                        <td className="py-3 px-3 text-right font-mono hidden sm:table-cell">
-                          <div className="text-white font-semibold">
-                            {team.elo_rating.toFixed(0)}
-                          </div>
-                          <div className="text-[11px] sm:text-[10px] text-slate-400">
-                            rGS {team.team_rgs.toFixed(1)}
-                          </div>
-                        </td>
-                        <td className="py-3 px-3 text-right font-mono text-xs hidden sm:table-cell">
-                          <span
-                            className={
-                              team.luck_wins > 1.5
-                                ? 'text-amber-400 font-semibold'
-                                : team.luck_wins < -1.5
-                                ? 'text-emerald-400 font-semibold'
-                                : 'text-slate-400'
-                            }
-                          >
-                            {team.luck_wins > 0 ? `+${team.luck_wins.toFixed(1)}` : team.luck_wins.toFixed(1)}W
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 hidden sm:table-cell">
-                          <div className="flex flex-col gap-1">
-                            <div className="relative h-2 bg-surface rounded-full overflow-hidden border border-slate-800">
-                              <div
-                                className="absolute top-0 bottom-0 bg-indigo-500/50 rounded-full"
-                                style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
-                              />
-                              <div
-                                className="absolute top-0 bottom-0 w-1 bg-amber-400 rounded-full -translate-x-1/2"
-                                style={{ left: `${medianPct}%` }}
-                              />
-                            </div>
-                            <div className="flex justify-between text-[11px] sm:text-[10px] font-mono text-slate-400">
-                              <span>p10: {team.ensemble_p10.toFixed(0)}W</span>
-                              <span className="text-amber-400 font-semibold">
-                                p50: {team.ensemble_p50.toFixed(0)}W
+                        {tableMode === 'reality' ? (
+                          <>
+                            <td className="py-3 px-3 text-center font-mono font-bold text-white">
+                              {team.actual.wins}-{team.actual.losses}
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono text-slate-300">
+                              {team.actual_win_pct === 1
+                                ? '1.000'
+                                : `.${Math.round(team.actual_win_pct * 1000).toString().padStart(3, '0')}`}
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono font-bold">
+                              <span
+                                className={
+                                  team.actual_run_diff > 0
+                                    ? 'text-emerald-400'
+                                    : team.actual_run_diff < 0
+                                    ? 'text-rose-400'
+                                    : 'text-slate-400'
+                                }
+                              >
+                                {team.actual_run_diff > 0 ? `+${team.actual_run_diff}` : team.actual_run_diff}
                               </span>
-                              <span>p90: {team.ensemble_p90.toFixed(0)}W</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-3 text-right font-mono">
-                          <span
-                            className={`px-2 py-0.5 rounded text-xs font-bold ${
-                              team.ensemble_playoff_prob >= 0.8
-                                ? 'bg-emerald-500/15 text-emerald-400'
-                                : team.ensemble_playoff_prob >= 0.35
-                                ? 'bg-indigo-500/15 text-indigo-300'
-                                : 'text-slate-400'
-                            }`}
-                          >
-                            {(team.ensemble_playoff_prob * 100).toFixed(1)}%
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-right font-mono">
-                          <span
-                            className={`px-2 py-0.5 rounded text-xs font-bold ${
-                              team.ensemble_title_prob >= 0.1
-                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                                : team.ensemble_title_prob >= 0.03
-                                ? 'text-slate-200'
-                                : 'text-slate-400'
-                            }`}
-                          >
-                            {(team.ensemble_title_prob * 100).toFixed(1)}%
-                          </span>
-                        </td>
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono font-semibold text-slate-300">
+                              {team.projected_wins.toFixed(1)}W
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono font-bold text-white">
+                              {team.current_pace.toFixed(1)}W
+                            </td>
+                            <td className="py-3 px-4 text-right font-mono font-bold">
+                              <span
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-mono font-bold ${
+                                  team.performance_delta > 0
+                                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                    : team.performance_delta < 0
+                                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                    : 'bg-slate-800 text-slate-400'
+                                }`}
+                              >
+                                {team.performance_delta > 0 ? (
+                                  <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                                ) : team.performance_delta < 0 ? (
+                                  <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
+                                ) : null}
+                                {team.performance_delta > 0
+                                  ? `+${team.performance_delta.toFixed(1)}`
+                                  : team.performance_delta.toFixed(1)}
+                              </span>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="py-3 px-3 text-right font-mono">
+                              <span className="font-bold text-white">
+                                {team.ensemble_mean_wins.toFixed(1)}
+                              </span>
+                              <span className="text-slate-400">
+                                –{team.proj_losses.toFixed(1)}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono text-slate-300">
+                              .{Math.round(team.win_pct * 1000).toString().padStart(3, '0')}
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono hidden sm:table-cell">
+                              <div className="text-white font-semibold">
+                                {team.elo_rating.toFixed(0)}
+                              </div>
+                              <div className="text-[11px] sm:text-[10px] text-slate-400">
+                                rGS {team.team_rgs.toFixed(1)}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono text-xs hidden sm:table-cell">
+                              <span
+                                className={
+                                  team.luck_wins > 1.5
+                                    ? 'text-amber-400 font-semibold'
+                                    : team.luck_wins < -1.5
+                                    ? 'text-emerald-400 font-semibold'
+                                    : 'text-slate-400'
+                                }
+                              >
+                                {team.luck_wins > 0 ? `+${team.luck_wins.toFixed(1)}` : team.luck_wins.toFixed(1)}W
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 hidden sm:table-cell">
+                              <div className="flex flex-col gap-1">
+                                <div className="relative h-2 bg-surface rounded-full overflow-hidden border border-slate-800">
+                                  <div
+                                    className="absolute top-0 bottom-0 bg-indigo-500/50 rounded-full"
+                                    style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
+                                  />
+                                  <div
+                                    className="absolute top-0 bottom-0 w-1 bg-amber-400 rounded-full -translate-x-1/2"
+                                    style={{ left: `${medianPct}%` }}
+                                  />
+                                </div>
+                                <div className="flex justify-between text-[11px] sm:text-[10px] font-mono text-slate-400">
+                                  <span>p10: {team.ensemble_p10.toFixed(0)}W</span>
+                                  <span className="text-amber-400 font-semibold">
+                                    p50: {team.ensemble_p50.toFixed(0)}W
+                                  </span>
+                                  <span>p90: {team.ensemble_p90.toFixed(0)}W</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono">
+                              <span
+                                className={`px-2 py-0.5 rounded text-xs font-bold ${
+                                  team.ensemble_playoff_prob >= 0.8
+                                    ? 'bg-emerald-500/15 text-emerald-400'
+                                    : team.ensemble_playoff_prob >= 0.35
+                                    ? 'bg-indigo-500/15 text-indigo-300'
+                                    : 'text-slate-400'
+                                }`}
+                              >
+                                {(team.ensemble_playoff_prob * 100).toFixed(1)}%
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-right font-mono">
+                              <span
+                                className={`px-2 py-0.5 rounded text-xs font-bold ${
+                                  team.ensemble_title_prob >= 0.1
+                                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                    : team.ensemble_title_prob >= 0.03
+                                    ? 'text-slate-200'
+                                    : 'text-slate-400'
+                                }`}
+                              >
+                                {(team.ensemble_title_prob * 100).toFixed(1)}%
+                              </span>
+                            </td>
+                          </>
+                        )}
                       </tr>
                     );
                   })}
