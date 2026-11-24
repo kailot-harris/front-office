@@ -347,11 +347,14 @@ for /f "delims=" %%S in ('git rev-parse HEAD 2^>nul') do set PUB_HEAD_AFTER=%%S
 echo ------------------------------------------------------------------ >> "%LOG_FILE%"
 if not "%PUBLISH_RC%"=="0" (
     echo [ERROR] Publish gate FAILED with exit code %PUBLISH_RC% in mode %MODE_LABEL%. >> "%LOG_FILE%"
-    echo [ERROR] At least one fatal assertion failed - NOTHING WAS PUBLISHED. >> "%LOG_FILE%"
+    echo [ERROR] Nothing new reached origin: either a fatal assertion failed, or the commit/push step failed. >> "%LOG_FILE%"
+    echo [ERROR] If the push step failed, its publish commit was rolled back - the checkout is back in step >> "%LOG_FILE%"
+    echo [ERROR] with origin and the regenerated files are still in the working tree for the next run. >> "%LOG_FILE%"
     echo [ERROR] Yesterday's correct site stays up rather than a half-updated one. >> "%LOG_FILE%"
     REM Avoid ^-escaped angle brackets here: inside a parenthesized block cmd leaves
     REM the carets in the output, so the hint is written in plain words instead.
-    echo [ERROR] Read the "-- Assertions --" block above this line: every failing >> "%LOG_FILE%"
+    echo [ERROR] For a push failure, read the "publish_web:" lines above. Otherwise read the >> "%LOG_FILE%"
+    echo [ERROR] "-- Assertions --" block above this line: every failing >> "%LOG_FILE%"
     echo [ERROR] assertion is listed on a "[FAIL]" line with its id, name and a >> "%LOG_FILE%"
     echo [ERROR] summary, and the offending file or value in its detail lines. >> "%LOG_FILE%"
     echo NFL WEB PUBLISH GATE BLOCKED: %DATE% %TIME% >> "%LOG_FILE%"
