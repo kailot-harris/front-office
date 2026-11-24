@@ -1,13 +1,20 @@
 {
   "version": "2026-2027.1.0",
-  "lastPublished": "2026-11-23T12:00:32Z",
-  "currentWeekNumber": 15,
-  "baselineAsOfDate": "2026-11-22T12:00:31Z",
+  "lastPublished": "2026-11-24T12:00:31Z",
+  "currentWeekNumber": 16,
+  "baselineAsOfDate": "2026-11-23T12:00:32Z",
   "elapsedDaysSinceLastPublish": 1,
   "leagueOperatingStatus": "NORMAL",
   "freezeDayCount": null,
   "activePhase": "Pre-Lockout Surge",
   "availableEditions": [
+    {
+      "weekNumber": 16,
+      "publishDate": "2026-11-24",
+      "isQuietWeek": false,
+      "isFrozenWeek": false,
+      "isArchived": false
+    },
     {
       "weekNumber": 15,
       "publishDate": "2026-11-23",
@@ -41,7 +48,7 @@
       "publishDate": "2026-11-12",
       "isQuietWeek": true,
       "isFrozenWeek": false,
-      "isArchived": false
+      "isArchived": true
     },
     {
       "weekNumber": 10,
@@ -116,6 +123,76 @@
   ],
   "editions": [
     {
+      "weekNumber": 16,
+      "publishDate": "2026-11-24",
+      "isQuietWeek": false,
+      "isFrozenWeek": false,
+      "freezeDayCount": null,
+      "freezeStartDate": null,
+      "stateOfPlay": "1 confirmed state transitions recorded across 1 club(s) (1 40-man roster moves, 0 minor-league moves). By transaction type: 1 Free agent signing. Notable moves: Caleb Thielbar (FA, Free agent signing).",
+      "totalConfirmedCount": 1,
+      "confirmedChanges": [
+        {
+          "date": "2026-11-23",
+          "team": "FA",
+          "playerName": "Caleb Thielbar",
+          "playerId": "P_10078",
+          "rosterTier": "MAJOR_40_MAN",
+          "transactionType": "FREE_AGENT_SIGNING",
+          "priorValue": "FREE_AGENT",
+          "newValue": "40_MAN",
+          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=118&transactionIds=950954"
+        }
+      ],
+      "reportedClaims": [],
+      "expiredClaims": [],
+      "laborEvents": [],
+      "upcomingMilestones": [
+        {
+          "date": "2026-11-02",
+          "event": "Deadline to exercise contract options and extend qualifying offers",
+          "status": "Confirmed"
+        },
+        {
+          "date": "2026-11-17",
+          "event": "Deadline to accept/reject qualifying offers (4:00 p.m. ET)",
+          "status": "Confirmed"
+        },
+        {
+          "date": "2026-11-17",
+          "event": "MLB Owners Meetings begin",
+          "status": "Confirmed"
+        },
+        {
+          "date": "2026-12-01",
+          "event": "Collective Bargaining Agreement expires (11:59 p.m. ET)",
+          "status": "Confirmed"
+        },
+        {
+          "date": "2026-12-07",
+          "event": "Winter Meetings, San Diego (conditional on CBA)",
+          "status": "Tentative"
+        }
+      ],
+      "modelPriorImpact": {
+        "hasChanges": false,
+        "summary": "No change to 2027 baseline Marcel priors."
+      },
+      "winterLeagueNotes": [
+        {
+          "playerName": "Jackson Chourio",
+          "mlbTeam": "MIL",
+          "league": "AFL",
+          "notes": "Participating in instructional development program."
+        }
+      ],
+      "sourcesVisited": [
+        "MLB Official Transaction Wire (statsapi.mlb.com)",
+        "30 Club Official Media Portals",
+        "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"
+      ]
+    },
+    {
       "weekNumber": 15,
       "publishDate": "2026-11-23",
       "isQuietWeek": true,
@@ -167,11 +244,7 @@
           "notes": "Participating in instructional development program."
         }
       ],
-      "sourcesVisited": [
-        "MLB Official Transaction Wire (statsapi.mlb.com)",
-        "30 Club Official Media Portals",
-        "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"
-      ]
+      "sourcesVisited": ["MLB Official Transaction Wire (statsapi.mlb.com)", "30 Club Official Media Portals", "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"]
     },
     {
       "weekNumber": 14,
@@ -930,65 +1003,11 @@
         }
       ],
       "sourcesVisited": ["MLB Official Transaction Wire (statsapi.mlb.com)", "30 Club Official Media Portals", "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"]
-    },
-    {
-      "weekNumber": 11,
-      "publishDate": "2026-11-12",
-      "isQuietWeek": true,
-      "isFrozenWeek": false,
-      "freezeDayCount": null,
-      "freezeStartDate": null,
-      "stateOfPlay": "Quiet week: 0 confirmed state transitions recorded.",
-      "totalConfirmedCount": 0,
-      "confirmedChanges": [],
-      "reportedClaims": [],
-      "expiredClaims": [],
-      "laborEvents": [],
-      "upcomingMilestones": [
-        {
-          "date": "2026-11-02",
-          "event": "Deadline to exercise contract options and extend qualifying offers",
-          "status": "Confirmed"
-        },
-        {
-          "date": "2026-11-17",
-          "event": "Deadline to accept/reject qualifying offers (4:00 p.m. ET)",
-          "status": "Confirmed"
-        },
-        {
-          "date": "2026-11-17",
-          "event": "MLB Owners Meetings begin",
-          "status": "Confirmed"
-        },
-        {
-          "date": "2026-12-01",
-          "event": "Collective Bargaining Agreement expires (11:59 p.m. ET)",
-          "status": "Confirmed"
-        },
-        {
-          "date": "2026-12-07",
-          "event": "Winter Meetings, San Diego (conditional on CBA)",
-          "status": "Tentative"
-        }
-      ],
-      "modelPriorImpact": {
-        "hasChanges": false,
-        "summary": "No change to 2027 baseline Marcel priors."
-      },
-      "winterLeagueNotes": [
-        {
-          "playerName": "Jackson Chourio",
-          "mlbTeam": "MIL",
-          "league": "AFL",
-          "notes": "Participating in instructional development program."
-        }
-      ],
-      "sourcesVisited": ["MLB Official Transaction Wire (statsapi.mlb.com)", "30 Club Official Media Portals", "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"]
     }
   ],
   "currentStateSummary": {
-    "totalConfirmedTransactions": 0,
-    "totalConfirmedCount": 0,
+    "totalConfirmedTransactions": 1,
+    "totalConfirmedCount": 1,
     "pendingReportedRumors": 0,
     "expiredRumorCount": 0,
     "cbtPayrollLeader": "NYM"
