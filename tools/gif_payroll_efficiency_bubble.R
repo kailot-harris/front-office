@@ -22,9 +22,10 @@
 #   - Minimal dark front-office aesthetic via theme_mlb_dark()
 #   - Dual artifact export: animated GIF and static final-frame PNG
 #
-# Inputs: cache/ingest/mlb_schedule_2026.rds
+# Inputs: cache/ingest/mlb_schedule_<season>.rds
 #         cache/stats_sync/fg_batters.rds
 #         cache/stats_sync/fg_pitchers.rds
+#         web/public/data/cbt_payroll_sheet.json
 # Output: cache/viz/gif_payroll_efficiency_bubble.gif
 #         cache/viz/gif_payroll_efficiency_bubble.png
 # ==============================================================================
@@ -36,28 +37,48 @@ suppressPackageStartupMessages({
   library(tidyr)
   library(mlbplotR)
   library(gifski)
+  library(jsonlite)
 })
 
 source("config.R")
 source("tools/viz_theme.R")
+source("tools/viz_common.R")
 
-#' 2026 Realistic MLB Franchise Payroll Anchors ($ Millions)
-#' Sourced from official front-office payroll sheet & CBT thresholds
-TEAM_PAYROLL_2026 <- c(
-  LAD = 338.5, NYM = 318.0, NYY = 308.5, PHI = 278.0, HOU = 252.0,
-  TOR = 248.5, ATL = 236.0, TEX = 232.0, SF  = 224.0, BOS = 218.0,
-  CHC = 215.0, SD  = 210.0, ARI = 195.0, SEA = 186.0, BAL = 182.0,
-  STL = 175.0, MIN = 158.0, DET = 154.0, MIL = 148.0, CIN = 142.0,
-  KC  = 138.0, CLE = 126.0, WSH = 122.0, COL = 118.0, LAA = 115.0,
-  PIT = 98.0,  TB  = 95.0,  MIA = 88.0,  CHW = 82.0,  ATH = 78.0
-)
+#' Load real franchise payrolls ($ Millions) for `season` from CBT payroll JSON.
+#' Stops via viz_stop_no_data() if the file or season payroll field is missing.
+load_cbt_payroll <- function(season,
+                             payroll_file = file.path(MLB_ROOT_DIR, "web", "public", "data", "cbt_payroll_sheet.json")) {
+  if (!file.exists(payroll_file)) {
+    viz_stop_no_data("gif_payroll_efficiency_bubble.R",
+                     sprintf("CBT payroll sheet not found at '%s'.", payroll_file))
+  }
+  cbt <- jsonlite::fromJSON(payroll_file)
+  payroll_col <- sprintf("payroll%d", season)
+  if (is.null(cbt$teams) || !is.data.frame(cbt$teams) ||
+      !"teamAbbr" %in% names(cbt$teams) || !payroll_col %in% names(cbt$teams)) {
+    viz_stop_no_data("gif_payroll_efficiency_bubble.R",
+                     sprintf("Payroll column '%s' not available in '%s'.", payroll_col, payroll_file))
+  }
+  out <- data.frame(
+    payroll_abbr = as.character(cbt$teams$teamAbbr),
+    payroll = as.numeric(cbt$teams[[payroll_col]]),
+    stringsAsFactors = FALSE
+  )
+  out <- out[!is.na(out$payroll_abbr) & !is.na(out$payroll), , drop = FALSE]
+  if (nrow(out) == 0) {
+    viz_stop_no_data("gif_payroll_efficiency_bubble.R",
+                     sprintf("No valid '%s' payroll rows in '%s'.", payroll_col, payroll_file))
+  }
+  out
+}
 
 #' Generate Cost-per-Win & Payroll Efficiency Bubble GIF
 #'
 #' @param season Integer MLB season year (default 2026)
-#' @param schedule_file Path to mlb_schedule_2026.rds
+#' @param schedule_file Path to mlb_schedule_<season>.rds
 #' @param batters_file Path to fg_batters.rds
 #' @param pitchers_file Path to fg_pitchers.rds
+#' @param payroll_file Path to cbt_payroll_sheet.json
 #' @param output_gif Output filename for animated GIF
 #' @param output_png Output filename for static final frame PNG
 #' @param n_frames Number of milestone frames across simulated progression (default 20)
@@ -69,6 +90,7 @@ generate_gif_payroll_efficiency_bubble <- function(season = 2026,
                                                    schedule_file = cache_path("ingest", sprintf("mlb_schedule_%d.rds", season)),
                                                    batters_file = cache_path("stats_sync", "fg_batters.rds"),
                                                    pitchers_file = cache_path("stats_sync", "fg_pitchers.rds"),
+                                                   payroll_file = file.path(MLB_ROOT_DIR, "web", "public", "data", "cbt_payroll_sheet.json"),
                                                    output_gif = "gif_payroll_efficiency_bubble.gif",
                                                    output_png = "gif_payroll_efficiency_bubble.png",
                                                    n_frames = 20,
@@ -85,7 +107,8 @@ generate_gif_payroll_efficiency_bubble <- function(season = 2026,
     if (file.exists(alt_sch)) {
       schedule_file <- alt_sch
     } else {
-      stop(sprintf("Schedule file not found at '%s'. Run mlb_ingest.R first.", schedule_file))
+      viz_stop_no_data("gif_payroll_efficiency_bubble.R",
+                       sprintf("Schedule file not found at '%s'. Run mlb_ingest.R first.", schedule_file))
     }
   }
 
@@ -98,10 +121,16 @@ generate_gif_payroll_efficiency_bubble <- function(season = 2026,
     alt_pit <- file.path(MLB_ROOT_DIR, "..", "MLB Analytics", "cache", "stats_sync", "fg_pitchers.rds")
     if (file.exists(alt_pit)) pitchers_file <- alt_pit
   }
+  if (!file.exists(batters_file) || !file.exists(pitchers_file)) {
+    viz_stop_no_data("gif_payroll_efficiency_bubble.R",
+                     "FanGraphs batters/pitchers cache files are missing; refusing to impute team WAR.")
+  }
+
+  payroll_df <- load_cbt_payroll(season = season, payroll_file = payroll_file)
 
   sch <- readRDS(schedule_file)
   if (nrow(sch) == 0) {
-    stop("Schedule dataframe is empty.")
+    viz_stop_no_data("gif_payroll_efficiency_bubble.R", "Schedule dataframe is empty.")
   }
 
   act_teams <- subset(as.data.frame(MLB_TEAMS), sport_id == 1 & active == TRUE)
@@ -134,55 +163,53 @@ generate_gif_payroll_efficiency_bubble <- function(season = 2026,
       final_wins = w_home + w_away
     )
 
-  # Calculate combined WAR if files exist
-  team_war <- tibble(team_abbr = act_teams$team_abbreviation, total_war = 35.0)
-  if (file.exists(batters_file) && file.exists(pitchers_file)) {
-    batters <- readRDS(batters_file)
-    pitchers <- readRDS(pitchers_file)
-    
-    b_agg <- batters %>%
-      filter(!is.na(team_name_abb), !team_name_abb %in% c("2 Tms", "3 Tms", "4 Tms")) %>%
-      group_by(team_abbr = team_name_abb) %>%
-      summarize(b_war = sum(WAR, na.rm = TRUE), .groups = "drop")
+  # Calculate combined WAR from real FanGraphs batter & pitcher tables
+  batters <- readRDS(batters_file)
+  pitchers <- readRDS(pitchers_file)
 
-    p_agg <- pitchers %>%
-      filter(!is.na(team_name_abb), !team_name_abb %in% c("2 Tms", "3 Tms", "4 Tms")) %>%
-      group_by(team_abbr = team_name_abb) %>%
-      summarize(p_war = sum(WAR, na.rm = TRUE), .groups = "drop")
+  b_agg <- batters %>%
+    filter(!is.na(team_name_abb), !team_name_abb %in% c("2 Tms", "3 Tms", "4 Tms")) %>%
+    group_by(team_abbr = team_name_abb) %>%
+    summarize(b_war = sum(WAR, na.rm = TRUE), .groups = "drop")
 
-    war_combined <- full_join(b_agg, p_agg, by = "team_abbr") %>%
-      mutate(
-        b_war = coalesce(b_war, 0),
-        p_war = coalesce(p_war, 0),
-        war_sum = b_war + p_war
+  p_agg <- pitchers %>%
+    filter(!is.na(team_name_abb), !team_name_abb %in% c("2 Tms", "3 Tms", "4 Tms")) %>%
+    group_by(team_abbr = team_name_abb) %>%
+    summarize(p_war = sum(WAR, na.rm = TRUE), .groups = "drop")
+
+  war_combined <- full_join(b_agg, p_agg, by = "team_abbr") %>%
+    mutate(
+      b_war = coalesce(b_war, 0),
+      p_war = coalesce(p_war, 0),
+      war_sum = b_war + p_war,
+      team_abbr_std = case_when(
+        team_abbr == "AZ" ~ "ARI",
+        team_abbr == "CWS" ~ "CHW",
+        TRUE ~ team_abbr
       )
-    # Remap common abbreviation divergences (e.g., AZ -> ARI, CWS -> CHW)
-    war_combined <- war_combined %>%
-      mutate(
-        team_abbr_std = case_when(
-          team_abbr == "AZ" ~ "ARI",
-          team_abbr == "CWS" ~ "CHW",
-          TRUE ~ team_abbr
-        )
-      )
-    team_war <- war_combined %>%
-      transmute(team_abbr = team_abbr_std, total_war = pmax(5.0, round(war_sum, 1)))
-  }
+    )
+  team_war <- war_combined %>%
+    transmute(team_abbr = team_abbr_std, total_war = pmax(5.0, round(war_sum, 1)))
 
-  # Build master efficiency dataset
+  # Build master efficiency dataset from real payroll, schedule wins, and WAR
   master_df <- team_wins %>%
     mutate(
       payroll_abbr = case_when(
         team_abbreviation == "AZ" ~ "ARI",
         team_abbreviation == "CWS" ~ "CHW",
         TRUE ~ team_abbreviation
-      ),
-      payroll = unname(TEAM_PAYROLL_2026[payroll_abbr])
+      )
     ) %>%
-    left_join(team_war, by = c("payroll_abbr" = "team_abbr")) %>%
+    left_join(payroll_df, by = "payroll_abbr") %>%
+    left_join(team_war, by = c("payroll_abbr" = "team_abbr"))
+
+  if (anyNA(master_df$payroll) || anyNA(master_df$total_war)) {
+    viz_stop_no_data("gif_payroll_efficiency_bubble.R",
+                     "Missing payroll or team WAR for one or more franchises; refusing to impute.")
+  }
+
+  master_df <- master_df %>%
     mutate(
-      payroll = coalesce(payroll, 150.0),
-      total_war = coalesce(total_war, 35.0),
       cost_per_win = round(payroll / pmax(1, final_wins), 2),
       cost_per_war = round(payroll / pmax(1.0, total_war), 2)
     )
@@ -196,6 +223,14 @@ generate_gif_payroll_efficiency_bubble <- function(season = 2026,
 
   med_payroll <- median(master_df$payroll)
   med_wins <- median(master_df$final_wins)
+  roi_leaders <- master_df %>%
+    filter(payroll < med_payroll) %>%
+    arrange(cost_per_win) %>%
+    slice_head(n = 3) %>%
+    pull(team_abbreviation)
+  roi_label <- if (length(roi_leaders) > 0) paste(roi_leaders, collapse = ", ") else "N/A"
+  x_lims <- c(min(60, floor(min(master_df$payroll) - 10)), max(360, ceiling(max(master_df$payroll) + 15)))
+  y_lims <- c(min(45, floor(min(master_df$final_wins) - 5)), max(135, ceiling(max(master_df$final_wins) + 10)))
 
   # Setup frame directory
   viz_dir <- ensure_viz_dir()
@@ -256,22 +291,22 @@ generate_gif_payroll_efficiency_bubble <- function(season = 2026,
       # Axes & Labels
       scale_x_continuous(
         labels = function(x) paste0("$", x, "M"),
-        limits = c(60, 360),
+        limits = x_lims,
         breaks = seq(75, 350, by = 50)
       ) +
       scale_y_continuous(
-        limits = c(45, 135),
+        limits = y_lims,
         breaks = seq(50, 130, by = 15)
       ) +
       theme_mlb_dark() +
       labs(
         title = sprintf("%d MLB Cost-per-Win & Payroll Efficiency Matrix", season),
         subtitle = sprintf(
-          "Progress: %.0f%% | Median Payroll: $%1.0fM · Median Wins: %d | Small-Market ROI Leaders: MIL, TB, CLE",
-          p_prog * 100, med_payroll, round(med_wins)
+          "Progress: %.0f%% | Median Payroll: $%1.0fM · Median Wins: %d | Small-Market ROI Leaders: %s",
+          p_prog * 100, med_payroll, round(med_wins), roi_label
         ),
-        x = "2026 Opening Day & 26-Man Roster Payroll ($ Millions)",
-        y = "2026 Regular Season Wins",
+        x = sprintf("%d Opening Day & 26-Man Roster Payroll ($ Millions)", season),
+        y = sprintf("%d Regular Season Wins", season),
         caption = "Source: MLB Analytics Engine | Bubble Size = Team WAR | mlbplotR transparent franchise logos"
       ) +
       theme(

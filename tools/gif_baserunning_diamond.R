@@ -102,10 +102,11 @@ generate_gif_baserunning_diamond <- function(season = 2026,
     ) %>%
     mutate(
       attempts = total_sb + total_cs,
-      sb_pct = ifelse(attempts > 0, (total_sb / attempts) * 100, 75),
+      sb_pct = ifelse(attempts > 0, (total_sb / attempts) * 100, NA_real_),
       division = team_div_map[team_name],
       team_full = team_name_map[team_name]
-    )
+    ) %>%
+    filter(!is.na(sb_pct))
 
   if (nrow(team_stats) == 0) {
     stop("No qualified team baserunning stats found.")
