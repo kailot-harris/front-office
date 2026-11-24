@@ -337,7 +337,7 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
         )}
       </div>
 
-      {/* Tab 3: Animated GIF Visual Media Dropdown & Player */}/
+      {/* Tab 3: Animated GIF Visual Media Dropdown & Player */}
       {activeTab === 'gallery' && (
         <div className="space-y-6">
           <div className="bg-surface-raised/70 border border-slate-800 rounded-xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -364,35 +364,35 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                 onChange={(e) => setSelectedGifId(e.target.value)}
                 className="w-full bg-slate-900 border border-sky-500/40 text-white font-semibold text-xs sm:text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-lg cursor-pointer"
               >
-                <optgroup label="Phase 1: Standings & Team Parity">
+                <optgroup label="Standings & Team Parity">
                   {mediaItems.filter((m) => m.phase === 1).map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.title}
                     </option>
                   ))}
                 </optgroup>
-                <optgroup label="Phase 2: October Postseason & Fall Classic">
+                <optgroup label="Postseason & World Series">
                   {mediaItems.filter((m) => m.phase === 2).map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.title}
                     </option>
                   ))}
                 </optgroup>
-                <optgroup label="Phase 3: Macro Season Trends">
+                <optgroup label="Season Trends">
                   {mediaItems.filter((m) => m.phase === 3).map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.title}
                     </option>
                   ))}
                 </optgroup>
-                <optgroup label="Phase 4: Sabermetrics & Player-Tracking">
+                <optgroup label="Sabermetrics & Player Tracking">
                   {mediaItems.filter((m) => m.phase === 4).map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.title}
                     </option>
                   ))}
                 </optgroup>
-                <optgroup label="Phase 5: Synthesis & Meta Finale">
+                <optgroup label="Season Recap">
                   {mediaItems.filter((m) => m.phase === 5).map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.title}
@@ -415,7 +415,6 @@ export const StandingsClient: React.FC<StandingsClientProps> = ({
                       <span className="text-[11px] sm:text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
                         {currentItem.categoryLabel}
                       </span>
-                      <span className="text-xs text-slate-400 font-mono">Phase {currentItem.phase}</span>
                     </div>
                     <h4 className="text-lg sm:text-xl font-bold text-white mt-1">{currentItem.title}</h4>
                     <p className="text-xs sm:text-sm text-slate-300/90 mt-0.5 max-w-2xl">

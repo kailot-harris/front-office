@@ -65,7 +65,7 @@ export const VisualMediaGalleryClient: React.FC<VisualMediaGalleryClientProps> =
                   {selectedItem.categoryLabel}
                 </span>
                 <span className="text-xs text-slate-400 font-mono">
-                  Phase {selectedItem.phase} • 2026 Engine
+                  2026 season
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -228,11 +228,6 @@ export const VisualMediaGalleryClient: React.FC<VisualMediaGalleryClientProps> =
                   <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     <span className="px-3 py-1.5 rounded-lg bg-sky-500 text-fo-on-accent text-xs font-bold shadow-md">
                       Play in Showcase &uarr;
-                    </span>
-                  </div>
-                  <div className="absolute top-2 left-2">
-                    <span className="text-[11px] sm:text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-slate-950/80 text-sky-300 border border-sky-500/30">
-                      Phase {item.phase}
                     </span>
                   </div>
                 </div>
