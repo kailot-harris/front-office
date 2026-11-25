@@ -22,6 +22,8 @@
 #              above, including nflfastR (and nflfastR's fastrmodels). The
 #              tests do not call nfl4th; it is installed so the builder's
 #              requireNamespace() check matches the pipeline machine.
+#   httr       playoff_odds_engine.R, sourced by tests/test_playoff_sim_determinism.R
+#              (loaded only; the test clears the webhook and makes no network call)
 testthat
 dplyr
 jsonlite
@@ -43,3 +45,4 @@ purrr
 rlang
 tibble
 processx
+httr

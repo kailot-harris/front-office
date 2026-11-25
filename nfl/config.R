@@ -817,7 +817,11 @@ PIPELINE_OUTPUT_DIRS <- c(WEB_DATA_DIR, WEB_ANIM_DIR)
 # the daily pipeline updates and tools/publish_web.R commits (e.g. ratings history for
 # landing_digest.json movers, NFL_analytics#185). tools/publish_guard.R keeps these
 # alongside PIPELINE_OUTPUT_DIRS so schedule_publish.bat does not stash them.
-PIPELINE_OUTPUT_FILES <- c(file.path("data", "history", "ratings_history.csv"))
+# FORWARD_LOG_QB_CHANGE: append-only forward log written by tools/log_qb_change_forward.R
+# (issue #220 follow-up). One row per team per as-of date, recorded BEFORE the team's next
+# game; tools/score_forward_log.R scores it later. Tracked in git, committed by publish_web.R.
+FORWARD_LOG_QB_CHANGE <- file.path("data", "history", "qb_change_forward_log.csv")
+PIPELINE_OUTPUT_FILES <- c(file.path("data", "history", "ratings_history.csv"), FORWARD_LOG_QB_CHANGE)
 WEB_GAMES_DIR    <- file.path(WEB_DATA_DIR, "games")
 WEB_ATTRIBUTION_DIR <- file.path(WEB_DATA_DIR, "week_attribution")
 

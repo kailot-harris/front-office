@@ -382,6 +382,14 @@ run_stage("build_passing_dataset.R", "Build QB Passing Zone & Throw-Map Dataset 
           call_fn = "run_build_passing_dataset",
           output = c(WEB_JSON_PASSING_INDEX, WEB_JSON_PASSING_METADATA))
 
+# Stage 14.1b: QB-change forward log (tools/log_qb_change_forward.R, issue #220 follow-up).
+# Must run after daily_ingest.R (schedules), team_ratings_engine.R (Elo stage) and Stage 14.1
+# (refreshes CACHE_DNA_PBP, the play-by-play with dropbacks). Appends today's rows to the
+# tracked FORWARD_LOG_QB_CHANGE. Optional: run_stage() turns any failure into a warning, so the
+# pipeline and the publish step continue without it.
+run_stage(file.path("tools", "log_qb_change_forward.R"), "Append QB-Change Forward Log Rows (pregame, today only)",
+          call_fn = "run_qb_change_forward_logger")
+
 # Stage 14.2: 4Q True Clutch & Leverage Index Dataset (build_clutch_dataset.R)
 # Must run after Stage 14 (reads player_qb_profiles.json) and Stage 14.1 (shares CACHE_DNA_PBP).
 run_stage("build_clutch_dataset.R", "Build 4Q True Clutch & Leverage Index Dataset",

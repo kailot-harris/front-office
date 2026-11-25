@@ -85,6 +85,9 @@ describe('Sidebar', () => {
 
   it('links to every route the app actually serves', () => {
     const { container } = render(<Sidebar />);
+    for (const btn of Array.from(container.querySelectorAll('aside nav button[aria-expanded="false"]'))) {
+      fireEvent.click(btn);
+    }
     const hrefs = Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href'));
     for (const route of ROUTES) {
       expect(hrefs, `no sidebar link to ${route}`).toContain(route);
@@ -93,6 +96,9 @@ describe('Sidebar', () => {
 
   it('links nowhere that the app does not serve', () => {
     const { container } = render(<Sidebar />);
+    for (const btn of Array.from(container.querySelectorAll('aside nav button[aria-expanded="false"]'))) {
+      fireEvent.click(btn);
+    }
     const internal = Array.from(container.querySelectorAll('a'))
       // #212: sport switcher links point at the other sport apps on purpose.
       .filter((a) => !a.closest('nav[aria-label="Switch sport"]'))
