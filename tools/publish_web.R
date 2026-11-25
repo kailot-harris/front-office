@@ -916,6 +916,12 @@ if (file.exists(file.path("tools", "write_data_manifest.R"))) {
   hist <- file.path("data", "history", "ratings_history.csv")
   if (file.exists(file.path(repo_root, hist)))
     record("git add data/history/ratings_history.csv", .pw_git(repo_root, c("add", "--", hist)))
+  # Append-only forward log (tools/log_qb_change_forward.R, issue #220 follow-up). Same rule:
+  # exact path, plain `git add`, never -f.
+  fwd <- if (exists("FORWARD_LOG_QB_CHANGE")) FORWARD_LOG_QB_CHANGE else
+    file.path("data", "history", "qb_change_forward_log.csv")
+  if (file.exists(file.path(repo_root, fwd)))
+    record("git add data/history/qb_change_forward_log.csv", .pw_git(repo_root, c("add", "--", fwd)))
   record("git commit (NFL_analytics)",
          .pw_git(repo_root, c("commit", "-m", shQuote(commit_message))))
   c(steps, .pw_push_with_rebase(repo_root, publish_branch))
