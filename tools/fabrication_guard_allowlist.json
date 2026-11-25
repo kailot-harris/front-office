@@ -391,6 +391,30 @@
       "rule": "hardcoded_metric_vector",
       "pattern": "c\\(5L, 10L, 18L\\)",
       "justification": "Momentum forward-log column schema: the board's published window sizes in games (5, 10 and ROLLING_WINDOW_SIZE = 18), matching MOMENTUM_WINDOWS in build_momentum_dataset.R; window lengths, not observed data."
+    },
+    {
+      "file": "nfl/config.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(3L, 6L, 9L\\)",
+      "justification": "Owner-approved NFL Momentum Board setting (issue 226, owner settings comment), fixed from the rolling-window study at commit 4ac7997; a configuration constant, not observed data."
+    },
+    {
+      "file": "nfl/config.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(form = 0\\.45, trend = 0\\.00, residual = 0\\.00, elo_change = 0\\.55\\)",
+      "justification": "Owner-approved NFL Momentum Board setting (issue 226, owner settings comment), fixed from the rolling-window study at commit 4ac7997; a configuration constant, not observed data."
+    },
+    {
+      "file": "nfl/config.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(form = 0\\.40, trend = 0\\.00, residual = 0\\.00, elo_change = 0\\.60\\)",
+      "justification": "Owner-approved NFL Momentum Board setting (issue 226, owner settings comment), fixed from the rolling-window study at commit 4ac7997; a configuration constant, not observed data."
+    },
+    {
+      "file": "nfl/config.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(form = 0\\.25, trend = 0\\.25, residual = 0\\.00, elo_change = 0\\.50\\)",
+      "justification": "Owner-approved NFL Momentum Board setting (issue 226, owner settings comment), fixed from the rolling-window study at commit 4ac7997; a configuration constant, not observed data."
     }
   ],
   "exclusions": [
@@ -433,6 +457,14 @@
     {
       "file": "wnba/tests/unit/test_landing_digest.R",
       "justification": "Automated unit test suite writing mock landing-digest JSON fixtures into isolated temporary directories."
+    },
+    {
+      "file": "nfl/tests/test_momentum_board.R",
+      "justification": "Automated unit test suite checking the Momentum Board builder against small hand-built fixtures and the config weights; never writes published data."
+    },
+    {
+      "file": "nfl/tests/test_momentum_methodology.R",
+      "justification": "Automated unit test suite checking the methodology publisher, including the comparison weights parsed from the study script; never writes published data."
     }
   ]
 }

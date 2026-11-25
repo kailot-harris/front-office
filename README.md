@@ -4,7 +4,7 @@
 
 **Live site:** https://kailot-harris.github.io/front-office/
 
-Front Office brings four leagues into one site with <span data-count="all">57</span> interactive pages. It's built for fans who want more than the box score: how good a team really is, why a game is forecast the way it is, which players share a style, and how payroll shapes a roster. Every number comes from public sports data and is refreshed automatically.
+Front Office brings four leagues into one site with <span data-count="all">58</span> interactive pages. It's built for fans who want more than the box score: how good a team really is, why a game is forecast the way it is, which players share a style, and how payroll shapes a roster. Every number comes from public sports data and is refreshed automatically.
 
 ---
 
@@ -32,7 +32,7 @@ Each league offers roughly the same set of tools, so once you learn one, the oth
 
 Not sure where to start? The [Walkthrough](https://kailot-harris.github.io/front-office/guide/) is organized around questions you might bring to the site. [How the Models Work](https://kailot-harris.github.io/front-office/how-it-works/) explains where the numbers come from.
 
-**Tip:** on the home page, press `/` and start typing (`clutch`, `cap`, `dna`) to search all <span data-count="all">57</span> pages at once.
+**Tip:** on the home page, press `/` and start typing (`clutch`, `cap`, `dna`) to search all <span data-count="all">58</span> pages at once.
 
 ---
 
