@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-11-24T05:10:12Z",
+  "generated_at": "2026-11-25T09:28:34Z",
   "sport": "nfl",
   "endpoint": "game_detail",
   "season": 2026,
@@ -1407,8 +1407,8 @@
       "secondary_model": {
         "model_id": "xgboost_feature_fusion_v1",
         "model_label": "Secondary Model (XGBoost TreeSHAP)",
-        "model_win_prob": 0.603,
-        "logit": 0.4184,
+        "model_win_prob": 0.593,
+        "logit": 0.3757,
         "base_value": 0.2498,
         "factors": [
           {
@@ -1427,7 +1427,7 @@
             "feature": "diff_pass_epa",
             "label": "Passing EPA Differential",
             "value": -0.114,
-            "shap_value": -0.0344
+            "shap_value": -0.0325
           },
           {
             "feature": "diff_rush_epa",
@@ -1438,8 +1438,8 @@
           {
             "feature": "diff_cpoe",
             "label": "Completion % Over Expected Differential",
-            "value": -0.782,
-            "shap_value": 0.0228
+            "value": -1.086,
+            "shap_value": -0.0332
           },
           {
             "feature": "gp_avg",
@@ -1481,7 +1481,7 @@
             "feature": "rest_diff",
             "label": "Days Rest Differential",
             "value": 7,
-            "shap_value": 0.1861
+            "shap_value": 0.1973
           }
         ],
         "agreement": "differ"
@@ -1531,9 +1531,9 @@
           "metric_key": "cpoe",
           "metric_label": "CPOE",
           "team_abbr": "PIT",
-          "entering_baseline": -3.475,
+          "entering_baseline": -3.339,
           "realized_value": 2.159,
-          "delta": 5.633,
+          "delta": 5.498,
           "prior_games_n": 9,
           "is_low_sample": false
         },
