@@ -1,12 +1,12 @@
 {
   "schema_version": "1.0",
   "game_id": "401910761",
-  "generated_at": "2026-11-24T14:04:36Z",
+  "generated_at": "2026-11-25T14:02:52Z",
   "data": {
     "projection_basis": "primary_ensemble",
     "predicted_margin": -1.33,
     "predicted_home_win_prob": 0.4574,
-    "sigma_game": 12.4362,
+    "sigma_game": 12.4381,
     "margin_waterfall": [
       {
         "key": "bottom_up",
@@ -24,7 +24,7 @@
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": -0.71,
-        "detail": "20% Shot/Fatigue blend (NOP -4.76 vs CHA -1.21)"
+        "detail": "20% Shot/Fatigue blend (NOP -4.75 vs CHA -1.21)"
       },
       {
         "key": "embeddings",
@@ -70,16 +70,16 @@
           "label": "18-Game True Shooting Diff",
           "feature_value": 0.0396,
           "z_score": 1.2316,
-          "shap_log_odds": 0.43864,
-          "shap_prob_approx": 0.1039
+          "shap_log_odds": 0.43901,
+          "shap_prob_approx": 0.104
         },
         {
           "feature": "diff_roll_tovp",
           "label": "18-Game Turnover Rate Diff",
           "feature_value": -0.0291,
           "z_score": -1.6302,
-          "shap_log_odds": 0.30367,
-          "shap_prob_approx": 0.0731
+          "shap_log_odds": 0.30252,
+          "shap_prob_approx": 0.0728
         },
         {
           "feature": "diff_roll_stl",
@@ -100,17 +100,17 @@
         {
           "feature": "diff_roll_dreb",
           "label": "18-Game Defensive Rebound Diff",
-          "feature_value": -0.4236,
-          "z_score": -0.1389,
-          "shap_log_odds": -0.06123,
-          "shap_prob_approx": -0.0151
+          "feature_value": -0.4792,
+          "z_score": -0.1571,
+          "shap_log_odds": -0.06058,
+          "shap_prob_approx": -0.015
         },
         {
           "feature": "diff_roll_blk",
           "label": "18-Game Blocks Diff",
           "feature_value": 0.1042,
           "z_score": 0.0759,
-          "shap_log_odds": 0.05929,
+          "shap_log_odds": 0.05942,
           "shap_prob_approx": 0.0146
         },
         {

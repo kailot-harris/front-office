@@ -1,12 +1,12 @@
 {
   "schema_version": "1.0",
   "game_id": "401910607",
-  "generated_at": "2026-11-24T14:04:36Z",
+  "generated_at": "2026-11-25T14:02:52Z",
   "data": {
     "projection_basis": "primary_ensemble",
     "predicted_margin": -1.89,
     "predicted_home_win_prob": 0.4388,
-    "sigma_game": 12.2765,
+    "sigma_game": 12.2785,
     "margin_waterfall": [
       {
         "key": "bottom_up",
@@ -24,7 +24,7 @@
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": 0.14,
-        "detail": "20% Shot/Fatigue blend (NOP -4.76 vs PHX -5.48)"
+        "detail": "20% Shot/Fatigue blend (NOP -4.75 vs PHX -5.47)"
       },
       {
         "key": "embeddings",
@@ -64,8 +64,8 @@
           "label": "18-Game True Shooting Diff",
           "feature_value": -0.0163,
           "z_score": -0.4869,
-          "shap_log_odds": -0.24076,
-          "shap_prob_approx": -0.0599
+          "shap_log_odds": -0.23623,
+          "shap_prob_approx": -0.0588
         },
         {
           "feature": "diff_roll_stl",
@@ -80,16 +80,16 @@
           "label": "18-Game Turnover Rate Diff",
           "feature_value": 0.0106,
           "z_score": 0.5763,
-          "shap_log_odds": -0.12441,
+          "shap_log_odds": -0.12463,
           "shap_prob_approx": -0.0309
         },
         {
           "feature": "diff_roll_dreb",
           "label": "18-Game Defensive Rebound Diff",
-          "feature_value": 1.2639,
-          "z_score": 0.414,
-          "shap_log_odds": 0.08814,
-          "shap_prob_approx": 0.0216
+          "feature_value": 1.2083,
+          "z_score": 0.3958,
+          "shap_log_odds": 0.0837,
+          "shap_prob_approx": 0.0205
         },
         {
           "feature": "diff_roll_pts",
@@ -112,7 +112,7 @@
           "label": "18-Game eFG% Diff",
           "feature_value": -0.0374,
           "z_score": -1.0727,
-          "shap_log_odds": -0.03839,
+          "shap_log_odds": -0.03829,
           "shap_prob_approx": -0.0095
         },
         {
@@ -120,7 +120,7 @@
           "label": "Schedule Fatigue Index Diff",
           "feature_value": 0.5,
           "z_score": 0.4929,
-          "shap_log_odds": -0.03521,
+          "shap_log_odds": -0.03522,
           "shap_prob_approx": -0.0087
         },
         {
@@ -128,7 +128,7 @@
           "label": "18-Game Blocks Diff",
           "feature_value": 0.6667,
           "z_score": 0.4708,
-          "shap_log_odds": 0.0301,
+          "shap_log_odds": 0.03014,
           "shap_prob_approx": 0.0074
         },
         {

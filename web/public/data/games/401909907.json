@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-11-18T05:36:44Z",
+  "generated_at": "2026-11-25T14:02:29Z",
   "sport": "nba",
   "endpoint": "game_detail",
   "season": 2027,
@@ -910,9 +910,9 @@
             },
             {
               "key": "tov_pct",
-              "entering": 12.9,
+              "entering": 12.8,
               "realized": 6.9,
-              "difference": -6
+              "difference": -5.9
             },
             {
               "key": "oreb_pct",
@@ -928,9 +928,9 @@
             },
             {
               "key": "ortg",
-              "entering": 108.2,
+              "entering": 108.3,
               "realized": 120,
-              "difference": 11.8
+              "difference": 11.7
             }
           ]
         },
@@ -995,16 +995,16 @@
             "label": "18-Game Defensive Rebound Diff",
             "feature_value": 3.6667,
             "z_score": 1.2012,
-            "shap_log_odds": 0.24901,
-            "shap_prob_approx": 0.0602
+            "shap_log_odds": 0.25018,
+            "shap_prob_approx": 0.0605
           },
           {
             "feature": "diff_roll_pts",
             "label": "18-Game Scoring Diff (PPG)",
             "feature_value": 14.5,
             "z_score": 2.0461,
-            "shap_log_odds": -0.0984,
-            "shap_prob_approx": -0.0244
+            "shap_log_odds": -0.09805,
+            "shap_prob_approx": -0.0243
           },
           {
             "feature": "diff_roll_efg",
@@ -1043,24 +1043,24 @@
             "label": "Back-to-Back Diff",
             "feature_value": 0,
             "z_score": 0.0726,
-            "shap_log_odds": 0.01992,
+            "shap_log_odds": 0.02008,
             "shap_prob_approx": 0.0049
-          },
-          {
-            "feature": "diff_roll_tovp",
-            "label": "18-Game Turnover Rate Diff",
-            "feature_value": -0.0019,
-            "z_score": -0.1196,
-            "shap_log_odds": 0.01964,
-            "shap_prob_approx": 0.0048
           },
           {
             "feature": "diff_roll_stl",
             "label": "18-Game Steals Diff",
             "feature_value": -0.6667,
             "z_score": -0.406,
-            "shap_log_odds": 0.01937,
+            "shap_log_odds": 0.01935,
             "shap_prob_approx": 0.0048
+          },
+          {
+            "feature": "diff_roll_tovp",
+            "label": "18-Game Turnover Rate Diff",
+            "feature_value": -0.0007,
+            "z_score": -0.0496,
+            "shap_log_odds": 0.01798,
+            "shap_prob_approx": 0.0044
           },
           {
             "feature": "diff_roll_oreb",

@@ -1,11 +1,11 @@
 {
   "schema_version": "1.0",
   "game_id": "401910728",
-  "generated_at": "2026-11-24T14:04:36Z",
+  "generated_at": "2026-11-25T14:02:52Z",
   "data": {
     "projection_basis": "primary_ensemble",
-    "predicted_margin": 4.07,
-    "predicted_home_win_prob": 0.6345,
+    "predicted_margin": 4.08,
+    "predicted_home_win_prob": 0.6348,
     "sigma_game": 11.8385,
     "margin_waterfall": [
       {
@@ -24,7 +24,7 @@
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": 0.42,
-        "detail": "20% Shot/Fatigue blend (OKC +10.13 vs SAS +8.04)"
+        "detail": "20% Shot/Fatigue blend (OKC +10.14 vs SAS +8.04)"
       },
       {
         "key": "embeddings",
@@ -43,6 +43,12 @@
         "label": "Schedule & travel",
         "points": -0.58,
         "detail": "SAS fatigue 0.17 minus OKC fatigue 0.75"
+      },
+      {
+        "key": "rounding",
+        "label": "Component rounding",
+        "points": 0.01,
+        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,
@@ -142,8 +148,8 @@
         {
           "feature": "diff_roll_dreb",
           "label": "18-Game Defensive Rebound Diff",
-          "feature_value": -0.6667,
-          "z_score": -0.2185,
+          "feature_value": -0.6111,
+          "z_score": -0.2003,
           "shap_log_odds": 0.00701,
           "shap_prob_approx": 0.0017
         },
@@ -151,7 +157,7 @@
           "feature": "diff_roll_tovp",
           "label": "18-Game Turnover Rate Diff",
           "feature_value": 0.0013,
-          "z_score": 0.0627,
+          "z_score": 0.0633,
           "shap_log_odds": 0.00578,
           "shap_prob_approx": 0.0014
         },

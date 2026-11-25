@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "game_id": "401910407",
-  "generated_at": "2026-11-24T14:04:36Z",
+  "generated_at": "2026-11-25T14:02:52Z",
   "data": {
     "projection_basis": "primary_ensemble",
     "predicted_margin": 5.92,
@@ -23,8 +23,8 @@
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
-        "points": 0.79,
-        "detail": "20% Shot/Fatigue blend (PHX -5.48 vs UTA -9.45)"
+        "points": 0.8,
+        "detail": "20% Shot/Fatigue blend (PHX -5.47 vs UTA -9.45)"
       },
       {
         "key": "embeddings",
@@ -43,6 +43,12 @@
         "label": "Schedule & travel",
         "points": 0,
         "detail": "UTA fatigue 0.00 minus PHX fatigue 0.00"
+      },
+      {
+        "key": "rounding",
+        "label": "Component rounding",
+        "points": -0.01,
+        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,
