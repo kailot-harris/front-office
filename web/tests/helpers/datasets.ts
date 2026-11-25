@@ -63,6 +63,13 @@ export const DATA_MANIFEST_FILE = 'data_manifest.json';
  */
 export const LANDING_DIGEST_FILE = 'landing_digest.json';
 
+/**
+ * Momentum Board (NFL_analytics#226) written by build_momentum_board.R. No page
+ * reads it yet (the page lands in a later PR), so it has no lib/data.ts getter
+ * and is not in DATASET_FILES. Its contract is momentum_board.contract.test.ts.
+ */
+export const MOMENTUM_BOARD_FILE = 'momentum_board.json';
+
 export function loadRaw(filename: string): unknown {
   const p = path.join(DATA_DIR, filename);
   if (!fs.existsSync(p)) {

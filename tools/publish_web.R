@@ -922,6 +922,12 @@ if (file.exists(file.path("tools", "write_data_manifest.R"))) {
     file.path("data", "history", "qb_change_forward_log.csv")
   if (file.exists(file.path(repo_root, fwd)))
     record("git add data/history/qb_change_forward_log.csv", .pw_git(repo_root, c("add", "--", fwd)))
+  # Append-only Momentum Board rank history (build_momentum_board.R, NFL_analytics#226). Same
+  # rule: exact path, plain `git add`, never -f.
+  mrh <- if (exists("MOMENTUM_RANK_HISTORY")) MOMENTUM_RANK_HISTORY else
+    file.path("data", "history", "momentum_rank_history.csv")
+  if (file.exists(file.path(repo_root, mrh)))
+    record("git add data/history/momentum_rank_history.csv", .pw_git(repo_root, c("add", "--", mrh)))
   record("git commit (NFL_analytics)",
          .pw_git(repo_root, c("commit", "-m", shQuote(commit_message))))
   c(steps, .pw_push_with_rebase(repo_root, publish_branch))

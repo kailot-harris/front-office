@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "sport": "nfl",
-  "generated_at": "2026-11-25T13:05:08Z",
+  "generated_at": "2026-11-25T15:23:12Z",
   "schedule_through_date": "2026-11-23",
   "datasets": {
     "clutch_leverage_metrics.json": {
@@ -63,6 +63,18 @@
       "static": false,
       "max_lag_days": 8,
       "lifecycle": "live"
+    },
+    "momentum_board.json": {
+      "builder": "build_momentum_board.R",
+      "generated_at": "2026-11-25T15:22:15Z",
+      "stamp_source": "payload:generated_at",
+      "content_sha256": "35b9b2a040e1af601742d524c00970132cb27dd01c59da3abdad11db93f31321",
+      "through_date": "2026-11-23",
+      "through_date_source": "payload:through_date (latest completed regular-season game on the board)",
+      "static": false,
+      "max_lag_days": 8,
+      "lifecycle": "live",
+      "coverage_note": null
     },
     "passing_index.json": {
       "builder": "build_passing_dataset.R",

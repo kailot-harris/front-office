@@ -81,8 +81,8 @@ ok("CFG-4 Empirically derived NFL_HCA and NFL_MARGIN_SIGMA sit in sane NFL range
    sprintf("NFL_HCA=%.2f, NFL_MARGIN_SIGMA=%.2f -> neutral home win prob=%.3f",
            NFL_HCA, NFL_MARGIN_SIGMA, pnorm(NFL_HCA / NFL_MARGIN_SIGMA)))
 
-ok("CFG-5 WEB_DATA_FILES declares the 10 derived JSON datasets, including coaching_profiles.json (NFL_analytics#171) and player_leaders.json (NFL_analytics#230)",
-   length(WEB_DATA_FILES) == 10L && WEB_JSON_PLAYER_LEADERS %in% WEB_DATA_FILES &&
+ok("CFG-5 WEB_DATA_FILES declares the 11 derived JSON datasets, including coaching_profiles.json (NFL_analytics#171), player_leaders.json (NFL_analytics#230) and momentum_board.json (NFL_analytics#226)",
+   length(WEB_DATA_FILES) == 11L && WEB_JSON_PLAYER_LEADERS %in% WEB_DATA_FILES && WEB_JSON_MOMENTUM_BOARD %in% WEB_DATA_FILES &&
      all(grepl("^web/public/data/.*\\.json$", gsub("\\\\", "/", WEB_DATA_FILES))) &&
      WEB_JSON_COACHING_PROFILES %in% WEB_DATA_FILES,
    sprintf("%d files in WEB_DATA_FILES", length(WEB_DATA_FILES)))
