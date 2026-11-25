@@ -16,7 +16,7 @@ export const ApronThermometer: React.FC<ApronThermometerProps> = ({ profile }) =
   const maxVal = 225;
   const span = maxVal - minVal;
 
-  const toPct = (val: number) => {
+  const toPct = (val: number | null) => {
     if (typeof val !== 'number' || !Number.isFinite(val)) return 0;
     return Math.max(0, Math.min(100, ((val - minVal) / span) * 100));
   };
@@ -29,6 +29,7 @@ export const ApronThermometer: React.FC<ApronThermometerProps> = ({ profile }) =
 
   // Status color
   const getFillColor = () => {
+    if (!isFiniteNumber(totalPayroll2026)) return 'bg-slate-700';
     if (totalPayroll2026 > secondApron) return 'bg-rose-500';
     if (totalPayroll2026 > firstApron) return 'bg-orange-500';
     if (totalPayroll2026 > luxuryTaxThreshold) return 'bg-amber-500';

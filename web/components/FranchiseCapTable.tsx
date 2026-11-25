@@ -36,7 +36,7 @@ export const FranchiseCapTable: React.FC<FranchiseCapTableProps> = ({ profile })
             3-Year Salary Cap Book & Option Sheet
           </h4>
           <span className="text-[11px] sm:text-[10px] text-slate-400">
-            Player salary commitments, player options (PO), and team options (TO). Sourced from official Spotrac & Basketball-Reference 2026-2027 CBA filings.
+            Player salary commitments from Basketball-Reference 2026-2027 active-roster contract filings.
           </span>
         </div>
         <div className="flex items-center gap-3 text-xs font-mono">
@@ -78,38 +78,46 @@ export const FranchiseCapTable: React.FC<FranchiseCapTableProps> = ({ profile })
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-850 font-mono">
-            {contracts.map((c) => (
-              <tr key={c.playerId} className="hover:bg-surface-raised/50 transition-colors">
-                <td className="py-2 font-sans font-medium text-white truncate max-w-[140px]">
-                  {c.playerName}
-                </td>
-                <td className="py-2 text-center text-[11px] sm:text-[10px] text-slate-400">
-                  {c.position}
-                </td>
-                <td className="py-2 text-right font-bold text-slate-200">
-                  {money(c.salary2026)}
-                </td>
-                <td className="py-2 text-right text-slate-300">
-                  {!isFiniteNumber(c.salary2027) ? MISSING_VALUE : c.salary2027 > 0 ? money(c.salary2027) : <span className="text-slate-500">UFA</span>}
-                </td>
-                <td className="py-2 text-right text-slate-300">
-                  {!isFiniteNumber(c.salary2028) ? MISSING_VALUE : c.salary2028 > 0 ? money(c.salary2028) : <span className="text-slate-500">UFA</span>}
-                </td>
-                <td className="py-2 text-center">
-                  <span
-                    className={`text-[11px] sm:text-[9px] px-1.5 py-0.5 rounded font-sans font-semibold ${
-                      c.contractType === 'Guaranteed'
-                        ? 'bg-slate-800 text-slate-300 border border-slate-700'
-                        : c.contractType === 'Player Option'
-                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                        : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-                    }`}
-                  >
-                    {c.contractType}
-                  </span>
+            {contracts.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-6 text-center font-sans text-xs text-slate-400">
+                  Contract breakdown unavailable for {profile.teamAbbr} (missing Basketball-Reference contracts cache).
                 </td>
               </tr>
-            ))}
+            ) : (
+              contracts.map((c) => (
+                <tr key={c.playerId} className="hover:bg-surface-raised/50 transition-colors">
+                  <td className="py-2 font-sans font-medium text-white truncate max-w-[140px]">
+                    {c.playerName}
+                  </td>
+                  <td className="py-2 text-center text-[11px] sm:text-[10px] text-slate-400">
+                    {c.position}
+                  </td>
+                  <td className="py-2 text-right font-bold text-slate-200">
+                    {money(c.salary2026)}
+                  </td>
+                  <td className="py-2 text-right text-slate-300">
+                    {!isFiniteNumber(c.salary2027) ? MISSING_VALUE : c.salary2027 > 0 ? money(c.salary2027) : <span className="text-slate-500">UFA</span>}
+                  </td>
+                  <td className="py-2 text-right text-slate-300">
+                    {!isFiniteNumber(c.salary2028) ? MISSING_VALUE : c.salary2028 > 0 ? money(c.salary2028) : <span className="text-slate-500">UFA</span>}
+                  </td>
+                  <td className="py-2 text-center">
+                    <span
+                      className={`text-[11px] sm:text-[9px] px-1.5 py-0.5 rounded font-sans font-semibold ${
+                        c.contractType === 'Guaranteed'
+                          ? 'bg-slate-800 text-slate-300 border border-slate-700'
+                          : c.contractType === 'Player Option'
+                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                          : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                      }`}
+                    >
+                      {c.contractType}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-slate-800 font-mono font-bold text-xs bg-surface-raised/80">

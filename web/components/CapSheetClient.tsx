@@ -50,14 +50,16 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
         const matchesTier = selectedTier === 'All' || t.cbaTier === selectedTier;
         return matchesSearch && matchesTier;
       })
-      .sort((a, b) => b.totalPayroll2026 - a.totalPayroll2026);
+      .sort((a, b) => (b.totalPayroll2026 ?? -1) - (a.totalPayroll2026 ?? -1));
   }, [initialData.teams, searchTerm, selectedTier]);
 
   const topTaxTeam = useMemo(() => {
-    return [...initialData.teams].sort((a, b) => b.luxuryTaxBill - a.luxuryTaxBill)[0];
+    return [...initialData.teams].sort((a, b) => (b.luxuryTaxBill ?? -1) - (a.luxuryTaxBill ?? -1))[0];
   }, [initialData.teams]);
 
-  const getTierBadge = (tier: string) => {
+  const hasUnavailableData = Boolean(initialData.cbaThresholdSources?.includes('UNAVAILABLE'));
+
+  const getTierBadge = (tier: string | null) => {
     switch (tier) {
       case 'Second Apron Restricted':
         return 'bg-rose-500/10 text-rose-400 border-rose-500/30';
@@ -67,8 +69,10 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
         return 'bg-amber-500/10 text-amber-400 border-amber-500/30';
       case 'Over Cap (Non-Taxpayer)':
         return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30';
-      default:
+      case 'Under Cap Room':
         return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
+      default:
+        return 'bg-slate-800/80 text-slate-400 border-slate-700';
     }
   };
 
@@ -122,6 +126,18 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
         a team sits.
       </HowToReadDisclosure>
 
+      {hasUnavailableData && (
+        <div
+          role="status"
+          className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs leading-relaxed"
+        >
+          <span className="font-bold text-amber-300 block mb-1">
+            Upstream Basketball-Reference CBA Data Unavailable
+          </span>
+          <span>{initialData.cbaThresholdSources}</span>
+        </div>
+      )}
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         <div className="p-3.5 rounded-xl bg-surface-raised/80 border border-slate-800 shadow-sm flex items-center gap-3">
@@ -131,10 +147,16 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
           <div className="min-w-0">
             <span className="text-[11px] text-slate-400 font-medium block truncate">Total League Tax Revenue</span>
             <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="font-mono text-base font-bold text-white">${initialData.totalLeagueTaxRevenue}M</span>
-              <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">({initialData.taxTeamCount} teams)</span>
+              <span className="font-mono text-base font-bold text-white">
+                {isFiniteNumber(initialData.totalLeagueTaxRevenue) ? money(initialData.totalLeagueTaxRevenue) : MISSING_VALUE}
+              </span>
+              <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">
+                ({initialData.taxTeamCount ?? MISSING_VALUE} teams)
+              </span>
             </div>
-            <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">Avg Payroll: ${initialData.averagePayroll}M</span>
+            <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">
+              Avg Payroll: {isFiniteNumber(initialData.averagePayroll) ? money(initialData.averagePayroll) : MISSING_VALUE}
+            </span>
           </div>
         </div>
 
@@ -145,7 +167,9 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
           <div className="min-w-0">
             <span className="text-[11px] text-slate-400 font-medium block truncate">Second Apron Handcuffs</span>
             <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="font-mono text-base font-bold text-rose-400">{initialData.secondApronTeamCount} Franchises</span>
+              <span className="font-mono text-base font-bold text-rose-400">
+                {initialData.secondApronTeamCount ?? MISSING_VALUE} Franchises
+              </span>
             </div>
             <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">Frozen 7-yr picks & no aggregation</span>
           </div>
@@ -158,7 +182,9 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
           <div className="min-w-0">
             <span className="text-[11px] text-slate-400 font-medium block truncate">Cap Room Teams</span>
             <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="font-mono text-base font-bold text-emerald-400">{initialData.capRoomTeamCount} Franchises</span>
+              <span className="font-mono text-base font-bold text-emerald-400">
+                {initialData.capRoomTeamCount ?? MISSING_VALUE} Franchises
+              </span>
             </div>
             <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">Sub-${initialData.salaryCap}M flexible payrolls</span>
           </div>
@@ -169,12 +195,16 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
             <Flame className="w-5 h-5" />
           </div>
           <div className="min-w-0">
-            <span className="text-[11px] text-slate-400 font-medium block truncate">Top Tax Bill: {topTaxTeam?.teamAbbr}</span>
+            <span className="text-[11px] text-slate-400 font-medium block truncate">Top Tax Bill: {topTaxTeam?.teamAbbr ?? MISSING_VALUE}</span>
             <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="font-mono text-base font-bold text-amber-400">${topTaxTeam?.luxuryTaxBill}M</span>
+              <span className="font-mono text-base font-bold text-amber-400">
+                {isFiniteNumber(topTaxTeam?.luxuryTaxBill) ? money(topTaxTeam?.luxuryTaxBill) : MISSING_VALUE}
+              </span>
               <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">Tax</span>
             </div>
-            <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">Total: ${topTaxTeam?.totalFinancialCommitment}M</span>
+            <span className="text-[11px] sm:text-[10px] text-slate-500 font-mono">
+              Total: {isFiniteNumber(topTaxTeam?.totalFinancialCommitment) ? money(topTaxTeam?.totalFinancialCommitment) : MISSING_VALUE}
+            </span>
           </div>
         </div>
       </div>
@@ -243,7 +273,7 @@ export const CapSheetClient: React.FC<CapSheetClientProps> = ({ initialData }) =
                           t.cbaTier
                         )}`}
                       >
-                        {t.cbaTier}
+                        {t.cbaTier ?? 'Unavailable'}
                       </span>
                     </div>
                   </div>
