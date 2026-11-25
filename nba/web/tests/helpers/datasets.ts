@@ -119,6 +119,8 @@ export const EXPECTED_DATA_FILES = [
   // Frozen momentum measures study results behind /momentum/methodology
   // (tools/publish_momentum_methodology.R; static in data_manifest.json).
   'momentum_methodology.json',
+  // League leaders panel on /players (NBA_analytics#254; build_player_leaders.R).
+  'player_leaders.json',
 ] as const;
 export type DataFileName = (typeof EXPECTED_DATA_FILES)[number];
 

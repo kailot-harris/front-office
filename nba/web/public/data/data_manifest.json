@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "sport": "nba",
-  "generated_at": "2026-11-25T05:04:52Z",
+  "generated_at": "2026-11-25T06:37:10Z",
   "schedule_through_date": "2026-11-23",
   "datasets": {
     "cba_cap_sheet.json": {
@@ -61,12 +61,12 @@
       "lifecycle": "live"
     },
     "landing_digest.json": {
-      "generated_at": "2026-11-25T05:03:35Z",
-      "through_date": null,
-      "through_date_source": "not_game_dated",
+      "generated_at": "2026-11-25T05:05:15Z",
+      "through_date": "2026-11-24",
+      "through_date_source": "payload:yesterday[final].game_date",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "c3e57deb51b14a69b70df74ca1fd0ec8ea1d3c221b43dfe7b7e84f548a1e5955",
-      "coverage_note": "extractor payload:yesterday[final].game_date found no game date in the payload",
+      "content_sha256": "170c3ca76b79c7e8704f689a4753c7e516cdaad76df2661d4d632ede8d9f57a5",
+      "coverage_note": null,
       "source_season": "2026-27",
       "builder": "build_landing_digest.R",
       "max_lag_days": 2,
@@ -75,11 +75,11 @@
       "lifecycle": "live"
     },
     "matchups_slates.json": {
-      "generated_at": "2026-11-25T05:03:21Z",
-      "through_date": "2026-11-23",
+      "generated_at": "2026-11-25T05:05:15Z",
+      "through_date": "2026-11-24",
       "through_date_source": "payload:matchups[is_completed].game_date",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "7d4a69a5d052dfa38d32e5ba5d005abf62e96e1403e48fd25d2675fc14bbc53f",
+      "content_sha256": "ef709ca7cbb6a34bda8a9a33820470651c5d5eb4126de1b00a9c9c53475c1240",
       "coverage_note": null,
       "source_season": "2026-27",
       "builder": "build_matchups_dataset.R",
@@ -167,6 +167,20 @@
       "coverage_note": null,
       "source_season": "2026-27",
       "builder": "build_player_dna_dataset.R",
+      "max_lag_days": 2,
+      "static": false,
+      "static_reason": null,
+      "lifecycle": "live"
+    },
+    "player_leaders.json": {
+      "generated_at": "2026-11-25T06:36:46Z",
+      "through_date": "2026-11-23",
+      "through_date_source": "payload:through_date",
+      "stamp_source": "payload:generated_at",
+      "content_sha256": "10a711ebe62e18db0eb14a7a3dfe9f17af02de98e06327dc9422fbce2dd1fef8",
+      "coverage_note": null,
+      "source_season": "2026-27",
+      "builder": "build_player_leaders.R",
       "max_lag_days": 2,
       "static": false,
       "static_reason": null,

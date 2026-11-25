@@ -532,7 +532,8 @@ check_rapm_gauge <- function(orapm, drapm, tol = RAPM_GAUGE_TOL) {
 # ------------------------------------------------------------------------------
 # Fit
 # ------------------------------------------------------------------------------
-estimate_rapm_from_possessions <- function(cache, lambda = RAPM_LAMBDA, source_tag = NULL) {
+estimate_rapm_from_possessions <- function(cache, lambda = RAPM_LAMBDA, source_tag = NULL,
+                                           out_path = file.path(.cache_dir, "rapm_ratings.rds")) {
   dm <- build_possession_design_matrix(cache$possessions, cache$team_map)
 
   if (RAPM_TUNE_LAMBDA) lambda <- tune_lambda_cv(dm)
@@ -669,7 +670,6 @@ estimate_rapm_from_possessions <- function(cache, lambda = RAPM_LAMBDA, source_t
            season, season_label, lambda, league_ppp, n_possessions, n_games, generated_at) %>%
     arrange(desc(total_rapm))
 
-  out_path <- file.path(.cache_dir, "rapm_ratings.rds")
   saveRDS(rapm_df, out_path)
   message(sprintf(paste0(">>> [RAPM] Saved %d %s ORAPM/DRAPM ratings to %s ",
                          "(%d flagged low-sample at data share < %.3f; %d leaderboard-eligible ",
@@ -705,6 +705,8 @@ estimate_rapm_ratings <- function(lambda = RAPM_LAMBDA, season = RAPM_SEASON,
   stop(msg)
 }
 
-if (!interactive()) {
+# Set NBA_SKIP_STAGE_AUTORUN=1 to source this file for its definitions alone
+# (build_player_leaders.R does this for the leader cards' current-season fit).
+if (!interactive() && !nzchar(Sys.getenv("NBA_SKIP_STAGE_AUTORUN"))) {
   invisible(estimate_rapm_ratings())
 }
