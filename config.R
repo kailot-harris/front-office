@@ -852,6 +852,13 @@ WEB_JSON_PLAYER_LEADERS           <- file.path(WEB_DATA_DIR, "player_leaders.jso
 # It carries a top-level generated_at, so it is a WEB_DATA_FILES member: the publish gate
 # (Assertions A and F) blocks a copy the pipeline did not rewrite.
 WEB_JSON_MOMENTUM_BOARD           <- file.path(WEB_DATA_DIR, "momentum_board.json")
+# Momentum Board methodology (NFL_analytics#226, /momentum/methodology): a static research
+# artifact extracted from the rolling-window and momentum measures study results files by
+# tools/publish_momentum_methodology.R. That script is NOT a run_full_pipeline.R stage; it
+# runs only when a study is re-run, so the file is deliberately NOT a WEB_DATA_FILES member
+# (the publish gate requires every member to be rewritten each run). data_manifest.json marks
+# it static (tools/write_data_manifest.R).
+WEB_JSON_MOMENTUM_METHODOLOGY     <- file.path(WEB_DATA_DIR, "momentum_methodology.json")
 
 # ------------------------------------------------------------------------------------------
 # Momentum Board settings (NFL_analytics#226)

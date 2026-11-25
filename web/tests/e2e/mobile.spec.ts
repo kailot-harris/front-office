@@ -79,7 +79,8 @@ test.describe('mobile navigation drawer', () => {
     const collapsed = page.locator(`${PANEL} nav button[aria-expanded="false"]`);
     while ((await collapsed.count()) > 0) await collapsed.first().click();
 
-    for (const route of ROUTES) {
+    // #226: sub-pages linked from their parent page (RouteSpec.linkedFrom) are not in the drawer.
+    for (const route of ROUTES.filter((r) => r.linkedFrom === undefined)) {
       const x = await drawerLinkX(page, route.path);
       expect(x, `${route.path} is not present in the mobile drawer`).not.toBeNull();
       expect(x!, `${route.path} is in the drawer but off-screen at x=${x}`).toBeGreaterThanOrEqual(0);

@@ -17,6 +17,8 @@ import {
   GameDetailEnvelope,
 } from './types';
 import type { PlayerLeadersPayload } from './playerLeadersTypes';
+import type { MomentumPayload } from './momentumTypes';
+import type { MomentumMethodologyPayload } from './momentumMethodologyTypes';
 
 function readJsonFile<T>(filename: string): T {
   const filePath = path.join(process.cwd(), 'public', 'data', filename);
@@ -50,6 +52,28 @@ export function getPlayerLeaders(): PlayerLeadersPayload | null {
     return readJsonFile<PlayerLeadersPayload>('player_leaders.json');
   } catch (error) {
     console.error('Error reading player_leaders.json:', error);
+    return null;
+  }
+}
+
+// Momentum Board (NFL_analytics#226). A missing or unreadable file shows an
+// "unavailable" note on /momentum instead of failing the build.
+export function getMomentumBoard(): MomentumPayload | null {
+  try {
+    return readJsonFile<MomentumPayload>('momentum_board.json');
+  } catch (error) {
+    console.error('Error reading momentum_board.json:', error);
+    return null;
+  }
+}
+
+// Momentum Board methodology (NFL_analytics#226), written by
+// tools/publish_momentum_methodology.R. Missing file: "unavailable" note on the page.
+export function getMomentumMethodology(): MomentumMethodologyPayload | null {
+  try {
+    return readJsonFile<MomentumMethodologyPayload>('momentum_methodology.json');
+  } catch (error) {
+    console.error('Error reading momentum_methodology.json:', error);
     return null;
   }
 }

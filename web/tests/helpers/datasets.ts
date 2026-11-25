@@ -48,6 +48,8 @@ export const DATASET_FILES = {
   getPlayerDnaProfiles: 'player_dna_profiles.json',
   getClutchData: 'clutch_leverage_metrics.json',
   getPlayerLeaders: 'player_leaders.json',
+  getMomentumBoard: 'momentum_board.json',
+  getMomentumMethodology: 'momentum_methodology.json',
 } as const;
 
 /**
@@ -64,11 +66,18 @@ export const DATA_MANIFEST_FILE = 'data_manifest.json';
 export const LANDING_DIGEST_FILE = 'landing_digest.json';
 
 /**
- * Momentum Board (NFL_analytics#226) written by build_momentum_board.R. No page
- * reads it yet (the page lands in a later PR), so it has no lib/data.ts getter
- * and is not in DATASET_FILES. Its contract is momentum_board.contract.test.ts.
+ * Momentum Board (NFL_analytics#226) written by build_momentum_board.R and read
+ * by /momentum (getMomentumBoard). Its contract is momentum_board.contract.test.ts.
  */
-export const MOMENTUM_BOARD_FILE = 'momentum_board.json';
+export const MOMENTUM_BOARD_FILE = DATASET_FILES.getMomentumBoard;
+
+/**
+ * Momentum Board methodology (NFL_analytics#226) written by
+ * tools/publish_momentum_methodology.R and read by /momentum/methodology
+ * (getMomentumMethodology). Static in data_manifest.json. Its contract is
+ * momentum_methodology.contract.test.ts.
+ */
+export const MOMENTUM_METHODOLOGY_FILE = DATASET_FILES.getMomentumMethodology;
 
 export function loadRaw(filename: string): unknown {
   const p = path.join(DATA_DIR, filename);
