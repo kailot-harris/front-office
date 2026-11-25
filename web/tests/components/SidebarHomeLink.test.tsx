@@ -22,10 +22,12 @@ describe('Sidebar Front Office home link (#220)', () => {
     expect(first.getAttribute('href')).toBe('/front-office/');
     expect(first.hasAttribute('aria-current')).toBe(false);
   });
-  it('orders nav items with offseason pages first when seasonState is offseason', () => {
+  it('orders nav groups with Front Office first and open when seasonState is offseason', () => {
     const { container } = render(<Sidebar seasonState="offseason" />);
     const labels = Array.from(container.querySelectorAll('aside a')).filter((a) => !a.closest('nav[aria-label="Switch sport"]')).map((a) => a.getAttribute('href'));
-    expect(labels[1]).toBe('/offseason');
-    expect(labels[2]).toBe('/');
+    expect(labels[1]).toBe('/cap-sheet');
+    expect(labels[2]).toBe('/coaches');
+    expect(labels[3]).toBe('/offseason');
+    expect(labels[4]).toBe('/');
   });
 });

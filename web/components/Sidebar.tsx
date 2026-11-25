@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useDialogFocus } from '@/lib/useDialogFocus';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -26,9 +26,10 @@ import {
   TrendingUp,
   Film,
   ArrowLeft,
+  ChevronDown,
 } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
-import { orderNavItems } from '@/lib/navOrder';
+import { groupNavItems } from '@/lib/navOrder';
 import { SportSwitcher } from '@/components/SportSwitcher';
 
 /**
@@ -39,6 +40,13 @@ import { SportSwitcher } from '@/components/SportSwitcher';
  */
 const withoutTrailingSlash = (path: string) =>
   path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
+
+const isItemActive = (href: string, pathname: string | null | undefined): boolean => {
+  const current = withoutTrailingSlash(pathname ?? '/');
+  return current === withoutTrailingSlash(href) || (href === '/' && current === '/teams');
+};
+
+const SIDEBAR_GROUPS_STORAGE_KEY = 'fo-nba-sidebar-groups';
 
 export interface SidebarProps {
   generatedAt?: string;
@@ -62,8 +70,28 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore, seaso
   const drawerRef = useRef<HTMLDivElement>(null);
   useDialogFocus(drawerRef, isOpen, () => setIsOpen(false));
   const [showSigmaExplainer, setShowSigmaExplainer] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
-  const navItems = orderNavItems([
+  useEffect(() => {
+    try {
+      if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') return;
+      const raw = window.localStorage.getItem(SIDEBAR_GROUPS_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as unknown;
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const sanitized: Record<string, boolean> = {};
+        for (const [k, v] of Object.entries(parsed)) {
+          if (typeof v === 'boolean') sanitized[k] = v;
+        }
+        setOpenGroups(sanitized);
+      }
+    } catch {
+      // Ignore unavailable or malformed localStorage
+    }
+  }, []);
+
+  // Flat NAV_ITEMS array kept intact for tools/check_sport_nav_sync.mjs.
+  const NAV_ITEMS = [
     {
       href: '/',
       label: 'Season Standings',
@@ -172,9 +200,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore, seaso
       icon: Film,
       desc: 'Animated races & simulation GIFs',
     },
-  ], seasonState);
+  ];
 
-  const NavContent = () => (
+  const navGroups = groupNavItems(NAV_ITEMS, seasonState);
+  const activeGroupId = navGroups.find((group) =>
+    group.items.some((item) => isItemActive(item.href, pathname)),
+  )?.id;
+
+  const toggleGroup = (groupId: string, currentlyOpen: boolean) => {
+    if (groupId === activeGroupId) return;
+    const next = { ...openGroups, [groupId]: !currentlyOpen };
+    setOpenGroups(next);
+    try {
+      if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
+        window.localStorage.setItem(SIDEBAR_GROUPS_STORAGE_KEY, JSON.stringify(next));
+      }
+    } catch {
+      // Ignore unavailable localStorage
+    }
+  };
+
+  const navContent = (
     <div className="flex flex-col h-full justify-between p-4">
       <div className="space-y-6 flex-1 overflow-y-auto min-h-0">
         {/* Front Office home (#220). A plain anchor, not next/link, so the sport
@@ -211,54 +257,76 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore, seaso
         </div>
 
         {/* Navigation Links */}
-        <div className="space-y-1">
-          <div className="px-2 text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 font-mono">
-            Main Navigation
-          </div>
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive =
-              withoutTrailingSlash(pathname ?? '/') === withoutTrailingSlash(item.href) ||
-              (item.href === '/' && withoutTrailingSlash(pathname ?? '/') === '/teams');
+        <nav aria-label="Main navigation" className="space-y-3">
+          {navGroups.map((group) => {
+            const isGroupOpen =
+              group.id === activeGroupId || (openGroups[group.id] ?? group.defaultOpen);
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsOpen(false)}
-                className={`group flex items-start gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  isActive
-                    ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-                }`}
-              >
-                <Icon
-                  className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
-                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-emerald-400'
-                  }`}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold">{item.label}</span>
-                    <span
-                      className={`text-[11px] sm:text-[10px] px-1.5 py-0.2 rounded font-mono font-medium ${
-                        isActive ? 'bg-black/25 text-white' : 'bg-slate-800 text-slate-400'
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  </div>
-                  <p
-                    className={`text-[11px] truncate ${
-                      isActive ? 'text-accent-100' : 'text-slate-500'
+              <div key={group.id} className="space-y-1">
+                <button
+                  type="button"
+                  aria-expanded={isGroupOpen}
+                  onClick={() => toggleGroup(group.id, isGroupOpen)}
+                  className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors font-mono"
+                >
+                  <span>{group.label}</span>
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 transition-transform duration-150 ${
+                      isGroupOpen ? 'rotate-0' : '-rotate-90'
                     }`}
-                  >
-                    {item.desc}
-                  </p>
-                </div>
-              </Link>
+                    aria-hidden="true"
+                  />
+                </button>
+                {isGroupOpen && (
+                  <div className="space-y-1">
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = isItemActive(item.href, pathname);
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          aria-current={isActive ? 'page' : undefined}
+                          onClick={() => setIsOpen(false)}
+                          className={`group flex items-start gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                            isActive
+                              ? 'bg-accent-600 text-white shadow-lg shadow-accent-600/30'
+                              : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                          }`}
+                        >
+                          <Icon
+                            className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
+                              isActive ? 'text-white' : 'text-slate-400 group-hover:text-emerald-400'
+                            }`}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold">{item.label}</span>
+                              <span
+                                className={`text-[11px] sm:text-[10px] px-1.5 py-0.2 rounded font-mono font-medium ${
+                                  isActive ? 'bg-black/25 text-white' : 'bg-slate-800 text-slate-400'
+                                }`}
+                              >
+                                {item.badge}
+                              </span>
+                            </div>
+                            <p
+                              className={`text-[11px] truncate ${
+                                isActive ? 'text-accent-100' : 'text-slate-500'
+                              }`}
+                            >
+                              {item.desc}
+                            </p>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
-        </div>
+        </nav>
 
         {/* Engine Metadata Card */}
         <div className="bg-surface/70 border border-slate-800/80 rounded-xl p-3.5 space-y-2.5">
@@ -425,14 +493,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, brierScore, seaso
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <NavContent />
+            {navContent}
           </div>
         </div>
       )}
 
       {/* Desktop Persistent Sidebar */}
       <aside className="hidden md:flex w-64 lg:w-72 flex-col flex-shrink-0 h-screen sticky top-0 bg-surface-raised/90 backdrop-blur-md border-r border-slate-800 z-30">
-        <NavContent />
+        {navContent}
       </aside>
     </>
   );
