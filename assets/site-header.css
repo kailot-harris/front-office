@@ -25,3 +25,8 @@
 @media (min-width: 641px) {
   .site-header__toggle { display: none; }
 }
+/* Tablets: the site links on one row and the four sports on a second row. */
+@media (min-width: 641px) and (max-width: 1023px) {
+  .site-header__list::after { content: ""; flex-basis: 100%; order: 1; }
+  .site-header__list li:nth-child(n+4) { order: 2; }
+}
