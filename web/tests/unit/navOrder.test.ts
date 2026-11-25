@@ -25,7 +25,7 @@ describe('NAV_GROUPS', () => {
 });
 
 describe('groupNavItems', () => {
-  it('orders groups by NAV_GROUPS in season with Season & Games defaultOpen', () => {
+  it('orders groups by NAV_GROUPS in season with no group defaultOpen (the current page group opens)', () => {
     const groups = groupNavItems(items, 'regular');
     expect(groups.map((g) => g.id)).toEqual([
       'season-games',
@@ -33,7 +33,7 @@ describe('groupNavItems', () => {
       'visualizations',
       'models',
     ]);
-    expect(groups.map((g) => g.defaultOpen)).toEqual([true, false, false, false]);
+    expect(groups.map((g) => g.defaultOpen)).toEqual([false, false, false, false]);
     expect(groups[0].items.map((i) => i.label)).toEqual(['Season Standings', 'Matchups']);
   });
 
