@@ -10,7 +10,7 @@
 import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import CoachingClient from '../../components/CoachingClient';
-import { servedRoutes } from '../helpers/app-routes';
+import { servedRoutes, sidebarRoutes } from '../helpers/app-routes';
 import SalaryCapClient from '../../components/SalaryCapClient';
 import GalleryClient from '../../components/GalleryClient';
 import DiagnosticsClient from '../../components/DiagnosticsClient';
@@ -89,7 +89,8 @@ describe('Sidebar', () => {
       fireEvent.click(btn);
     }
     const hrefs = Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href'));
-    for (const route of ROUTES) {
+    // #226: sub-pages linked from their parent page (RouteSpec.linkedFrom) are not in the sidebar.
+    for (const route of sidebarRoutes()) {
       expect(hrefs, `no sidebar link to ${route}`).toContain(route);
     }
   });

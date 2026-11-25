@@ -23,6 +23,12 @@ export interface RouteSpec {
    * (interactions.spec.ts counts `tbody tr, [class*="rounded-xl"]` by default).
    */
   resultRows?: string;
+  /**
+   * A sub-page reached from its parent page rather than from the sidebar
+   * (#226: the Momentum Board links its methodology page). The sidebar checks
+   * skip it; it must still be linked from `linkedFrom`.
+   */
+  linkedFrom?: string;
 }
 
 export const ROUTES: RouteSpec[] = [
@@ -39,6 +45,22 @@ export const ROUTES: RouteSpec[] = [
     heading: 'Weekly Matchup Projections',
     dataMarkers: ['Select Slate', 'Model Win Probability'],
     expectsSearch: true,
+  },
+  {
+    path: '/momentum',
+    title: 'Momentum Board',
+    heading: 'Momentum Board',
+    dataMarkers: ['How this is calculated', 'Games in window'],
+    expectsSearch: false,
+  },
+  {
+    path: '/momentum/methodology',
+    title: 'Momentum Board Methodology',
+    heading: 'Momentum Board methodology',
+    // Section headings rendered around data read from momentum_methodology.json.
+    dataMarkers: ['Why flags carry no badge', 'Everything the measures study tried'],
+    expectsSearch: false,
+    linkedFrom: '/momentum',
   },
   {
     path: '/teams',
@@ -163,6 +185,12 @@ export function linkHref(path: string): string {
 }
 
 export const ROUTE_HREFS = ROUTE_PATHS.map(linkHref);
+
+/** Routes linked from their parent page instead of the sidebar (RouteSpec.linkedFrom). */
+export const LINKED_ROUTES = ROUTES.filter((r) => r.linkedFrom !== undefined);
+
+/** Routes the sidebar must link to: every route except LINKED_ROUTES. */
+export const SIDEBAR_ROUTE_HREFS = ROUTES.filter((r) => r.linkedFrom === undefined).map((r) => linkHref(r.path));
 
 /**
  * Requests that fail for reasons that are not app defects.

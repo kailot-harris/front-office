@@ -9,7 +9,8 @@ import switcherTable from './switcher-table.fixture.json';
 import {
   BASE_PATH,
   ROUTES,
-  ROUTE_HREFS,
+  LINKED_ROUTES,
+  SIDEBAR_ROUTE_HREFS,
   isRealConsoleError,
   isRealRequestFailure,
   linkHref,
@@ -128,8 +129,17 @@ test.describe('navigation', () => {
     );
     // Compared against the basePath-prefixed, trailing-slashed form, because
     // that is what Next renders into the markup — see linkHref in routes.ts.
-    for (const href of ROUTE_HREFS) {
+    // #226: a sub-page linked from its parent page (RouteSpec.linkedFrom) is checked below instead.
+    for (const href of SIDEBAR_ROUTE_HREFS) {
       expect([...new Set(hrefs)], `no navigation link to ${href}`).toContain(href);
+    }
+  });
+
+  test('every sub-page is linked from its parent page', async ({ page }) => {
+    for (const route of LINKED_ROUTES) {
+      await page.goto(route.linkedFrom!, { waitUntil: 'networkidle' });
+      const hrefs = await page.locator('a').evaluateAll((els) => els.map((el) => el.getAttribute('href')));
+      expect(hrefs, `${route.linkedFrom} does not link to ${route.path}`).toContain(linkHref(route.path));
     }
   });
 

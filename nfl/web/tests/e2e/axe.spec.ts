@@ -12,6 +12,8 @@ import { expect, test } from '@playwright/test';
 export const AXE_ROUTES = [
   '/',
   '/matchups',
+  '/momentum',
+  '/momentum/methodology',
   '/teams',
   '/coaches',
   '/cap-sheet',
@@ -33,6 +35,8 @@ for (const colorScheme of ['light', 'dark'] as const) {
 
     for (const route of AXE_ROUTES) {
       test(`${route} has no serious or critical violations`, async ({ page }) => {
+        // The methodology page renders every study table (hundreds of rows); axe needs longer there.
+        if (route === '/momentum/methodology') test.slow();
         await page.goto(route, { waitUntil: 'networkidle' });
         const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
         const blocking = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');

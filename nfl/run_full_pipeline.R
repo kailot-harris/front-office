@@ -419,6 +419,16 @@ run_stage("build_player_leaders.R", "Build League Leaders Panel (player_leaders.
           call_fn = "run_build_player_leaders",
           output = WEB_JSON_PLAYER_LEADERS)
 
+# Stage 14.4c: Momentum Board data layer (build_momentum_board.R, NFL_analytics#226)
+# Must run after daily_ingest.R (schedules, CACHE_PBP EPA, snap counts), injury_scraper.R
+# (CACHE_INJURY_DATA), team_ratings_engine.R (the Elo stage; the board re-runs the same
+# production walk-forward from tools/elo_model.R) and Stage 14.1 (refreshes CACHE_DNA_PBP).
+# Writes momentum_board.json (a WEB_DATA_FILES member, so the publish gate's Assertions A and
+# F block a stale copy) and appends the completed week's ranks to MOMENTUM_RANK_HISTORY.
+run_stage("build_momentum_board.R", "Build Momentum Board (windows 3/6/9, combined score, flags, rank history)",
+          call_fn = "run_build_momentum_board",
+          output = WEB_JSON_MOMENTUM_BOARD)
+
 # Stage 14.5: Landing digest (tools/build_landing_digest.R, NFL_analytics#182-#185)
 # Must run after Stage 14 (reads matchups_current_week.json). Also appends today's
 # power_rating rows to the tracked data/history/ratings_history.csv for movers.

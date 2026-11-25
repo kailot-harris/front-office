@@ -821,7 +821,12 @@ PIPELINE_OUTPUT_DIRS <- c(WEB_DATA_DIR, WEB_ANIM_DIR)
 # (issue #220 follow-up). One row per team per as-of date, recorded BEFORE the team's next
 # game; tools/score_forward_log.R scores it later. Tracked in git, committed by publish_web.R.
 FORWARD_LOG_QB_CHANGE <- file.path("data", "history", "qb_change_forward_log.csv")
-PIPELINE_OUTPUT_FILES <- c(file.path("data", "history", "ratings_history.csv"), FORWARD_LOG_QB_CHANGE)
+# MOMENTUM_RANK_HISTORY: weekly Momentum Board rank snapshots (NFL_analytics#226), one row per
+# team per window per completed week, appended by build_momentum_board.R and never rewritten.
+# Tracked in git, committed by publish_web.R.
+MOMENTUM_RANK_HISTORY <- file.path("data", "history", "momentum_rank_history.csv")
+PIPELINE_OUTPUT_FILES <- c(file.path("data", "history", "ratings_history.csv"), FORWARD_LOG_QB_CHANGE,
+                           MOMENTUM_RANK_HISTORY)
 WEB_GAMES_DIR    <- file.path(WEB_DATA_DIR, "games")
 WEB_ATTRIBUTION_DIR <- file.path(WEB_DATA_DIR, "week_attribution")
 
@@ -843,6 +848,63 @@ WEB_JSON_COACHING_PROFILES        <- file.path(WEB_DATA_DIR, "coaching_profiles.
 # evening refreshes. It carries a top-level generated_at, so it is a WEB_DATA_FILES member:
 # the publish gate (Assertions A and F) blocks a copy the pipeline did not rewrite.
 WEB_JSON_PLAYER_LEADERS           <- file.path(WEB_DATA_DIR, "player_leaders.json")
+# Momentum Board data layer (NFL_analytics#226), written by build_momentum_board.R (Stage 14.4c).
+# It carries a top-level generated_at, so it is a WEB_DATA_FILES member: the publish gate
+# (Assertions A and F) blocks a copy the pipeline did not rewrite.
+WEB_JSON_MOMENTUM_BOARD           <- file.path(WEB_DATA_DIR, "momentum_board.json")
+# Momentum Board methodology (NFL_analytics#226, /momentum/methodology): a static research
+# artifact extracted from the rolling-window and momentum measures study results files by
+# tools/publish_momentum_methodology.R. That script is NOT a run_full_pipeline.R stage; it
+# runs only when a study is re-run, so the file is deliberately NOT a WEB_DATA_FILES member
+# (the publish gate requires every member to be rewritten each run). data_manifest.json marks
+# it static (tools/write_data_manifest.R).
+WEB_JSON_MOMENTUM_METHODOLOGY     <- file.path(WEB_DATA_DIR, "momentum_methodology.json")
+
+# ------------------------------------------------------------------------------------------
+# Momentum Board settings (NFL_analytics#226)
+# ------------------------------------------------------------------------------------------
+# The owner set every value below on 2026-11-25 (issue #226 comment "Board settings: owner
+# decisions", https://github.com/kailot-harris/NFL_analytics/issues/226#issuecomment-7166362267)
+# after reviewing the rolling-window study (NFL_analytics#227, merged in #228;
+# tools/rolling_window_study.R, docs/research/rolling_window_study.md). Definitions (form,
+# carry-over, the four components and their standardisation) are the study's; the weights are
+# its best held-out weights under mean_regress (study Table 10, target next-game margin beyond
+# Elo). The score surface is flat: every weighting tested sits inside the best one's 95%
+# interval, and no weighting predicts beyond Elo. NEVER refit these in the nightly build;
+# re-run the study each offseason, in a PR, and change them only with a new owner decision.
+# The board's own constants: ROLLING_WINDOW_SIZE and OFFSEASON_METHOD above are NOT used by
+# the board and are not changed by it (owner decision 7).
+MOMENTUM_BOARD_STUDY_COMMIT <- "4ac7997efcd51d9173e24ed893b2a681d98d4d78"   # rolling-window study (#227)
+# Momentum measures study (#221, merge commit) - source of the starting-QB change definition.
+MOMENTUM_BOARD_MEASURES_STUDY_COMMIT <- "3173e3e2a396f7eab12755fd2912af67fffb576f"
+MOMENTUM_BOARD_SETTINGS_URL <- "https://github.com/kailot-harris/NFL_analytics/issues/226#issuecomment-7166362267"
+# Windows (owner decision 1): 3, 6 and 9 games; 9 replaces season-to-date. 3 is the short
+# "recent games" view and is labelled the noisiest (the study does not support it predictively).
+MOMENTUM_BOARD_WINDOWS         <- c(3L, 6L, 9L)
+MOMENTUM_BOARD_NOISIEST_WINDOW <- 3L
+# Season start (owner decision 2): carry last season's games across the boundary with the
+# study's mean_regress: each carried game's value -> season league average +
+# MOMENTUM_BOARD_REGRESS_KEEP^(seasons back) x (value - average). Study REGRESS_KEEP = 0.5.
+MOMENTUM_BOARD_CARRY_METHOD  <- "mean_regress"
+MOMENTUM_BOARD_REGRESS_KEEP  <- 0.5
+# Combined-score weights (owner decision 3), form / trend / residual / Elo change, per window.
+MOMENTUM_BOARD_WEIGHTS <- list(
+  "3" = c(form = 0.45, trend = 0.00, residual = 0.00, elo_change = 0.55),
+  "6" = c(form = 0.40, trend = 0.00, residual = 0.00, elo_change = 0.60),
+  "9" = c(form = 0.25, trend = 0.25, residual = 0.00, elo_change = 0.50)
+)
+# Per-week standardisation needs at least this many teams (study MIN_Z_TEAMS).
+MOMENTUM_BOARD_MIN_Z_TEAMS <- 10L
+# Flag definitions (study section 9, Table 11): one-score games are decided by at most this
+# many points, blowouts by at least this many; Pythagorean exponent. No flag carries a
+# significance badge at any window (owner decision 4): none reaches 80% simulated detection.
+MOMENTUM_BOARD_ONE_SCORE_MARGIN <- 8L
+MOMENTUM_BOARD_BLOWOUT_MARGIN   <- 17L
+MOMENTUM_BOARD_PYTH_EXPONENT    <- 2.37
+MOMENTUM_BOARD_DETECTION_POWER  <- 0.8
+# Key players missing (owner decision 5 / design decision 6): positions with no offensive or
+# defensive snaps (special teams only) have no key player.
+MOMENTUM_BOARD_KEY_EXCLUDED_POSITIONS <- c("K", "P", "LS")
 
 # ------------------------------------------------------------------------------------------
 # League leaders qualifying minimums (NFL_analytics#230)
@@ -894,7 +956,8 @@ WEB_DATA_FILES <- c(
   WEB_JSON_MODEL_DIAGNOSTICS,
   WEB_JSON_SALARY_CAP_PROFILES,
   WEB_JSON_COACHING_PROFILES,
-  WEB_JSON_PLAYER_LEADERS
+  WEB_JSON_PLAYER_LEADERS,
+  WEB_JSON_MOMENTUM_BOARD
 )
 
 # ------------------------------------------------------------------------------------------

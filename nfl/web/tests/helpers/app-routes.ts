@@ -5,7 +5,7 @@
  */
 import { readdirSync, existsSync } from 'node:fs';
 import path from 'node:path';
-import { MOVED_ROUTES } from '../e2e/routes';
+import { LINKED_ROUTES, MOVED_ROUTES } from '../e2e/routes';
 
 const APP_DIR = path.resolve(import.meta.dirname, '..', '..', 'app');
 
@@ -25,4 +25,10 @@ export function appRoutes(dir = APP_DIR, prefix = ''): string[] {
 export function servedRoutes(): string[] {
   const moved = new Set(MOVED_ROUTES.map(([from]) => from));
   return appRoutes().filter((r) => !moved.has(r));
+}
+
+/** Served routes the sidebar links to: served routes minus sub-pages linked from their parent page. */
+export function sidebarRoutes(): string[] {
+  const linked = new Set(LINKED_ROUTES.map((r) => r.path));
+  return servedRoutes().filter((r) => !linked.has(r));
 }

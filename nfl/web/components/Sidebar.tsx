@@ -24,6 +24,7 @@ import {
   Flame,
   ArrowLeft,
   ChevronDown,
+  TrendingUp,
 } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
 import { groupNavItems } from '@/lib/navOrder';
@@ -80,6 +81,13 @@ const NAV_ITEMS = [
     badge: 'Projections',
     icon: Swords,
     desc: 'Projected margins, totals & fatigue',
+  },
+  {
+    href: '/momentum',
+    label: 'Momentum Board',
+    badge: '3 / 6 / 9 Games',
+    icon: TrendingUp,
+    desc: 'Who is trending up or down',
   },
   {
     href: '/teams',

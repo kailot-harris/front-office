@@ -24,7 +24,9 @@ describe('dataset files exist and are well-formed JSON', () => {
   it('ships no dataset file that the app never reads', () => {
     const onDisk = fs.readdirSync(DATA_DIR).filter((f) => f.endsWith('.json'));
     // The sidecar manifest is validated in dataManifest.test.ts and the landing
-    // digest in landingDigest.test.ts; neither is read by this app.
+    // digest in landingDigest.test.ts; neither is read by this app. The momentum
+    // board and its methodology are read by /momentum (NFL_analytics#226), so they
+    // are in DATASET_FILES.
     const referenced = new Set<string>([...Object.values(DATASET_FILES), DATA_MANIFEST_FILE, LANDING_DIGEST_FILE]);
     const orphans = onDisk.filter((f) => !referenced.has(f));
     expect(orphans, `orphaned dataset files in public/data/: ${orphans.join(', ')}`).toEqual([]);

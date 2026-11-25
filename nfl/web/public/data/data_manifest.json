@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "sport": "nfl",
-  "generated_at": "2026-11-25T13:05:08Z",
+  "generated_at": "2026-11-25T16:33:01Z",
   "schedule_through_date": "2026-11-23",
   "datasets": {
     "clutch_leverage_metrics.json": {
@@ -62,6 +62,30 @@
       "coverage_note": "Accuracy history keyed by evaluation run time (last_evaluated), not by game date",
       "static": false,
       "max_lag_days": 8,
+      "lifecycle": "live"
+    },
+    "momentum_board.json": {
+      "builder": "build_momentum_board.R",
+      "generated_at": "2026-11-25T15:22:15Z",
+      "stamp_source": "payload:generated_at",
+      "content_sha256": "35b9b2a040e1af601742d524c00970132cb27dd01c59da3abdad11db93f31321",
+      "through_date": "2026-11-23",
+      "through_date_source": "payload:through_date (latest completed regular-season game on the board)",
+      "static": false,
+      "max_lag_days": 8,
+      "lifecycle": "live",
+      "coverage_note": null
+    },
+    "momentum_methodology.json": {
+      "builder": "tools/publish_momentum_methodology.R",
+      "generated_at": "2026-11-25T16:33:01Z",
+      "stamp_source": "manifest:content_hash",
+      "content_sha256": "c95c5843f3a5cdc81db6595d2ef530978c778b8ee369d14504244c931cd464e7",
+      "through_date": null,
+      "through_date_source": "not_game_dated",
+      "coverage_note": "Research study results; carries no game date",
+      "static": true,
+      "static_reason": "Static Momentum Board methodology: extracts of the rolling-window (#227) and momentum measures (#221) study results at their study commits (recorded inside the file); rewritten by tools/publish_momentum_methodology.R only when a study is re-run, never by the daily pipeline",
       "lifecycle": "live"
     },
     "passing_index.json": {
