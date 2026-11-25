@@ -42,8 +42,13 @@ test.describe('league leaders panel', () => {
     }
   });
 
-  test('no link to the methodology page', async ({ page }) => {
-    await expect(page.getByTestId('league-leaders').locator('a')).toHaveCount(0);
-    await expect(page.locator('a[href*="leaders/methodology"]')).toHaveCount(0);
+  test('links from the methods note to the methodology page', async ({ page }) => {
+    const methods = page.getByTestId('leader-methods');
+    await methods.locator('summary').click();
+    const link = methods.getByRole('link', { name: /Full methodology/ });
+    await expect(link).toBeVisible();
+    await link.click();
+    await expect(page).toHaveURL(/\/players\/leaders\/methodology\/?$/);
+    await expect(page.locator('h1')).toContainText('League Leaders Methodology');
   });
 });

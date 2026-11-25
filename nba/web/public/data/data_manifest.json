@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "sport": "nba",
-  "generated_at": "2026-11-25T14:04:30Z",
+  "generated_at": "2026-11-25T18:57:45Z",
   "schedule_through_date": "2026-11-24",
   "datasets": {
     "cba_cap_sheet.json": {
@@ -72,6 +72,20 @@
       "max_lag_days": 2,
       "static": false,
       "static_reason": null,
+      "lifecycle": "live"
+    },
+    "leader_methodology.json": {
+      "generated_at": "2026-11-25T18:57:45Z",
+      "through_date": null,
+      "through_date_source": "static",
+      "stamp_source": "manifest:content_hash",
+      "content_sha256": "1c69b2da1f02d16f775c04705e3a0398d640eda38737b4d93ef1d0dc8c3ccffe",
+      "coverage_note": null,
+      "source_season": "2026-27",
+      "builder": "build_leader_methodology.R",
+      "max_lag_days": 0,
+      "static": true,
+      "static_reason": "Frozen leader reliability study results plus config.R owner minimums (study run date and source commit inside the file); built by tools/build_leader_methodology.R when the study or minimums change, never by the daily pipeline.",
       "lifecycle": "live"
     },
     "matchups_slates.json": {

@@ -121,6 +121,9 @@ export const EXPECTED_DATA_FILES = [
   'momentum_methodology.json',
   // League leaders panel on /players (NBA_analytics#254; build_player_leaders.R).
   'player_leaders.json',
+  // Leader reliability study + config.R minimums behind /players/leaders/methodology
+  // (NBA_analytics#258; tools/build_leader_methodology.R; static in data_manifest.json).
+  'leader_methodology.json',
 ] as const;
 export type DataFileName = (typeof EXPECTED_DATA_FILES)[number];
 

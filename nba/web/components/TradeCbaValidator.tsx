@@ -21,16 +21,21 @@ export const TradeCbaValidator: React.FC<TradeCbaValidatorProps> = ({ profile })
   const outVal = Math.max(0, parseFloat(outgoingSalary) || 0);
   const inVal = Math.max(0, parseFloat(incomingSalary) || 0);
 
-  const isSecondApron = profile.totalPayroll2026 > profile.secondApron;
-  const isFirstApron = profile.totalPayroll2026 > profile.firstApron;
-  const isUnderCap = profile.capSpace2026 > 0;
+  const hasPayroll = typeof profile.totalPayroll2026 === 'number' && Number.isFinite(profile.totalPayroll2026);
+  const isSecondApron = hasPayroll && (profile.totalPayroll2026 as number) > profile.secondApron;
+  const isFirstApron = hasPayroll && (profile.totalPayroll2026 as number) > profile.firstApron;
+  const capSpace = typeof profile.capSpace2026 === 'number' && Number.isFinite(profile.capSpace2026) ? profile.capSpace2026 : 0;
+  const isUnderCap = hasPayroll && capSpace > 0;
 
   // Max incoming salary allowed
   let maxIncomingAllowed = 0;
   let matchingPctLabel = '';
 
-  if (isUnderCap) {
-    maxIncomingAllowed = outVal + profile.capSpace2026;
+  if (!hasPayroll) {
+    maxIncomingAllowed = 0;
+    matchingPctLabel = 'Payroll data unavailable';
+  } else if (isUnderCap) {
+    maxIncomingAllowed = outVal + capSpace;
     matchingPctLabel = 'Absorb into Cap Space';
   } else if (isSecondApron || isFirstApron) {
     maxIncomingAllowed = outVal * 1.0;

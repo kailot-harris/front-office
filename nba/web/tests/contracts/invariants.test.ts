@@ -217,11 +217,20 @@ describe('Domain & mathematical invariants: cba_cap_sheet.json', () => {
 
   it('every team calculation for space, tax, and total financial commitment is coherent', () => {
     for (const t of cbaCapSheet.teams) {
+      if (t.totalPayroll2026 === null) {
+        expect(t.capSpace2026).toBeNull();
+        expect(t.taxSpace2026).toBeNull();
+        expect(t.firstApronSpace2026).toBeNull();
+        expect(t.secondApronSpace2026).toBeNull();
+        expect(t.luxuryTaxBill).toBeNull();
+        expect(t.totalFinancialCommitment).toBeNull();
+        continue;
+      }
       expect(t.capSpace2026).toBeCloseTo(Math.max(0, cbaCapSheet.salaryCap - t.totalPayroll2026), 1);
       expect(t.taxSpace2026).toBeCloseTo(cbaCapSheet.luxuryTaxThreshold - t.totalPayroll2026, 1);
       expect(t.firstApronSpace2026).toBeCloseTo(cbaCapSheet.firstApron - t.totalPayroll2026, 1);
       expect(t.secondApronSpace2026).toBeCloseTo(cbaCapSheet.secondApron - t.totalPayroll2026, 1);
-      expect(t.totalFinancialCommitment).toBeCloseTo(t.totalPayroll2026 + t.luxuryTaxBill, 1);
+      expect(t.totalFinancialCommitment).toBeCloseTo(t.totalPayroll2026 + (t.luxuryTaxBill ?? 0), 1);
 
       if (t.totalPayroll2026 <= cbaCapSheet.luxuryTaxThreshold) {
         expect(t.luxuryTaxBill, `${t.teamAbbr} under tax should have 0 tax bill`).toBe(0);
@@ -230,20 +239,31 @@ describe('Domain & mathematical invariants: cba_cap_sheet.json', () => {
   });
 
   it('league summary team counts and totals match franchise rollups', () => {
+    const teamsWithPayroll = cbaCapSheet.teams.filter((t) => t.totalPayroll2026 !== null);
+    if (teamsWithPayroll.length === 0) {
+      expect(cbaCapSheet.secondApronTeamCount).toBeNull();
+      expect(cbaCapSheet.firstApronTeamCount).toBeNull();
+      expect(cbaCapSheet.taxTeamCount).toBeNull();
+      expect(cbaCapRoomTeamCount(cbaCapSheet)).toBeNull();
+      expect(cbaCapSheet.totalLeagueTaxRevenue).toBeNull();
+      expect(cbaCapSheet.averagePayroll).toBeNull();
+      return;
+    }
+
     const secondApronCount = cbaCapSheet.teams.filter((t) => t.cbaTier === 'Second Apron Restricted').length;
     const firstApronCount = cbaCapSheet.teams.filter((t) => t.cbaTier === 'First Apron Team').length;
-    const taxCount = cbaCapSheet.teams.filter((t) => t.totalPayroll2026 > cbaCapSheet.luxuryTaxThreshold).length;
-    const capRoomCount = cbaCapSheet.teams.filter((t) => t.capSpace2026 > 0).length;
+    const taxCount = cbaCapSheet.teams.filter((t) => t.totalPayroll2026 !== null && t.totalPayroll2026 > cbaCapSheet.luxuryTaxThreshold).length;
+    const capRoomCount = cbaCapSheet.teams.filter((t) => t.capSpace2026 !== null && t.capSpace2026 > 0).length;
 
     expect(cbaCapSheet.secondApronTeamCount).toBe(secondApronCount);
     expect(cbaCapSheet.firstApronTeamCount).toBe(firstApronCount);
     expect(cbaCapSheet.taxTeamCount).toBe(taxCount);
     expect(cbaCapRoomTeamCount(cbaCapSheet)).toBe(capRoomCount);
 
-    const totalTaxRevenue = sum(cbaCapSheet.teams.map((t) => t.luxuryTaxBill));
+    const totalTaxRevenue = sum(cbaCapSheet.teams.map((t) => t.luxuryTaxBill ?? 0));
     expect(cbaCapSheet.totalLeagueTaxRevenue).toBeCloseTo(totalTaxRevenue, 1);
 
-    const avgPayroll = sum(cbaCapSheet.teams.map((t) => t.totalPayroll2026)) / 30;
+    const avgPayroll = sum(teamsWithPayroll.map((t) => t.totalPayroll2026 as number)) / teamsWithPayroll.length;
     expect(cbaCapSheet.averagePayroll).toBeCloseTo(avgPayroll, 1);
   });
 

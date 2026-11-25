@@ -33,6 +33,7 @@ import {
   PlayoffMatchupsCatalogSchema,
   PlayerCatalogEntrySchema,
   ShotsMetadataSchema,
+  LeaderMethodologySchema,
   PlayerShotDataSchema,
   MatchupsDatasetSchema,
   MomentumMethodologySchema,
@@ -161,6 +162,10 @@ describe('Strict Zod schema contracts against public/data/*.json', () => {
 
   it('momentum_methodology.json matches MomentumMethodologySchema', () => {
     assertValid(MomentumMethodologySchema, readJsonFile('momentum_methodology.json'), 'momentum_methodology.json');
+  });
+
+  it('leader_methodology.json matches LeaderMethodologySchema', () => {
+    assertValid(LeaderMethodologySchema, readJsonFile('leader_methodology.json'), 'leader_methodology.json');
   });
 
   it('shots_metadata.json matches ShotsMetadataSchema', () => {

@@ -75,11 +75,13 @@ if (!exists("CACHE_DIR") || !exists("WEB_JSON_MOMENTUM_BOARD")) {
   source(file.path(.MOMENTUM_DIR, "config.R"), local = TRUE)
 }
 source(file.path(.MOMENTUM_DIR, "R", "elo.R"), local = TRUE)
+source(file.path(.MOMENTUM_DIR, "R", "momentum_windows.R"), local = TRUE)
 
 # ------------------------------------------------------------------------------
 # Constants
 # ------------------------------------------------------------------------------
-MOMENTUM_WINDOWS <- c(5L, 10L, as.integer(ROLLING_WINDOW_SIZE))
+# 5, 10 and ROLLING_WINDOW_SIZE; shared with tools/log_momentum_forward.R.
+MOMENTUM_WINDOWS <- momentum_windows(ROLLING_WINDOW_SIZE)
 # Home-court points, same source of truth as build_matchups_dataset.R
 # (prediction_accuracy_logger.R: hca <- 2.40).
 MOMENTUM_HCA_POINTS <- 2.40

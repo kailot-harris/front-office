@@ -189,6 +189,11 @@ MAX_RETRIES          <- 3
 #     run_full_pipeline.R stage; it runs only when the study is re-run, so a
 #     run-start mtime assertion over it would be red on a healthy pipeline.
 #     data_manifest.json marks it static (tools/write_data_manifest.R).
+#   * leader_methodology.json -- a frozen research artifact behind the
+#     /players/leaders/methodology page: the leader reliability study's
+#     results combined with the owner minimums in config.R, built by
+#     tools/build_leader_methodology.R. Not a run_full_pipeline.R stage;
+#     data_manifest.json marks it static.
 WEB_PUBLIC_DIR <- file.path(PROJECT_DIR, "web", "public")
 
 WEB_JSON_PROJECTIONS_SEASON_TEAMS    <- file.path(WEB_DATA_DIR, "projections_season_teams.json")
@@ -221,6 +226,7 @@ WEB_JSON_OFFSEASON_TRANSACTIONS      <- file.path(WEB_DATA_DIR, "offseason_trans
 WEB_JSON_SHOTS_INDEX                 <- file.path(WEB_DATA_DIR, "shots_index.json")
 WEB_JSON_SHOTS_METADATA              <- file.path(WEB_DATA_DIR, "shots_metadata.json")
 WEB_JSON_MOMENTUM_METHODOLOGY        <- file.path(WEB_DATA_DIR, "momentum_methodology.json")
+WEB_JSON_LEADER_METHODOLOGY          <- file.path(WEB_DATA_DIR, "leader_methodology.json")
 
 WEB_DATA_FILES <- c(
   WEB_JSON_PROJECTIONS_SEASON_TEAMS,

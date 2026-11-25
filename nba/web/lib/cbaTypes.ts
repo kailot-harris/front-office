@@ -22,35 +22,35 @@ export interface PlayerContract {
 }
 
 export interface CbaHandcuffs {
-  frozenPick7Years: boolean;       // True if > 2nd apron
-  noSalaryAggregation: boolean;    // Cannot combine 2+ outgoing salaries in trades
-  noCashInTrades: boolean;         // Cannot send cash in trades
-  noTpmle: boolean;                // Loss of Taxpayer Mid-Level Exception
-  tradeSalaryMatchingPct: number;  // 100% if > 1st apron, 125% or 200% under cap
-  signAndTradeHardCapped: boolean; // Triggered if acquiring S&T player
+  frozenPick7Years: boolean | null;       // True if > 2nd apron
+  noSalaryAggregation: boolean | null;    // Cannot combine 2+ outgoing salaries in trades
+  noCashInTrades: boolean | null;         // Cannot send cash in trades
+  noTpmle: boolean | null;                // Loss of Taxpayer Mid-Level Exception
+  tradeSalaryMatchingPct: number | null;  // 100% if > 1st apron, 125% or 200% under cap
+  signAndTradeHardCapped: boolean | null; // Triggered if acquiring S&T player
 }
 
 export interface FranchiseCbaProfile {
   teamAbbr: string;
   teamName: string;
   conference: 'East' | 'West';
-  totalPayroll2026: number;        // in millions (e.g. 192.4)
-  totalPayroll2027: number;
-  totalPayroll2028: number;
-  salaryCap: number;               // 140.6
-  luxuryTaxThreshold: number;      // 170.8
-  firstApron: number;              // 178.1
-  secondApron: number;             // 188.9
-  capSpace2026: number;            // max(0, cap - payroll)
-  taxSpace2026: number;            // tax - payroll (negative = in tax)
-  firstApronSpace2026: number;     // apron1 - payroll
-  secondApronSpace2026: number;    // apron2 - payroll
-  cbaTier: CbaTier;
+  totalPayroll2026: number | null;        // in millions (e.g. 192.4), null if BBRef cache unavailable
+  totalPayroll2027: number | null;
+  totalPayroll2028: number | null;
+  salaryCap: number;                      // 165.0
+  luxuryTaxThreshold: number;             // 200.4
+  firstApron: number;                     // 209.0
+  secondApron: number;                    // 221.7
+  capSpace2026: number | null;            // max(0, cap - payroll)
+  taxSpace2026: number | null;            // tax - payroll (negative = in tax)
+  firstApronSpace2026: number | null;     // apron1 - payroll
+  secondApronSpace2026: number | null;    // apron2 - payroll
+  cbaTier: CbaTier | null;
   isRepeaterTax: boolean;
-  luxuryTaxBill: number;           // in millions
-  totalFinancialCommitment: number;// payroll + tax bill
-  projectedCapSpace2027: number;   // cap room in 2027 offseason
-  projectedCapSpace2028: number;   // cap room in 2028 offseason
+  luxuryTaxBill: number | null;           // in millions
+  totalFinancialCommitment: number | null;// payroll + tax bill
+  projectedCapSpace2027: number | null;   // cap room in 2027 offseason
+  projectedCapSpace2028: number | null;   // cap room in 2028 offseason
   handcuffs: CbaHandcuffs;
   contracts: PlayerContract[];
 }
@@ -73,11 +73,11 @@ export interface CbaLeagueOverview {
   luxuryTaxThreshold: number;
   firstApron: number;
   secondApron: number;
-  averagePayroll: number;
-  totalLeagueTaxRevenue: number;
-  secondApronTeamCount: number;
-  firstApronTeamCount: number;
-  taxTeamCount: number;
-  capRoomTeamCount: number;
+  averagePayroll: number | null;
+  totalLeagueTaxRevenue: number | null;
+  secondApronTeamCount: number | null;
+  firstApronTeamCount: number | null;
+  taxTeamCount: number | null;
+  capRoomTeamCount: number | null;
   teams: FranchiseCbaProfile[];
 }

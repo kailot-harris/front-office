@@ -9,6 +9,7 @@
  * from player_leaders.json; nothing is computed or filled in here.
  */
 import React, { useState } from 'react';
+import Link from 'next/link';
 import type {
   LeaderCard,
   LeaderFormat,
@@ -218,7 +219,13 @@ export function LeagueLeadersPanel({ data }: { data: PlayerLeadersPayload | null
           </table>
           <p>{m.nulls}</p>
           <p className="text-slate-500">
-            Minimums from the leader reliability study, source commit <code>{m.study_source_commit.slice(0, 12)}</code>.
+            Minimums from the leader reliability study, source commit <code>{m.study_source_commit.slice(0, 12)}</code>.{' '}
+            <Link
+              href="/players/leaders/methodology"
+              className="text-orange-400 hover:text-orange-300 underline underline-offset-2"
+            >
+              Full methodology and reliability curves
+            </Link>
           </p>
         </div>
       </details>

@@ -66,12 +66,13 @@ describe('LeagueLeadersPanel', () => {
     expect(within(card('empty_test')).getByTestId('leader-empty')).toHaveTextContent('scaled minimum');
   });
 
-  it('methods note states the scaling and traded-player rule, with no link anywhere', () => {
+  it('methods note states the scaling and traded-player rule and links to the methodology page', () => {
     render(<LeagueLeadersPanel data={DATA} />);
     const methods = screen.getByTestId('leader-methods');
     expect(methods).toHaveTextContent('team games played / 82');
     expect(methods).toHaveTextContent('traded player');
-    expect(screen.getByTestId('league-leaders').querySelectorAll('a')).toHaveLength(0);
+    const link = within(methods).getByRole('link', { name: /Full methodology/ });
+    expect(link).toHaveAttribute('href', '/players/leaders/methodology');
   });
 
   it('formats values by card format', () => {

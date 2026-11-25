@@ -75,4 +75,36 @@ describe('cap-sheet components survive null numeric fields (#113)', () => {
     const { container } = render(<CapSheetClient initialData={initialData} />);
     expect(textHasForbiddenTokens(container)).toEqual([]);
   });
+
+  it('CapSheetClient renders explicit unavailable state when BBRef payrolls and contracts are missing (#75)', () => {
+    const unavailableTeam: FranchiseCbaProfile = {
+      ...nulledTeam,
+      cbaTier: null,
+      handcuffs: {
+        frozenPick7Years: null,
+        noSalaryAggregation: null,
+        noCashInTrades: null,
+        noTpmle: null,
+        tradeSalaryMatchingPct: null,
+        signAndTradeHardCapped: null,
+      },
+      contracts: [],
+    };
+    const unavailableData = {
+      ...cbaCapSheet,
+      cbaThresholdSources:
+        'Team payroll totals: UNAVAILABLE this run (missing cache). Per-player contract rows: UNAVAILABLE this run (missing cache).',
+      averagePayroll: null,
+      totalLeagueTaxRevenue: null,
+      secondApronTeamCount: null,
+      firstApronTeamCount: null,
+      taxTeamCount: null,
+      capRoomTeamCount: null,
+      teams: [unavailableTeam, ...cbaCapSheet.teams.slice(1)],
+    };
+    const { container } = render(<CapSheetClient initialData={unavailableData} />);
+    expect(textHasForbiddenTokens(container)).toEqual([]);
+    expect(container.textContent).toContain('Upstream Basketball-Reference CBA Data Unavailable');
+    expect(container.textContent).toContain('Contract breakdown unavailable');
+  });
 });

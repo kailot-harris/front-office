@@ -74,6 +74,15 @@ ok("WEB_JSON_MOMENTUM_METHODOLOGY is defined under WEB_DATA_DIR",
 ok("WEB_JSON_MOMENTUM_METHODOLOGY stays out of WEB_DATA_FILES",
    !(mm_path %in% cfg_env$WEB_DATA_FILES))
 
+lm_path <- cfg_env$WEB_JSON_LEADER_METHODOLOGY
+ok("WEB_JSON_LEADER_METHODOLOGY is defined under WEB_DATA_DIR",
+   is.character(lm_path) && length(lm_path) == 1L &&
+     identical(basename(lm_path), "leader_methodology.json") &&
+     identical(normalizePath(dirname(lm_path), winslash = "/", mustWork = FALSE),
+               normalizePath(cfg_env$WEB_DATA_DIR, winslash = "/", mustWork = FALSE)))
+ok("WEB_JSON_LEADER_METHODOLOGY stays out of WEB_DATA_FILES",
+   !(lm_path %in% cfg_env$WEB_DATA_FILES))
+
 cfg_lines <- readLines(file.path(REPO_ROOT, "config.R"), warn = FALSE)
 ok("Stale 'written by nothing' claim removed from config.R comments",
    !any(grepl("written by\\s+nothing|no writer, in any stage", cfg_lines, perl = TRUE)))
