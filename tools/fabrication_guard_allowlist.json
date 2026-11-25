@@ -415,6 +415,12 @@
       "rule": "hardcoded_metric_vector",
       "pattern": "c\\(form = 0\\.25, trend = 0\\.25, residual = 0\\.00, elo_change = 0\\.50\\)",
       "justification": "Owner-approved NFL Momentum Board setting (issue 226, owner settings comment), fixed from the rolling-window study at commit 4ac7997; a configuration constant, not observed data."
+    },
+    {
+      "file": "nba/build_cba_cap_dataset.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "~team_abbr, ~team_name, ~conf",
+      "justification": "NBA_TEAMS_REF team reference table (abbreviation, nickname, conference); structural identifiers only, no salary, payroll or other metric values (#75 removed the payroll fallbacks)."
     }
   ],
   "exclusions": [
@@ -465,6 +471,14 @@
     {
       "file": "nfl/tests/test_momentum_methodology.R",
       "justification": "Automated unit test suite checking the methodology publisher, including the comparison weights parsed from the study script; never writes published data."
+    },
+    {
+      "file": "nba/tests/test_cba_cap_no_synthetic_fallback.R",
+      "justification": "Automated unit test asserting the removed CBA proportional-fill and Spotrac fallbacks stay removed; reads source text and a temporary payload, never writes published data."
+    },
+    {
+      "file": "nba/tests/test_forward_log_windows.R",
+      "justification": "Automated unit test checking that the forward-log windows are derived from ROLLING_WINDOW_SIZE; compares against expected window vectors, never writes published data."
     }
   ]
 }
