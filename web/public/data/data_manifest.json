@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "sport": "wnba",
-  "generated_at": "2026-11-21T01:47:59Z",
-  "schedule_through_date": null,
+  "generated_at": "2026-11-25T19:59:47Z",
+  "schedule_through_date": "2026-10-31",
   "datasets": [
     {
       "file": "cba_cap_sheet.json",
@@ -14,7 +14,8 @@
       "coverage_note": "Cap sheet; not game-dated",
       "builder": "archived",
       "static": true,
-      "static_reason": "Archived static snapshot (no pipeline stage rebuilds)"
+      "static_reason": "Archived static snapshot (no pipeline stage rebuilds)",
+      "lifecycle": "archived"
     },
     {
       "file": "clutch_leverage_metrics.json",
@@ -25,7 +26,12 @@
       "through_date_source": "not_game_dated",
       "coverage_note": "Season player profiles; no game dates",
       "builder": "run_full_pipeline.R",
-      "static": false
+      "static": false,
+      "lifecycle": "season_final",
+      "season": 2026,
+      "final_through_date": "2026-10-31",
+      "frozen_sha256": "b0cc33a14e327d7e942534d02e4c71e1a4e1e4221d58423fb7aa87a5d0d72af2",
+      "frozen_at": "2026-11-24T05:20:02Z"
     },
     {
       "file": "coaching_metrics.json",
@@ -36,7 +42,12 @@
       "through_date_source": "not_game_dated",
       "coverage_note": "Coaching staff profiles; no game dates",
       "builder": "run_full_pipeline.R",
-      "static": false
+      "static": false,
+      "lifecycle": "season_final",
+      "season": 2026,
+      "final_through_date": "2026-10-31",
+      "frozen_sha256": "f2a18810127aa9fd12c6325dc3ebb1e43bf40cb623cfa97813e9eaecb61ea97a",
+      "frozen_at": "2026-11-24T05:20:02Z"
     },
     {
       "file": "defensive_metrics.json",
@@ -47,7 +58,12 @@
       "through_date_source": "not_game_dated",
       "coverage_note": "Season player profiles; no game dates",
       "builder": "run_full_pipeline.R",
-      "static": false
+      "static": false,
+      "lifecycle": "season_final",
+      "season": 2026,
+      "final_through_date": "2026-10-31",
+      "frozen_sha256": "368bb94e1509b3f736626c6fd8dc29ae2d8c8c8b5350483222b6105a53bef9d1",
+      "frozen_at": "2026-11-24T05:20:02Z"
     },
     {
       "file": "finals_game_predictions_2026.json",
@@ -58,18 +74,30 @@
       "through_date_source": "payload:games[].gameDate (resultAvailable)",
       "coverage_note": null,
       "builder": "run_full_pipeline.R",
-      "static": false
+      "static": false,
+      "lag_days": 0,
+      "lifecycle": "season_final",
+      "season": 2026,
+      "final_through_date": "2026-10-31",
+      "frozen_sha256": "72095abf7f3e225a2ea41049ae2f66d29f71a4f0c89e64269b5efc59af3193ed",
+      "frozen_at": "2026-11-24T05:20:02Z"
     },
     {
       "file": "finals_series_backtest_2026.json",
-      "generated_at": "2026-11-06T19:49:32Z",
+      "generated_at": "2026-11-24T03:32:19Z",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "a8ca4282be3b33270e0f9ddf62574b0592fe6bf51ff3313c1c0da7e571163d88",
-      "through_date": "2026-10-24",
+      "content_sha256": "eaffcd3bc772275c1e0af93eb6848b4fce6d562f0cfa7efa2f12fa233a921e36",
+      "through_date": "2026-10-31",
       "through_date_source": "payload:games[].gameDate",
       "coverage_note": null,
       "builder": "run_full_pipeline.R",
-      "static": false
+      "static": false,
+      "lag_days": 0,
+      "lifecycle": "season_final",
+      "season": 2026,
+      "final_through_date": "2026-10-31",
+      "frozen_sha256": "725987effe448dcbfe3050df2d8e47e90c67e18e5cd8742a1d7c55d989ef5d8e",
+      "frozen_at": "2026-11-24T05:20:02Z"
     },
     {
       "file": "landing_digest.json",
@@ -80,7 +108,12 @@
       "through_date_source": "not_game_dated",
       "coverage_note": "No final game in yesterday[] (off-season or no games yesterday)",
       "builder": "run_full_pipeline.R",
-      "static": false
+      "static": false,
+      "lifecycle": "season_final",
+      "season": 2026,
+      "final_through_date": "2026-10-31",
+      "frozen_sha256": "e3c51cbe5632fdcf6e9220856702d6c741cc531924a36f18f0e00fb77471bb50",
+      "frozen_at": "2026-11-24T05:20:02Z"
     },
     {
       "file": "matchups_slates.json",
@@ -91,7 +124,13 @@
       "through_date_source": "payload:matchups[].game_date (is_completed)",
       "coverage_note": null,
       "builder": "run_full_pipeline.R",
-      "static": false
+      "static": false,
+      "lag_days": 0,
+      "lifecycle": "season_final",
+      "season": 2026,
+      "final_through_date": "2026-10-31",
+      "frozen_sha256": "645cdd409fd96b73a5e4dc338a29dcb447b34cf14abaa3812467ac1f78fc43a5",
+      "frozen_at": "2026-11-24T05:20:02Z"
     },
     {
       "file": "offseason_draft.json",
@@ -103,18 +142,20 @@
       "coverage_note": "Draft order; not game-dated",
       "builder": "archived",
       "static": true,
-      "static_reason": "Archived static snapshot (no pipeline stage rebuilds)"
+      "static_reason": "Archived static snapshot (no pipeline stage rebuilds)",
+      "lifecycle": "archived"
     },
     {
       "file": "offseason_monitor.json",
-      "generated_at": "2026-11-17T20:04:32Z",
+      "generated_at": "2026-11-25T19:59:10Z",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "f797f61b49c558ec35264185ac45d596a43de5a476ad24a88eb58c9dd65b79f5",
+      "content_sha256": "d3ebb9ce3776e0075241f6e636d9f6189d523ec8c63273cda6bf100dd1cf7403",
       "through_date": null,
       "through_date_source": "not_game_dated",
       "coverage_note": "Off-season edition calendar; not game-dated",
       "builder": "run_full_pipeline.R",
-      "static": false
+      "static": false,
+      "lifecycle": "live"
     },
     {
       "file": "offseason_teams.json",
@@ -126,7 +167,8 @@
       "coverage_note": "Team off-season profiles; not game-dated",
       "builder": "archived",
       "static": true,
-      "static_reason": "Archived static snapshot (no pipeline stage rebuilds)"
+      "static_reason": "Archived static snapshot (no pipeline stage rebuilds)",
+      "lifecycle": "archived"
     },
     {
       "file": "offseason_transactions.json",
@@ -138,7 +180,8 @@
       "coverage_note": null,
       "builder": "archived",
       "static": true,
-      "static_reason": "Archived static snapshot (no pipeline stage rebuilds)"
+      "static_reason": "Archived static snapshot (no pipeline stage rebuilds)",
+      "lifecycle": "archived"
     },
     {
       "file": "player_dna_profiles.json",
@@ -149,7 +192,12 @@
       "through_date_source": "not_game_dated",
       "coverage_note": "Season player profiles; no game dates",
       "builder": "run_full_pipeline.R",
-      "static": false
+      "static": false,
+      "lifecycle": "season_final",
+      "season": 2026,
+      "final_through_date": "2026-10-31",
+      "frozen_sha256": "b99c78e24e70a61a532b2350478b5fb35be4860efb72d74665ca83dda18b00b4",
+      "frozen_at": "2026-11-24T05:20:02Z"
     },
     {
       "file": "playoff_bracket_2026.json",
@@ -160,7 +208,13 @@
       "through_date_source": "payload:series[].games[].gameDate",
       "coverage_note": null,
       "builder": "run_full_pipeline.R",
-      "static": false
+      "static": false,
+      "lag_days": 0,
+      "lifecycle": "season_final",
+      "season": 2026,
+      "final_through_date": "2026-10-31",
+      "frozen_sha256": "8a65a2b8ef62c58701e328855d78aac24de456522bfb5a4b8b90907d13b2a77c",
+      "frozen_at": "2026-11-24T05:20:02Z"
     },
     {
       "file": "playoff_series_matchups.json",
@@ -171,7 +225,12 @@
       "through_date_source": "not_game_dated",
       "coverage_note": "Current-season team ratings plus historical 2022-2025 brackets; no current-season game dates",
       "builder": "run_full_pipeline.R",
-      "static": false
+      "static": false,
+      "lifecycle": "season_final",
+      "season": 2026,
+      "final_through_date": "2026-10-31",
+      "frozen_sha256": "d64403959d5f38ca94ed760965a15bb3e2a858fca1195b3a01ff8cf4e42c1dd1",
+      "frozen_at": "2026-11-24T05:20:02Z"
     },
     {
       "file": "projections_diagnostics.json",
@@ -182,7 +241,12 @@
       "through_date_source": "not_game_dated",
       "coverage_note": "Aggregate calibration diagnostics; no per-game dates",
       "builder": "run_full_pipeline.R",
-      "static": false
+      "static": false,
+      "lifecycle": "season_final",
+      "season": 2026,
+      "final_through_date": "2026-10-31",
+      "frozen_sha256": "85b15dcef22cce5bbe3df51a7aaf16e0e60b394183a0004138c71a738e2d0595",
+      "frozen_at": "2026-11-24T05:20:02Z"
     },
     {
       "file": "projections_models_metadata.json",
@@ -193,7 +257,12 @@
       "through_date_source": "not_game_dated",
       "coverage_note": "Model metadata catalog; not game-dated",
       "builder": "run_full_pipeline.R",
-      "static": false
+      "static": false,
+      "lifecycle": "season_final",
+      "season": 2026,
+      "final_through_date": "2026-10-31",
+      "frozen_sha256": "981bfe82eb8fe459743300ab60dba01ac6c8dc882c2618a9289d37edb37bc439",
+      "frozen_at": "2026-11-24T05:20:02Z"
     },
     {
       "file": "projections_season_players.json",
@@ -204,7 +273,12 @@
       "through_date_source": "not_game_dated",
       "coverage_note": "Season-long player projections; no game dates",
       "builder": "run_full_pipeline.R",
-      "static": false
+      "static": false,
+      "lifecycle": "season_final",
+      "season": 2026,
+      "final_through_date": "2026-10-31",
+      "frozen_sha256": "0f03f7d7d1c8c516ad89e8e1dec6f8fd6c0dc55364bc2ae513e39d49538ec5dd",
+      "frozen_at": "2026-11-24T05:20:02Z"
     },
     {
       "file": "projections_season_teams.json",
@@ -215,7 +289,12 @@
       "through_date_source": "not_game_dated",
       "coverage_note": "Season-long team projections; no game dates",
       "builder": "run_full_pipeline.R",
-      "static": false
+      "static": false,
+      "lifecycle": "season_final",
+      "season": 2026,
+      "final_through_date": "2026-10-31",
+      "frozen_sha256": "7b2702bc3c05cdd811d7852225a5774eaa07d215dfd082e680b5ae6ee927edc0",
+      "frozen_at": "2026-11-24T05:20:02Z"
     },
     {
       "file": "shots_index.json",
@@ -226,7 +305,12 @@
       "through_date_source": "not_game_dated",
       "coverage_note": "Player shot-file index; not game-dated",
       "builder": "run_full_pipeline.R",
-      "static": false
+      "static": false,
+      "lifecycle": "season_final",
+      "season": 2026,
+      "final_through_date": "2026-10-31",
+      "frozen_sha256": "77211ed3f456555d9b60921ee3157a7037c24ab1d4b0b4a333529df5bc414ccf",
+      "frozen_at": "2026-11-24T05:20:02Z"
     },
     {
       "file": "shots_metadata.json",
@@ -237,7 +321,12 @@
       "through_date_source": "not_game_dated",
       "coverage_note": "League shot-zone averages; no game dates",
       "builder": "run_full_pipeline.R",
-      "static": false
+      "static": false,
+      "lifecycle": "season_final",
+      "season": 2026,
+      "final_through_date": "2026-10-31",
+      "frozen_sha256": "c603e29515cfe9297471c539f04106cc422ad1e878b4aa6541d75164ada24275",
+      "frozen_at": "2026-11-24T05:20:02Z"
     },
     {
       "file": "visual_media_index.json",
@@ -248,7 +337,12 @@
       "through_date_source": "not_game_dated",
       "coverage_note": "Media inventory (per-item build stamps); content carries no game date",
       "builder": "run_full_pipeline.R",
-      "static": false
+      "static": false,
+      "lifecycle": "season_final",
+      "season": 2026,
+      "final_through_date": "2026-10-31",
+      "frozen_sha256": "1521036d28e0c2c846ab607d883b7ccde4f680b6adb3bc0b76780e2ac919f9ac",
+      "frozen_at": "2026-11-24T05:20:02Z"
     }
   ]
 }
