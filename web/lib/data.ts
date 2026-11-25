@@ -16,6 +16,7 @@ import {
   ClutchProfile,
   GameDetailEnvelope,
 } from './types';
+import type { PlayerLeadersPayload } from './playerLeadersTypes';
 
 function readJsonFile<T>(filename: string): T {
   const filePath = path.join(process.cwd(), 'public', 'data', filename);
@@ -40,6 +41,17 @@ export function getTeamEpaProfiles(): TeamEpaProfile[] {
 
 export function getPlayoffPicture(): PlayoffDataset {
   return readJsonFile<PlayoffDataset>('playoff_picture.json');
+}
+
+// League leaders panel (NFL_analytics#230). A missing or unreadable file shows an
+// "unavailable" note on /players instead of failing the build.
+export function getPlayerLeaders(): PlayerLeadersPayload | null {
+  try {
+    return readJsonFile<PlayerLeadersPayload>('player_leaders.json');
+  } catch (error) {
+    console.error('Error reading player_leaders.json:', error);
+    return null;
+  }
 }
 
 export function getQbProfiles(): QbProfile[] {

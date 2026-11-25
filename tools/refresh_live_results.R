@@ -66,6 +66,18 @@
 # the next full run, so anything written here is replaced rather than
 # accumulated - this script writes no .rds and owns no history.
 #
+# LEAGUE LEADERS (NFL_analytics#230)
+#
+# After the scores, the non-model league leader cards in
+# web/public/data/player_leaders.json are rebuilt from freshly fetched nflverse
+# player data (play-by-play, weekly player stats, snap counts, the players table
+# and Pro Football Reference weekly stats - the same release files
+# nflreadr::load_*() read, downloaded with base R) using build_player_leaders.R's
+# own functions. The total EPA card is model-based and is copied through; it
+# updates in the 09:00 pipeline only. Fail-safe: this step runs after the score
+# patching and can never undo it; if a fetch or the rebuild fails, the leaders
+# file is left exactly as it was.
+#
 # Run a full export_web_datasets.R pass whenever the pipeline is refreshed; this
 # is a between-times top-up, not a replacement.
 #
@@ -111,6 +123,36 @@ suppressPackageStartupMessages(library(jsonlite))
 source("config.R")
 # Landing digest helpers (NFL_analytics#183): jsonlite-only, no side effects.
 source(file.path("tools", "build_landing_digest.R"))
+
+# League leaders rebuild (NFL_analytics#230). build_player_leaders.R loads
+# jsonlite and base R only and has no side effects when sourced. Loading is
+# fail-safe: if it cannot be sourced, the leaders step is skipped with a
+# message and score patching runs exactly as before.
+.rlr_leaders_env <- local({
+  env <- new.env(parent = globalenv())
+  ok <- tryCatch({ sys.source("build_player_leaders.R", envir = env); TRUE },
+                 error = function(e) {
+                   message(sprintf("refresh_live_results: leaders rebuild unavailable (%s); scores only.",
+                                   conditionMessage(e)))
+                   FALSE
+                 })
+  if (ok) env else NULL
+})
+
+#' Rebuild the non-model league leader cards (never raises)
+#'
+#' Called after score patching. Any failure is caught and reported, and the
+#' leaders file is left unchanged. Absent leaders file -> nothing to rebuild.
+#' @param fetch NULL for the live nflverse release download, or an injected
+#'   function(release_path) -> data.frame, for tests.
+#' @return list(status, file)
+.rlr_refresh_leaders <- function(leaders_path, season, fetch = NULL) {
+  if (is.null(.rlr_leaders_env)) return(list(status = "rebuild_unavailable", file = NULL))
+  tryCatch({
+    f <- fetch %||% .rlr_leaders_env$ldr_fetch_release_rds
+    .rlr_leaders_env$ldr_refresh_leaders(leaders_path, season = season, fetch = f)
+  }, error = function(e) list(status = sprintf("error: %s", conditionMessage(e)), file = NULL))
+}
 
 NFLVERSE_GAMES_CSV <-
   "https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv"
@@ -441,7 +483,9 @@ refresh_live_results <- function(season = CURRENT_SEASON,
                                  matchups_path = WEB_JSON_MATCHUPS_CURRENT_WEEK,
                                  diagnostics_path = WEB_JSON_MODEL_DIAGNOSTICS,
                                  csv_reader = NULL,
-                                 digest_path = file.path(dirname(matchups_path), "landing_digest.json")) {
+                                 digest_path = file.path(dirname(matchups_path), "landing_digest.json"),
+                                 leaders_path = file.path(dirname(matchups_path), "player_leaders.json"),
+                                 leaders_fetch = NULL) {
   if (!file.exists(matchups_path)) {
     stop(sprintf("refresh_live_results(): no payload at %s - run export_web_datasets.R first.",
                  matchups_path))
@@ -491,8 +535,16 @@ refresh_live_results <- function(season = CURRENT_SEASON,
     }
   }
 
+  # League leaders (NFL_analytics#230): last, so nothing above depends on it.
+  # Guarded like the digest step, so a caller that loads only the score helpers
+  # (tests/test_pure_functions.R) still patches scores.
+  leaders <- if (exists(".rlr_refresh_leaders", mode = "function")) {
+    .rlr_refresh_leaders(leaders_path, season, leaders_fetch)
+  } else list(status = "rebuild_unavailable", file = NULL)
+  if (!is.null(leaders$file)) changed_files <- c(changed_files, leaders$file)
+
   list(n_changed = patched$n_changed, n_deferred = patched$n_deferred,
-       files = changed_files, metrics = metrics)
+       files = changed_files, metrics = metrics, leaders = leaders)
 }
 
 # Entry point for the scheduled workflow: Rscript tools/refresh_live_results.R [season]
@@ -514,6 +566,8 @@ local({
     cat(sprintf("Diagnostics reconciled: %d graded, accuracy %.1f%%, Brier %.4f, log loss %.4f\n",
                 m$n_games_graded, m$overall_accuracy, m$overall_brier, m$overall_logloss))
   }
+  if (!is.null(res$leaders)) cat(sprintf("League leaders: %s
+", res$leaders$status))
   if (length(res$files) == 0) {
     cat("No files changed.\n")
   } else {

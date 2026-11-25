@@ -47,6 +47,7 @@ export const DATASET_FILES = {
   getPassingMetadata: 'passing_metadata.json',
   getPlayerDnaProfiles: 'player_dna_profiles.json',
   getClutchData: 'clutch_leverage_metrics.json',
+  getPlayerLeaders: 'player_leaders.json',
 } as const;
 
 /**

@@ -838,6 +838,44 @@ WEB_JSON_CLUTCH_LEVERAGE_METRICS  <- file.path(WEB_DATA_DIR, "clutch_leverage_me
 WEB_JSON_MODEL_DIAGNOSTICS        <- file.path(WEB_DATA_DIR, "model_diagnostics.json")
 WEB_JSON_SALARY_CAP_PROFILES      <- file.path(WEB_DATA_DIR, "salary_cap_profiles.json")
 WEB_JSON_COACHING_PROFILES        <- file.path(WEB_DATA_DIR, "coaching_profiles.json")
+# League leaders panel on /players (NFL_analytics#230), written by build_player_leaders.R
+# (Stage 14.4b) and rebuilt, non-model cards only, by tools/refresh_live_results.R in the
+# evening refreshes. It carries a top-level generated_at, so it is a WEB_DATA_FILES member:
+# the publish gate (Assertions A and F) blocks a copy the pipeline did not rewrite.
+WEB_JSON_PLAYER_LEADERS           <- file.path(WEB_DATA_DIR, "player_leaders.json")
+
+# ------------------------------------------------------------------------------------------
+# League leaders qualifying minimums (NFL_analytics#230)
+# ------------------------------------------------------------------------------------------
+# The owner set every number below on 2026-11-25 (issue #230 comment "Leader minimums: owner
+# decisions") after reviewing the reliability curves of the leader reliability study
+# (NFL_analytics#229, draft PR #233, docs/research/leader_reliability_study.md). The study
+# measured reliability only; it did not choose these numbers. Each is the FULL-SEASON bar and
+# scales linearly with the games played by the player's current team:
+#   required = minimum * team_games_played / LEADERS_FULL_SEASON_GAMES
+# e.g. after 12 team games the passing-rate bar is 250 * 12 / 17 = ~176 dropbacks.
+# Do not edit a minimum without a new owner decision.
+#
+# Season totals (passing touchdowns, receptions, sacks, interceptions, tackles for loss,
+# pressures, total EPA) have NO minimum by owner decision, so they have no constant here.
+# Sack rate and interception rate: the lowest figure leads (build_player_leaders.R).
+LEADERS_STUDY_SOURCE_COMMIT <- "75998e2d55f705d76f4ee4530829d01f81122894"
+# The owner's bars are 17-game bars. Kept separate from NFL_SEASON_GAMES on purpose: if the
+# schedule length changed, these bars would need a new owner decision, not a silent rescale.
+LEADERS_FULL_SEASON_GAMES   <- 17L
+# Passing, rushing and receiving yards per game: games played.
+LEADERS_MIN_GAMES_YARDS_PER_GAME <- 8L
+# Passing rates (EPA per dropback, completion % over expected, dropback success rate,
+# sack rate, interception rate): dropbacks.
+LEADERS_MIN_DROPBACKS_PASSING_RATES <- 250L
+# Rushing rates (EPA per carry, rushing success rate, yards after contact per carry):
+# designed carries.
+LEADERS_MIN_DESIGNED_CARRIES_RUSHING_RATES <- 100L
+# Receiving rates (EPA per target, catch rate): targets.
+LEADERS_MIN_TARGETS_RECEIVING_RATES <- 80L
+# nflverse players table (pfr_id -> gsis_id link for snap counts and Pro Football Reference
+# rows, as in the study), refreshed by build_player_leaders.R at most once a day.
+CACHE_LEADERS_PLAYERS <- file.path(CACHE_DIR, "leaders_players.rds")
 
 # Note: WEB_JSON_PASSING_INDEX, WEB_JSON_PASSING_METADATA,
 # WEB_JSON_CLUTCH_LEVERAGE_METRICS, and WEB_JSON_PLAYER_DNA_PROFILES are
@@ -855,7 +893,8 @@ WEB_DATA_FILES <- c(
   WEB_JSON_PLAYER_QB_PROFILES,
   WEB_JSON_MODEL_DIAGNOSTICS,
   WEB_JSON_SALARY_CAP_PROFILES,
-  WEB_JSON_COACHING_PROFILES
+  WEB_JSON_COACHING_PROFILES,
+  WEB_JSON_PLAYER_LEADERS
 )
 
 # ------------------------------------------------------------------------------------------
