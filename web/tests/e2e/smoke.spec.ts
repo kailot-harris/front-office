@@ -119,6 +119,10 @@ for (const route of ROUTES) {
 test.describe('navigation', () => {
   test('the sidebar reaches every route', async ({ page }) => {
     await page.goto('/', { waitUntil: 'networkidle' });
+    // The sidebar groups are collapsible (#230/#231) and a collapsed group does not
+    // render its links, so open every group before collecting them.
+    const collapsed = page.locator('aside nav button[aria-expanded="false"]');
+    while ((await collapsed.count()) > 0) await collapsed.first().click();
     const hrefs = await page.locator('nav a, aside a').evaluateAll((els) =>
       els.map((el) => el.getAttribute('href')).filter((h): h is string => Boolean(h && h.startsWith('/'))),
     );
