@@ -27,7 +27,7 @@ export default defineConfig({
           environment: 'node',
           include: [
             'tests/contracts/**/*.test.ts',
-            'tests/unit/**/*.test.ts',
+            'tests/unit/**/*.test.{ts,tsx}',
             'tests/drift/**/*.test.ts',
             'tests/*.test.ts',
           ],

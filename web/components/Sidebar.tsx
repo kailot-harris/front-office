@@ -24,9 +24,10 @@ import {
   Sparkles,
   Film,
   ArrowLeft,
+  ChevronDown,
 } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
-import { orderNavItems } from '@/lib/navOrder';
+import { groupNavItems, type NavGroupId } from '@/lib/navOrder';
 import { SportSwitcher } from '@/components/SportSwitcher';
 
 /**
@@ -38,9 +39,151 @@ import { SportSwitcher } from '@/components/SportSwitcher';
 const withoutTrailingSlash = (path: string) =>
   path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
 
+export interface NavItem {
+  href: string;
+  label: string;
+  badge: string;
+  icon: React.ComponentType<{ className?: string }>;
+  desc: string;
+  primary?: boolean;
+}
+
+export const NAV_ITEMS: NavItem[] = [
+  {
+    href: '/offseason',
+    label: 'Offseason Moves',
+    badge: 'Weekly Pulse',
+    icon: Sparkles,
+    desc: 'State-diff transactions & 2027 CBT intelligence',
+    primary: true,
+  },
+  {
+    href: '/cap-sheet',
+    label: 'Payroll & Cap',
+    badge: 'CBT $244M',
+    icon: Coins,
+    desc: 'Luxury tax thresholds & 40-man commitments',
+  },
+  {
+    href: '/',
+    label: 'Season Standings',
+    badge: '30 Clubs',
+    icon: Trophy,
+    desc: '162-game win distributions & WS%',
+  },
+  {
+    href: '/gallery',
+    label: 'Visual Gallery',
+    badge: '20 GIFs',
+    icon: Film,
+    desc: 'Year-end animated races, brackets & scatters',
+  },
+  {
+    href: '/retrospective',
+    label: 'Retrospective',
+    badge: 'WS Debrief',
+    icon: Sparkles,
+    desc: 'Postseason audit, champions and model postmortem',
+  },
+  {
+    href: '/postseason',
+    label: 'Postseason & Bullpen',
+    badge: '12-Team Ops',
+    icon: Award,
+    desc: '12-team bracket & bullpen leverage',
+  },
+  {
+    href: '/matchups',
+    label: 'Matchups',
+    badge: 'Slate Grades',
+    icon: CalendarDays,
+    desc: 'Every game by week, graded vs pre-game Elo',
+  },
+  {
+    href: '/players',
+    label: 'Player Ratings & Projections',
+    badge: '1,279 Pool',
+    icon: Users,
+    desc: 'Batters (630) & Pitchers (649) toggle',
+  },
+  {
+    href: '/player-dna',
+    label: 'Player DNA & Peer Comps',
+    badge: '16-D Manifold',
+    icon: Dna,
+    desc: 'Archetypes & historical comps (1980+)',
+  },
+  {
+    href: '/clutch',
+    label: 'True Clutch Index',
+    badge: 'Leverage LI',
+    icon: Flame,
+    desc: 'Tango LI, RISP resilience & Firemen',
+  },
+  {
+    href: '/spatial',
+    label: 'Spatial Analytics',
+    badge: 'Statcast',
+    icon: Compass,
+    desc: 'Spray, Strike Zone, IVB & Shift',
+  },
+  {
+    href: '/playoffs',
+    label: 'Playoff Simulator',
+    badge: '10K Sims',
+    icon: Swords,
+    desc: '3/5/7-game rotation series match-ups',
+  },
+  {
+    href: '/variants',
+    label: 'Model Variants',
+    badge: '4 Engines',
+    icon: BarChart3,
+    desc: 'Elo, Bayes, Pythagenpat & Marcel',
+  },
+  {
+    href: '/diagnostics',
+    label: 'Diagnostics',
+    badge: 'Brier 0.2449',
+    icon: Activity,
+    desc: 'Reliability curve & walk-forward drift',
+  },
+];
+
+const SIDEBAR_GROUPS_STORAGE_KEY = 'fo-mlb-sidebar-groups';
+
+export function readStoredOpenGroups(): Partial<Record<NavGroupId, boolean>> {
+  try {
+    const raw =
+      typeof window !== 'undefined' ? window.localStorage?.getItem(SIDEBAR_GROUPS_STORAGE_KEY) : null;
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const next: Partial<Record<NavGroupId, boolean>> = {};
+    for (const [k, v] of Object.entries(parsed)) {
+      if (typeof v === 'boolean') {
+        next[k as NavGroupId] = v;
+      }
+    }
+    return next;
+  } catch {
+    return {};
+  }
+}
+
+export function writeStoredOpenGroups(groups: Partial<Record<NavGroupId, boolean>>): void {
+  try {
+    if (typeof window !== 'undefined') {
+      window.localStorage?.setItem(SIDEBAR_GROUPS_STORAGE_KEY, JSON.stringify(groups));
+    }
+  } catch {
+    // Ignore unavailable localStorage.
+  }
+}
+
 export interface SidebarProps {
   generatedAt?: string;
-  /** season_state from landing_digest.json; drives the shared nav order (#221). */
+  /** season_state from landing_digest.json; drives the shared nav order (#221, #230). */
   seasonState?: string;
 }
 
@@ -86,126 +229,40 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonState }) =>
     };
   }, [isOpen]);
   const [showEloExplainer, setShowEloExplainer] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Partial<Record<NavGroupId, boolean>>>({});
 
-  const navItems = orderNavItems([
-    {
-      href: '/offseason',
-      label: 'Offseason Moves',
-      badge: 'Weekly Pulse',
-      icon: Sparkles,
-      desc: 'State-diff transactions & 2027 CBT intelligence',
-      primary: true,
-    },
-    {
-      href: '/cap-sheet',
-      label: 'Payroll & Cap',
-      badge: 'CBT $244M',
-      icon: Coins,
-      desc: 'Luxury tax thresholds & 40-man commitments',
-    },
-    {
-      href: '/',
-      label: 'Season Standings',
-      badge: '30 Clubs',
-      icon: Trophy,
-      desc: '162-game win distributions & WS%',
-    },
-    {
-      href: '/gallery',
-      label: 'Visual Gallery',
-      badge: '20 GIFs',
-      icon: Film,
-      desc: 'Year-end animated races, brackets & scatters',
-    },
-    {
-      href: '/retrospective',
-      label: 'Retrospective',
-      badge: 'WS Debrief',
-      icon: Sparkles,
-      desc: 'Postseason audit, champions and model postmortem',
-    },
-    {
-      href: '/postseason',
-      label: 'Postseason & Bullpen',
-      badge: '12-Team Ops',
-      icon: Award,
-      desc: '12-team bracket & bullpen leverage',
-    },
-    {
-      href: '/matchups',
-      label: 'Matchups',
-      badge: 'Slate Grades',
-      icon: CalendarDays,
-      desc: 'Every game by week, graded vs pre-game Elo',
-    },
-    {
-      href: '/players',
-      label: 'Player Ratings & Projections',
-      badge: '1,279 Pool',
-      icon: Users,
-      desc: 'Batters (630) & Pitchers (649) toggle',
-    },
-    {
-      href: '/player-dna',
-      label: 'Player DNA & Peer Comps',
-      badge: '16-D Manifold',
-      icon: Dna,
-      desc: 'Archetypes & historical comps (1980+)',
-    },
-    {
-      href: '/clutch',
-      label: 'True Clutch Index',
-      badge: 'Leverage LI',
-      icon: Flame,
-      desc: 'Tango LI, RISP resilience & Firemen',
-    },
-    {
-      href: '/spatial',
-      label: 'Spatial Analytics',
-      badge: 'Statcast',
-      icon: Compass,
-      desc: 'Spray, Strike Zone, IVB & Shift',
-    },
-    {
-      href: '/playoffs',
-      label: 'Playoff Simulator',
-      badge: '10K Sims',
-      icon: Swords,
-      desc: '3/5/7-game rotation series match-ups',
-    },
-    {
-      href: '/variants',
-      label: 'Model Variants',
-      badge: '4 Engines',
-      icon: BarChart3,
-      desc: 'Elo, Bayes, Pythagenpat & Marcel',
-    },
-    {
-      href: '/diagnostics',
-      label: 'Diagnostics',
-      badge: 'Brier 0.2449',
-      icon: Activity,
-      desc: 'Reliability curve & walk-forward drift',
-    },
-  ], seasonState);
+  useEffect(() => {
+    const stored = readStoredOpenGroups();
+    if (Object.keys(stored).length > 0) {
+      setOpenGroups(stored);
+    }
+  }, []);
 
-  const renderNavLink = (item: {
-    href: string;
-    label: string;
-    badge: string;
-    icon: React.ComponentType<{ className?: string }>;
-    desc: string;
-    primary?: boolean;
-  }) => {
+  const navGroups = groupNavItems(NAV_ITEMS, seasonState);
+  const currentPath = withoutTrailingSlash(pathname ?? '/');
+  const isItemActive = (href: string) =>
+    currentPath === withoutTrailingSlash(href) || (href === '/' && currentPath === '/teams');
+  const activeGroupId = navGroups.find((g) => g.items.some((item) => isItemActive(item.href)))?.id;
+
+  const toggleGroup = (groupId: NavGroupId, defaultOpen: boolean) => {
+    if (groupId === activeGroupId) return;
+    setOpenGroups((prev) => {
+      const currentlyOpen = prev[groupId] ?? defaultOpen;
+      const next = { ...prev, [groupId]: !currentlyOpen };
+      writeStoredOpenGroups(next);
+      return next;
+    });
+  };
+
+  const renderNavLink = (item: NavItem) => {
     const Icon = item.icon;
-    const isActive =
-      withoutTrailingSlash(pathname ?? '/') === withoutTrailingSlash(item.href) ||
-      (item.href === '/' && withoutTrailingSlash(pathname ?? '/') === '/teams');
+    const isActive = isItemActive(item.href);
 
     return (
       <Link
         key={item.href}
         href={item.href}
+        aria-current={isActive ? 'page' : undefined}
         onClick={() => setIsOpen(false)}
         className={`group flex items-start gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
           isActive
@@ -251,7 +308,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonState }) =>
     );
   };
 
-  const NavContent = () => (
+  const renderNavContent = (idPrefix: 'desktop' | 'mobile') => (
     <div className="flex flex-col h-full justify-between p-4">
       <div className="space-y-6 flex-1 overflow-y-auto min-h-0">
         {/* Front Office home (#220): plain anchor, outside navItems, never active */}
@@ -286,8 +343,38 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonState }) =>
           </div>
         </div>
 
-        {/* Navigation Links: one flat list in the shared order (#221) */}
-        <div className="space-y-1">{navItems.map(renderNavLink)}</div>
+        {/* Navigation Links: 5 collapsible groups (#230) */}
+        <nav aria-label="Primary" className="space-y-2">
+          {navGroups.map((group) => {
+            const isActiveGroup = group.id === activeGroupId;
+            const isExpanded = isActiveGroup || (openGroups[group.id] ?? group.defaultOpen);
+            const panelId = `${idPrefix}-nav-group-${group.id}`;
+            return (
+              <div key={group.id} data-nav-group={group.id} className="space-y-1">
+                <button
+                  type="button"
+                  aria-expanded={isExpanded}
+                  aria-controls={panelId}
+                  onClick={() => toggleGroup(group.id, group.defaultOpen)}
+                  className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors"
+                >
+                  <span>{group.label}</span>
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={`w-3.5 h-3.5 transition-transform duration-150 ${
+                      isExpanded ? 'rotate-0' : '-rotate-90'
+                    }`}
+                  />
+                </button>
+                {isExpanded && (
+                  <div id={panelId} className="space-y-1">
+                    {group.items.map(renderNavLink)}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </nav>
 
         {/* Engine Metadata Card */}
         <div className="bg-surface/70 border border-slate-800/80 rounded-xl p-3.5 space-y-2.5">
@@ -455,14 +542,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonState }) =>
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <NavContent />
+            {renderNavContent('mobile')}
           </div>
         </div>
       )}
 
       {/* Desktop Persistent Sidebar */}
       <aside className="hidden md:flex w-64 lg:w-72 flex-col flex-shrink-0 h-screen sticky top-0 bg-surface-raised/90 backdrop-blur-md border-r border-slate-800 z-30">
-        <NavContent />
+        {renderNavContent('desktop')}
       </aside>
     </>
   );

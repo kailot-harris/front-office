@@ -45,10 +45,13 @@ describe('Sidebar home link (front-office #220)', () => {
     expect(html.match(/href="\/front-office\/"/g)).toHaveLength(2);
   });
 
-  it('renders nav items in the shared offseason order', () => {
+  it('renders Front Office before Season & Games and Models in the offseason', () => {
     const html = render(false, 'offseason');
-    const first = html.indexOf('Offseason Moves');
-    expect(first).toBeLessThan(html.indexOf('Retrospective'));
-    expect(html.indexOf('Retrospective')).toBeLessThan(html.indexOf('Season Standings'));
+    const frontOffice = html.indexOf('Offseason Moves');
+    const seasonGames = html.indexOf('Season Standings');
+    const models = html.indexOf('Models');
+    expect(frontOffice).toBeGreaterThan(-1);
+    expect(frontOffice).toBeLessThan(seasonGames);
+    expect(seasonGames).toBeLessThan(models);
   });
 });
