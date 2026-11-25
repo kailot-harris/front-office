@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import { MilestoneCalendar, OffseasonMonitorClient } from '../../components/OffseasonMonitorClient';
 import { getOffseasonMonitorData } from '../../lib/data';
@@ -17,6 +17,8 @@ describe('Block 4 milestone card', () => {
     expect(week1?.publishDate).toBe('2026-11-17');
 
     render(<OffseasonMonitorClient initialDataset={dataset} />);
+    // The page opens on the latest edition; Week 1 is a frozen past edition.
+    fireEvent.click(screen.getByRole('button', { name: /^Week 1/ }));
 
     const next30 = screen.getByTestId('milestones-next-30-days');
     const later = screen.getByTestId('milestones-later');
