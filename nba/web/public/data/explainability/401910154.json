@@ -1,11 +1,11 @@
 {
   "schema_version": "1.0",
   "game_id": "401910154",
-  "generated_at": "2026-11-24T14:04:36Z",
+  "generated_at": "2026-11-25T14:02:52Z",
   "data": {
     "projection_basis": "primary_ensemble",
-    "predicted_margin": -8.98,
-    "predicted_home_win_prob": 0.2243,
+    "predicted_margin": -8.99,
+    "predicted_home_win_prob": 0.2241,
     "sigma_game": 11.8529,
     "margin_waterfall": [
       {
@@ -24,7 +24,7 @@
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": -1.77,
-        "detail": "20% Shot/Fatigue blend (ATL +1.29 vs OKC +10.13)"
+        "detail": "20% Shot/Fatigue blend (ATL +1.29 vs OKC +10.14)"
       },
       {
         "key": "embeddings",
@@ -43,6 +43,12 @@
         "label": "Schedule & travel",
         "points": -1.76,
         "detail": "OKC fatigue 0.09 minus ATL fatigue 1.85"
+      },
+      {
+        "key": "rounding",
+        "label": "Component rounding",
+        "points": -0.01,
+        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,
@@ -87,7 +93,7 @@
           "feature": "diff_roll_tovp",
           "label": "18-Game Turnover Rate Diff",
           "feature_value": 0.0127,
-          "z_score": 0.6951,
+          "z_score": 0.6945,
           "shap_log_odds": -0.11629,
           "shap_prob_approx": -0.0288
         },

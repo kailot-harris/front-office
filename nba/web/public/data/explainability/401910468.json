@@ -1,12 +1,12 @@
 {
   "schema_version": "1.0",
   "game_id": "401910468",
-  "generated_at": "2026-11-24T14:04:36Z",
+  "generated_at": "2026-11-25T14:02:52Z",
   "data": {
     "projection_basis": "primary_ensemble",
     "predicted_margin": 10.56,
     "predicted_home_win_prob": 0.8075,
-    "sigma_game": 12.1561,
+    "sigma_game": 12.1581,
     "margin_waterfall": [
       {
         "key": "bottom_up",
@@ -24,7 +24,7 @@
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": 1.58,
-        "detail": "20% Shot/Fatigue blend (PHI +3.14 vs NOP -4.76)"
+        "detail": "20% Shot/Fatigue blend (PHI +3.14 vs NOP -4.75)"
       },
       {
         "key": "embeddings",
@@ -64,8 +64,8 @@
           "label": "18-Game Turnover Rate Diff",
           "feature_value": -0.0282,
           "z_score": -1.5839,
-          "shap_log_odds": 0.29311,
-          "shap_prob_approx": 0.0706
+          "shap_log_odds": 0.29354,
+          "shap_prob_approx": 0.0707
         },
         {
           "feature": "diff_roll_ts",
@@ -86,10 +86,10 @@
         {
           "feature": "diff_roll_dreb",
           "label": "18-Game Defensive Rebound Diff",
-          "feature_value": 1.4444,
-          "z_score": 0.4731,
-          "shap_log_odds": 0.10176,
-          "shap_prob_approx": 0.0249
+          "feature_value": 1.5,
+          "z_score": 0.4913,
+          "shap_log_odds": 0.10091,
+          "shap_prob_approx": 0.0247
         },
         {
           "feature": "diff_fatigue_index",
@@ -120,8 +120,8 @@
           "label": "16-D Style Embedding Cosine Sim",
           "feature_value": -0.0342,
           "z_score": -0.1033,
-          "shap_log_odds": 0.02432,
-          "shap_prob_approx": 0.006
+          "shap_log_odds": 0.02474,
+          "shap_prob_approx": 0.0061
         },
         {
           "feature": "diff_roll_efg",

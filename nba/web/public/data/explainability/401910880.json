@@ -1,12 +1,12 @@
 {
   "schema_version": "1.0",
   "game_id": "401910880",
-  "generated_at": "2026-11-24T14:04:36Z",
+  "generated_at": "2026-11-25T14:02:52Z",
   "data": {
     "projection_basis": "primary_ensemble",
-    "predicted_margin": 19.02,
-    "predicted_home_win_prob": 0.9425,
-    "sigma_game": 12.0669,
+    "predicted_margin": 19.03,
+    "predicted_home_win_prob": 0.9426,
+    "sigma_game": 12.0689,
     "margin_waterfall": [
       {
         "key": "bottom_up",
@@ -24,7 +24,7 @@
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": 2.98,
-        "detail": "20% Shot/Fatigue blend (OKC +10.13 vs NOP -4.76)"
+        "detail": "20% Shot/Fatigue blend (OKC +10.14 vs NOP -4.75)"
       },
       {
         "key": "embeddings",
@@ -43,12 +43,6 @@
         "label": "Schedule & travel",
         "points": 0.29,
         "detail": "NOP fatigue 0.29 minus OKC fatigue 0.00"
-      },
-      {
-        "key": "rounding",
-        "label": "Component rounding",
-        "points": -0.01,
-        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,
@@ -69,15 +63,15 @@
           "feature": "diff_roll_tovp",
           "label": "18-Game Turnover Rate Diff",
           "feature_value": -0.0227,
-          "z_score": -1.2742,
+          "z_score": -1.2736,
           "shap_log_odds": 0.31996,
           "shap_prob_approx": 0.0768
         },
         {
           "feature": "diff_roll_dreb",
           "label": "18-Game Defensive Rebound Diff",
-          "feature_value": 3.3333,
-          "z_score": 1.092,
+          "feature_value": 3.3889,
+          "z_score": 1.1102,
           "shap_log_odds": 0.31813,
           "shap_prob_approx": 0.0764
         },

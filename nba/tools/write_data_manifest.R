@@ -66,6 +66,7 @@ DM_SPEC <- list(
   "momentum_board.json"              = list(builder = "build_momentum_dataset.R",   max_lag_days = 2L),
   "momentum_methodology.json"        = list(builder = "publish_momentum_methodology.R", max_lag_days = 0L,
     static_reason = "Frozen momentum measures study results (study run date and source commit inside the file); copied by tools/publish_momentum_methodology.R only when the study is re-run, never by the daily pipeline."),
+  "player_leaders.json"              = list(builder = "build_player_leaders.R",     max_lag_days = 2L),
   "visual_media_index.json"          = list(builder = "export_visual_media_index.R", max_lag_days = 2L,
     coverage_note = "Media inventory (per-item build stamps); content carries no game date."),
   "player_dna_profiles.json"         = list(builder = "build_player_dna_dataset.R", max_lag_days = 2L),
@@ -102,6 +103,7 @@ DM_COVERAGE <- list(
   "player_dna_profiles.json"     = .dm_date_field("throughDate"),
   "shots_metadata.json"          = .dm_date_field("through_date"),
   "momentum_board.json"          = .dm_date_field("through_date"),
+  "player_leaders.json"          = .dm_date_field("through_date"),
   "landing_digest.json" = function(j) {
     # Latest FINAL game in yesterday[]: never generated_at or slate_date.
     d <- vapply(j$yesterday %||% list(), function(g)

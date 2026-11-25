@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-11-24T05:10:13Z",
+  "generated_at": "2026-11-25T09:28:36Z",
   "sport": "nfl",
   "endpoint": "game_detail",
   "season": 2026,
@@ -1566,8 +1566,8 @@
       "secondary_model": {
         "model_id": "xgboost_feature_fusion_v1",
         "model_label": "Secondary Model (XGBoost TreeSHAP)",
-        "model_win_prob": 0.827,
-        "logit": 1.5663,
+        "model_win_prob": 0.823,
+        "logit": 1.5393,
         "base_value": 0.2498,
         "factors": [
           {
@@ -1597,8 +1597,8 @@
           {
             "feature": "diff_cpoe",
             "label": "Completion % Over Expected Differential",
-            "value": 13.71,
-            "shap_value": 1.4742
+            "value": 13.557,
+            "shap_value": 1.4548
           },
           {
             "feature": "gp_avg",
@@ -1634,7 +1634,7 @@
             "feature": "fatigue_adj",
             "label": "Schedule Rest & Travel Impact",
             "value": 0.15,
-            "shap_value": -0.042
+            "shap_value": -0.0496
           },
           {
             "feature": "rest_diff",
@@ -1740,14 +1740,14 @@
           "metric_key": "cpoe",
           "metric_label": "CPOE",
           "team_abbr": "SF",
-          "entering_baseline": 6.442,
+          "entering_baseline": 6.374,
           "realized_value": 16.731,
-          "delta": 10.289,
+          "delta": 10.357,
           "prior_games_n": 9,
           "is_low_sample": false
         }
       ],
-      "divergence_note": "SF CPOE (+16.731) showed the largest divergence from entering baseline (+6.442).",
+      "divergence_note": "SF CPOE (+16.731) showed the largest divergence from entering baseline (+6.374).",
       "margin_waterfall": [
         {
           "key": "step_current_epa",

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-11-24T09:27:56Z",
+  "generated_at": "2026-11-25T09:28:39Z",
   "season": 2026,
   "week": 16,
   "games": [
@@ -141,7 +141,7 @@
           "n_games": 163,
           "accuracy": 60.1,
           "brier": 0.2197,
-          "logloss": 0.6285
+          "logloss": 0.6286
         }
       },
       "entering_baselines": [
@@ -423,7 +423,7 @@
           "n_games": 163,
           "accuracy": 60.1,
           "brier": 0.2197,
-          "logloss": 0.6285
+          "logloss": 0.6286
         }
       },
       "entering_baselines": [
@@ -705,7 +705,7 @@
           "n_games": 163,
           "accuracy": 60.1,
           "brier": 0.2197,
-          "logloss": 0.6285
+          "logloss": 0.6286
         }
       },
       "entering_baselines": [
@@ -987,7 +987,7 @@
           "n_games": 163,
           "accuracy": 60.1,
           "brier": 0.2197,
-          "logloss": 0.6285
+          "logloss": 0.6286
         }
       },
       "entering_baselines": [
@@ -1269,7 +1269,7 @@
           "n_games": 163,
           "accuracy": 60.1,
           "brier": 0.2197,
-          "logloss": 0.6285
+          "logloss": 0.6286
         }
       },
       "entering_baselines": [
@@ -1551,7 +1551,7 @@
           "n_games": 163,
           "accuracy": 60.1,
           "brier": 0.2197,
-          "logloss": 0.6285
+          "logloss": 0.6286
         }
       },
       "entering_baselines": [
@@ -1833,7 +1833,7 @@
           "n_games": 163,
           "accuracy": 60.1,
           "brier": 0.2197,
-          "logloss": 0.6285
+          "logloss": 0.6286
         }
       },
       "entering_baselines": [
@@ -2115,7 +2115,7 @@
           "n_games": 163,
           "accuracy": 60.1,
           "brier": 0.2197,
-          "logloss": 0.6285
+          "logloss": 0.6286
         }
       },
       "entering_baselines": [
@@ -2397,7 +2397,7 @@
           "n_games": 163,
           "accuracy": 60.1,
           "brier": 0.2197,
-          "logloss": 0.6285
+          "logloss": 0.6286
         }
       },
       "entering_baselines": [
@@ -2679,7 +2679,7 @@
           "n_games": 163,
           "accuracy": 60.1,
           "brier": 0.2197,
-          "logloss": 0.6285
+          "logloss": 0.6286
         }
       },
       "entering_baselines": [
@@ -2961,7 +2961,7 @@
           "n_games": 163,
           "accuracy": 60.1,
           "brier": 0.2197,
-          "logloss": 0.6285
+          "logloss": 0.6286
         }
       },
       "entering_baselines": [
@@ -3111,11 +3111,11 @@
       "season": 2026,
       "week": 16,
       "projection_basis": "logged_pregame",
-      "predicted_margin": 4.43,
-      "predicted_home_win_prob": 0.619,
+      "predicted_margin": 2.83,
+      "predicted_home_win_prob": 0.577,
       "waterfall": {
-        "projected_margin": 4.43,
-        "home_win_prob": 0.619,
+        "projected_margin": 2.83,
+        "home_win_prob": 0.577,
         "steps": [
           {
             "key": "step_current_epa",
@@ -3144,7 +3144,7 @@
           {
             "key": "step_qb_adjustment",
             "label": "Starting Quarterback",
-            "points": 0,
+            "points": -1.6,
             "description": "Quarterback availability and injury adjustment"
           },
           {
@@ -3210,13 +3210,13 @@
           {
             "feature": "qb_diff",
             "label": "Quarterback Status Differential",
-            "value": 0,
+            "value": -1,
             "shap_value": 0
           },
           {
             "feature": "ridge_margin",
             "label": "Primary Ridge Model Projection",
-            "value": 4.429,
+            "value": 2.829,
             "shap_value": 0
           },
           {
@@ -3243,7 +3243,7 @@
           "n_games": 163,
           "accuracy": 60.1,
           "brier": 0.2197,
-          "logloss": 0.6285
+          "logloss": 0.6286
         }
       },
       "entering_baselines": [
@@ -3341,7 +3341,7 @@
           "metric_key": "cpoe",
           "metric_label": "CPOE",
           "team_abbr": "PIT",
-          "entering_baseline": -2.911,
+          "entering_baseline": -2.789,
           "realized_value": null,
           "delta": null,
           "prior_games_n": 10,
@@ -3377,7 +3377,7 @@
         {
           "key": "step_qb_adjustment",
           "label": "Starting Quarterback",
-          "points": 0,
+          "points": -1.6,
           "description": "Quarterback availability and injury adjustment"
         },
         {
@@ -3525,7 +3525,7 @@
           "n_games": 163,
           "accuracy": 60.1,
           "brier": 0.2197,
-          "logloss": 0.6285
+          "logloss": 0.6286
         }
       },
       "entering_baselines": [
@@ -3807,7 +3807,7 @@
           "n_games": 163,
           "accuracy": 60.1,
           "brier": 0.2197,
-          "logloss": 0.6285
+          "logloss": 0.6286
         }
       },
       "entering_baselines": [
@@ -3855,7 +3855,7 @@
           "metric_key": "cpoe",
           "metric_label": "CPOE",
           "team_abbr": "SF",
-          "entering_baseline": 7.471,
+          "entering_baseline": 7.41,
           "realized_value": null,
           "delta": null,
           "prior_games_n": 10,
@@ -4089,7 +4089,7 @@
           "n_games": 163,
           "accuracy": 60.1,
           "brier": 0.2197,
-          "logloss": 0.6285
+          "logloss": 0.6286
         }
       },
       "entering_baselines": [
@@ -4371,7 +4371,7 @@
           "n_games": 163,
           "accuracy": 60.1,
           "brier": 0.2197,
-          "logloss": 0.6285
+          "logloss": 0.6286
         }
       },
       "entering_baselines": [

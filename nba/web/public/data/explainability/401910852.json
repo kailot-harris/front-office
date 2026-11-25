@@ -1,11 +1,11 @@
 {
   "schema_version": "1.0",
   "game_id": "401910852",
-  "generated_at": "2026-11-24T14:04:36Z",
+  "generated_at": "2026-11-25T14:02:52Z",
   "data": {
     "projection_basis": "primary_ensemble",
-    "predicted_margin": -14.5,
-    "predicted_home_win_prob": 0.1217,
+    "predicted_margin": -14.51,
+    "predicted_home_win_prob": 0.1215,
     "sigma_game": 12.4287,
     "margin_waterfall": [
       {
@@ -24,7 +24,7 @@
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": -3.92,
-        "detail": "20% Shot/Fatigue blend (UTA -9.45 vs OKC +10.13)"
+        "detail": "20% Shot/Fatigue blend (UTA -9.45 vs OKC +10.14)"
       },
       {
         "key": "embeddings",
@@ -43,12 +43,6 @@
         "label": "Schedule & travel",
         "points": -0.45,
         "detail": "OKC fatigue 1.74 minus UTA fatigue 2.19"
-      },
-      {
-        "key": "rounding",
-        "label": "Component rounding",
-        "points": 0.01,
-        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,
@@ -68,8 +62,8 @@
         {
           "feature": "diff_roll_tovp",
           "label": "18-Game Turnover Rate Diff",
-          "feature_value": 0.0365,
-          "z_score": 2.0185,
+          "feature_value": 0.0364,
+          "z_score": 2.0179,
           "shap_log_odds": -0.42235,
           "shap_prob_approx": -0.1052
         },

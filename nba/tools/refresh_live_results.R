@@ -54,6 +54,17 @@
 # 51.9% - reproduced exactly). `accuracy_pct` is null, not 0, for a slate with
 # nothing graded yet, which is how the exporter writes it.
 #
+# LEAGUE LEADERS (NBA_analytics#254)
+#
+# After the scores, completed games that web/public/data/player_leaders.json
+# does not yet include get their player box scores from ESPN's public game
+# summary (same upstream as hoopR, jsonlite only), are added to the file's
+# season_totals and the box-score and rate cards are rebuilt with
+# build_player_leaders.R's own functions. RAPM cards are copied through (they
+# update in the 09:00 run only). All or nothing and fail-safe: if any summary
+# fails to fetch or parse, the leaders file is left unchanged and the score
+# patching above is unaffected.
+#
 # Run a full pipeline pass whenever the caches refresh; this is a between-times
 # top-up, not a replacement.
 #
@@ -98,6 +109,38 @@ source("config.R")
 source("tools/espn_scoreboard.R")
 # Landing digest patcher (NBA#211). jsonlite-only, like this script.
 source("tools/build_landing_digest.R")
+
+# League leaders patcher (NBA_analytics#254). build_player_leaders.R is jsonlite
+# and base R only; it is sourced for its definitions (autorun suppressed). Loading
+# is fail-safe: if it cannot be sourced, the leaders step is skipped with a
+# message and score patching runs exactly as before.
+.rlr_leaders_env <- local({
+  old <- Sys.getenv("NBA_SKIP_STAGE_AUTORUN", unset = NA)
+  Sys.setenv(NBA_SKIP_STAGE_AUTORUN = "1")
+  on.exit(if (is.na(old)) Sys.unsetenv("NBA_SKIP_STAGE_AUTORUN") else Sys.setenv(NBA_SKIP_STAGE_AUTORUN = old))
+  env <- new.env(parent = globalenv())
+  ok <- tryCatch({ sys.source("build_player_leaders.R", envir = env); TRUE },
+                 error = function(e) {
+                   message(sprintf("refresh_live_results: leaders patcher unavailable (%s); scores only.",
+                                   conditionMessage(e)))
+                   FALSE
+                 })
+  if (ok) env else NULL
+})
+
+#' Add newly finished games' player box scores to player_leaders.json
+#'
+#' Runs after score patching and can never undo it: any error is caught and
+#' reported, and the leaders file is left unchanged (pl_refresh_leaders is all
+#' or nothing across the night's games). Absent leaders file -> nothing to patch.
+#' @return list(status, n_games, file)
+.rlr_refresh_leaders <- function(leaders_path, matchups, summary_fetcher = NULL) {
+  if (is.null(.rlr_leaders_env)) return(list(status = "patcher_unavailable", n_games = 0L, file = NULL))
+  fetch <- summary_fetcher %||% .rlr_leaders_env$pl_espn_fetch_summary
+  tryCatch(.rlr_leaders_env$pl_refresh_leaders(leaders_path, matchups, fetch_summary = fetch),
+           error = function(e) list(status = sprintf("error: %s", conditionMessage(e)),
+                                    n_games = 0L, file = NULL))
+}
 
 # Default lookback for the date sweep. ESPN's scoreboard is keyed by a single
 # date, so an unbounded sweep over every pending date in a 1,200-game season is
@@ -275,7 +318,9 @@ refresh_live_results <- function(dates = NULL,
                                  payload_path = WEB_JSON_MATCHUPS_SLATES,
                                  fetcher = espn_fetch_dates,
                                  today = Sys.Date(),
-                                 digest_path = file.path(dirname(payload_path), LD_FILE_NAME)) {
+                                 digest_path = file.path(dirname(payload_path), LD_FILE_NAME),
+                                 leaders_path = file.path(dirname(payload_path), basename(WEB_JSON_PLAYER_LEADERS)),
+                                 summary_fetcher = NULL) {
   if (!file.exists(payload_path)) {
     stop(sprintf("refresh_live_results(): no payload at %s - run the pipeline first.",
                  payload_path))
@@ -284,18 +329,25 @@ refresh_live_results <- function(dates = NULL,
   payload <- jsonlite::fromJSON(payload_path, simplifyVector = TRUE)
   payload$matchups$game_id <- as.character(payload$matchups$game_id)
 
+  # Leaders run on the rows as they stand after any score patching, including
+  # games an earlier run already marked final (NBA_analytics#254).
+  with_leaders <- function(res, rows) {
+    res$leaders <- .rlr_refresh_leaders(leaders_path, rows, summary_fetcher)
+    res
+  }
+
   if (is.null(dates)) {
     dates <- pending_dates(payload$matchups, lookback_days, today)
   }
   if (length(dates) == 0) {
-    return(list(n_changed = 0L, dates = character(0), file = NULL))
+    return(with_leaders(list(n_changed = 0L, dates = character(0), file = NULL), payload$matchups))
   }
 
   results <- fetcher(dates)
   patched <- apply_results(payload$matchups, results)
 
   if (patched$n_changed == 0) {
-    return(list(n_changed = 0L, dates = dates, file = NULL))
+    return(with_leaders(list(n_changed = 0L, dates = dates, file = NULL), payload$matchups))
   }
 
   payload$matchups <- patched$rows
@@ -306,9 +358,10 @@ refresh_live_results <- function(dates = NULL,
   # Slots B/C: re-grade the landing digest's yesterday, record and calibration
   # from the same patched rows (NBA#211). Absent digest -> nothing to patch.
   digest_written <- ld_patch_digest_file(digest_path, payload$matchups)
-  list(n_changed = patched$n_changed, dates = dates,
-       file = if (written) payload_path else NULL,
-       digest = if (isTRUE(digest_written)) digest_path else NULL)
+  with_leaders(list(n_changed = patched$n_changed, dates = dates,
+                    file = if (written) payload_path else NULL,
+                    digest = if (isTRUE(digest_written)) digest_path else NULL),
+               payload$matchups)
 }
 
 # Entry point for the scheduled workflow.
@@ -338,5 +391,9 @@ local({
     cat("No files changed.\n")
   } else {
     cat(sprintf("Files rewritten: %s\n", basename(res$file)))
+  }
+  if (!is.null(res$leaders)) {
+    cat(sprintf("League leaders: %s (%d game(s) added)%s\n", res$leaders$status, res$leaders$n_games,
+                if (is.null(res$leaders$file)) "" else sprintf(", rewrote %s", basename(res$leaders$file))))
   }
 })
