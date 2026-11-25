@@ -9,7 +9,10 @@ import type { LeaderMethodologyMinimum, LeaderMethodologyPayload } from '@/lib/l
 import { LeaderMethodologyCharts } from '@/components/LeaderMethodologyCharts';
 
 const card = 'rounded-xl border border-slate-800 bg-surface-raised/60 p-4';
-const tableWrap = 'overflow-x-auto rounded-lg border border-slate-800';
+// `relative` makes the scroll box the containing block for the absolutely
+// positioned sr-only null reasons in the cells; without it they escape the
+// overflow clip and widen the whole page on a phone.
+const tableWrap = 'relative overflow-x-auto rounded-lg border border-slate-800';
 const th = 'px-3 py-2 font-semibold text-left';
 const td = 'px-3 py-2';
 const mono = 'font-mono tabular-nums';

@@ -67,7 +67,7 @@ payload <- jsonlite::fromJSON(out_path, simplifyVector = FALSE)
 ok("source_commit matches LEADERS_STUDY_SOURCE_COMMIT",
    identical(payload$source_commit, cfg_env$LEADERS_STUDY_SOURCE_COMMIT))
 ok("source_sha256 matches study JSON sha256",
-   identical(payload$source_sha256, unname(as.character(tools::sha256sum(study_path)))))
+   identical(payload$source_sha256, cfg_env$nba_lifecycle_sha256(study_path)))
 ok("study_run_date is YYYY-MM-DD",
    is.character(payload$study_run_date) && grepl("^[0-9]{4}-[0-9]{2}-[0-9]{2}$", payload$study_run_date))
 ok("base_games matches LEADERS_FULL_SEASON_GAMES",

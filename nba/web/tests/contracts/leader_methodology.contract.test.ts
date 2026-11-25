@@ -23,8 +23,10 @@ describe('leader_methodology.json contract', () => {
     expect(DATA.schema_version).toBe(1);
     expect(DATA.source_commit).toMatch(/^[0-9a-f]{40}$/);
     expect(DATA.study_run_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    const studyBytes = fs.readFileSync(STUDY_FILE);
-    const sha = crypto.createHash('sha256').update(studyBytes).digest('hex');
+    // CRLF normalised to LF, matching nba_lifecycle_sha256 in config.R, so the
+    // check gives the same answer on a Windows checkout and in CI.
+    const studyText = fs.readFileSync(STUDY_FILE, 'utf-8').replace(/\r\n/g, '\n');
+    const sha = crypto.createHash('sha256').update(studyText, 'utf-8').digest('hex');
     expect(DATA.source_sha256).toBe(sha);
   });
 
