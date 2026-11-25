@@ -1,12 +1,12 @@
 {
   "schema_version": "1.0",
   "game_id": "401910715",
-  "generated_at": "2026-11-24T14:04:36Z",
+  "generated_at": "2026-11-25T14:02:52Z",
   "data": {
     "projection_basis": "primary_ensemble",
     "predicted_margin": -7.3,
     "predicted_home_win_prob": 0.2724,
-    "sigma_game": 12.054,
+    "sigma_game": 12.056,
     "margin_waterfall": [
       {
         "key": "bottom_up",
@@ -24,7 +24,7 @@
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": -1.78,
-        "detail": "20% Shot/Fatigue blend (NOP -4.76 vs TOR +4.14)"
+        "detail": "20% Shot/Fatigue blend (NOP -4.75 vs TOR +4.14)"
       },
       {
         "key": "embeddings",
@@ -76,17 +76,17 @@
         {
           "feature": "diff_roll_dreb",
           "label": "18-Game Defensive Rebound Diff",
-          "feature_value": 3.2418,
-          "z_score": 1.062,
-          "shap_log_odds": 0.27989,
-          "shap_prob_approx": 0.0675
+          "feature_value": 3.1863,
+          "z_score": 1.0438,
+          "shap_log_odds": 0.27841,
+          "shap_prob_approx": 0.0672
         },
         {
           "feature": "diff_roll_ts",
           "label": "18-Game True Shooting Diff",
           "feature_value": 0.0111,
           "z_score": 0.357,
-          "shap_log_odds": 0.19315,
+          "shap_log_odds": 0.19309,
           "shap_prob_approx": 0.047
         },
         {
@@ -110,8 +110,8 @@
           "label": "18-Game Scoring Diff (PPG)",
           "feature_value": 2.6928,
           "z_score": 0.397,
-          "shap_log_odds": -0.04976,
-          "shap_prob_approx": -0.0123
+          "shap_log_odds": -0.04816,
+          "shap_prob_approx": -0.0119
         },
         {
           "feature": "diff_roll_blk",
@@ -134,7 +134,7 @@
           "label": "Back-to-Back Diff",
           "feature_value": 0,
           "z_score": 0.0726,
-          "shap_log_odds": 0.01475,
+          "shap_log_odds": 0.01469,
           "shap_prob_approx": 0.0036
         },
         {

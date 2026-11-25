@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-11-18T05:36:44Z",
+  "generated_at": "2026-11-25T14:02:29Z",
   "sport": "nba",
   "endpoint": "game_detail",
   "season": 2027,
@@ -47,7 +47,7 @@
       {
         "key": "tov_pct",
         "label": "Turnover %",
-        "away_value": 11.9,
+        "away_value": 11.1,
         "home_value": 11.9,
         "unit": "pct",
         "higher_is_better": false,
@@ -74,8 +74,8 @@
       {
         "key": "ortg",
         "label": "Offensive Rating",
-        "away_value": 110.2,
-        "home_value": 98.8,
+        "away_value": 110.8,
+        "home_value": 99.3,
         "unit": "per100poss",
         "higher_is_better": true,
         "description": "Points scored per 100 estimated Dean Oliver possessions: 100 * PTS / Poss."
@@ -83,8 +83,8 @@
       {
         "key": "drtg",
         "label": "Defensive Rating",
-        "away_value": 98.8,
-        "home_value": 110.2,
+        "away_value": 99.3,
+        "home_value": 110.8,
         "unit": "per100poss",
         "higher_is_better": false,
         "description": "Points allowed per 100 estimated Dean Oliver possessions (equals opponent Offensive Rating)."
@@ -92,8 +92,8 @@
       {
         "key": "pace",
         "label": "Pace",
-        "away_value": 105.2,
-        "home_value": 105.2,
+        "away_value": 104.7,
+        "home_value": 104.7,
         "unit": "poss48",
         "higher_is_better": null,
         "description": "Estimated Dean Oliver possessions per 48 minutes: 48 * Poss / game_minutes."
@@ -168,16 +168,16 @@
         "ast": 24,
         "stl": 8,
         "blk": 10,
-        "tov": 11,
+        "tov": 10,
         "team_tov": 3,
-        "total_tov": 14,
+        "total_tov": 13,
         "pf": 22,
         "efg_pct": 52.6,
         "ts_pct": 55.9,
-        "possessions_est": 105.2,
-        "ortg": 110.2,
-        "drtg": 98.8,
-        "pace": 105.2
+        "possessions_est": 104.7,
+        "ortg": 110.8,
+        "drtg": 99.3,
+        "pace": 104.7
       },
       "home_totals": {
         "minutes": 239,
@@ -203,10 +203,10 @@
         "pf": 24,
         "efg_pct": 44.1,
         "ts_pct": 50,
-        "possessions_est": 105.2,
-        "ortg": 98.8,
-        "drtg": 110.2,
-        "pace": 105.2
+        "possessions_est": 104.7,
+        "ortg": 99.3,
+        "drtg": 110.8,
+        "pace": 104.7
       },
       "away_players": [
         {
@@ -224,7 +224,7 @@
           "ast": 4,
           "stl": 3,
           "blk": 3,
-          "tov": 2,
+          "tov": 1,
           "pf": 2,
           "plus_minus": 6,
           "fgm": 13,
@@ -238,7 +238,7 @@
           "ft_pct": 75,
           "efg_pct": 53.7,
           "ts_pct": 55.6,
-          "game_score": 25.6
+          "game_score": 26.6
         },
         {
           "playerId": "4433255",
@@ -1066,7 +1066,7 @@
           "points": 32,
           "reb": 6,
           "ast": 4,
-          "game_score": 25.6
+          "game_score": 26.6
         },
         {
           "teamAbbr": "OKC",

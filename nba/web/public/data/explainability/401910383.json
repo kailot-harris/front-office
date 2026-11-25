@@ -1,12 +1,12 @@
 {
   "schema_version": "1.0",
   "game_id": "401910383",
-  "generated_at": "2026-11-24T14:04:36Z",
+  "generated_at": "2026-11-25T14:02:52Z",
   "data": {
     "projection_basis": "primary_ensemble",
     "predicted_margin": 9.5,
     "predicted_home_win_prob": 0.7891,
-    "sigma_game": 11.8285,
+    "sigma_game": 11.828,
     "margin_waterfall": [
       {
         "key": "bottom_up",
@@ -24,7 +24,7 @@
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": 1.33,
-        "detail": "20% Shot/Fatigue blend (SAS +8.04 vs MIA +1.39)"
+        "detail": "20% Shot/Fatigue blend (SAS +8.04 vs MIA +1.40)"
       },
       {
         "key": "embeddings",
@@ -62,10 +62,10 @@
         {
           "feature": "diff_roll_dreb",
           "label": "18-Game Defensive Rebound Diff",
-          "feature_value": 3.0139,
-          "z_score": 0.9873,
-          "shap_log_odds": 0.36053,
-          "shap_prob_approx": 0.0862
+          "feature_value": 2.9583,
+          "z_score": 0.9691,
+          "shap_log_odds": 0.36086,
+          "shap_prob_approx": 0.0863
         },
         {
           "feature": "diff_roll_ts",
@@ -120,7 +120,7 @@
           "label": "18-Game eFG% Diff",
           "feature_value": -0.0246,
           "z_score": -0.7008,
-          "shap_log_odds": -0.05885,
+          "shap_log_odds": -0.05905,
           "shap_prob_approx": -0.0146
         },
         {
@@ -128,7 +128,7 @@
           "label": "18-Game Blocks Diff",
           "feature_value": 0.8056,
           "z_score": 0.5683,
-          "shap_log_odds": 0.02307,
+          "shap_log_odds": 0.02311,
           "shap_prob_approx": 0.0057
         },
         {
@@ -152,15 +152,15 @@
           "label": "Back-to-Back Diff",
           "feature_value": -1,
           "z_score": -1.9777,
-          "shap_log_odds": 0.0064,
-          "shap_prob_approx": 0.0016
+          "shap_log_odds": 0.0062,
+          "shap_prob_approx": 0.0015
         },
         {
           "feature": "style_similarity",
           "label": "16-D Style Embedding Cosine Sim",
           "feature_value": -0.0428,
           "z_score": -0.1392,
-          "shap_log_odds": -0.00206,
+          "shap_log_odds": -0.00204,
           "shap_prob_approx": -0.0005
         }
       ]

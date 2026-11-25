@@ -1,11 +1,11 @@
 {
   "schema_version": "1.0",
   "game_id": "401910493",
-  "generated_at": "2026-11-24T14:04:36Z",
+  "generated_at": "2026-11-25T14:02:52Z",
   "data": {
     "projection_basis": "primary_ensemble",
-    "predicted_margin": -10.39,
-    "predicted_home_win_prob": 0.1914,
+    "predicted_margin": -10.4,
+    "predicted_home_win_prob": 0.1912,
     "sigma_game": 11.9052,
     "margin_waterfall": [
       {
@@ -24,7 +24,7 @@
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": -2.32,
-        "detail": "20% Shot/Fatigue blend (CHI -1.46 vs OKC +10.13)"
+        "detail": "20% Shot/Fatigue blend (CHI -1.45 vs OKC +10.14)"
       },
       {
         "key": "embeddings",
@@ -43,12 +43,6 @@
         "label": "Schedule & travel",
         "points": 0.47,
         "detail": "OKC fatigue 0.72 minus CHI fatigue 0.25"
-      },
-      {
-        "key": "rounding",
-        "label": "Component rounding",
-        "points": 0.01,
-        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,
@@ -69,7 +63,7 @@
           "feature": "diff_roll_tovp",
           "label": "18-Game Turnover Rate Diff",
           "feature_value": 0.0269,
-          "z_score": 1.4869,
+          "z_score": 1.4863,
           "shap_log_odds": -0.40644,
           "shap_prob_approx": -0.1012
         },
