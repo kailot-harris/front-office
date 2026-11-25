@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BASE_PATH } from '@/lib/basePath';
@@ -26,8 +26,9 @@ import {
   Sparkles,
   Film,
   ArrowLeft,
+  ChevronDown,
 } from 'lucide-react';
-import { orderNavItems } from '@/lib/navOrder';
+import { groupNavItems } from '@/lib/navOrder';
 import { SportSwitcher } from '@/components/SportSwitcher';
 
 /**
@@ -38,6 +39,36 @@ import { SportSwitcher } from '@/components/SportSwitcher';
  */
 const withoutTrailingSlash = (path: string) =>
   path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
+
+const SIDEBAR_GROUPS_STORAGE_KEY = 'wnba:sidebar:open-groups';
+
+function readStoredGroups(): Record<string, boolean> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(SIDEBAR_GROUPS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const result: Record<string, boolean> = {};
+    for (const [k, v] of Object.entries(parsed)) {
+      if (typeof v === 'boolean') {
+        result[k] = v;
+      }
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
+
+function writeStoredGroups(groups: Record<string, boolean>): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(SIDEBAR_GROUPS_STORAGE_KEY, JSON.stringify(groups));
+  } catch {
+    // localStorage unavailable (private mode, sandboxed iframe) — keep in-memory state.
+  }
+}
 
 export interface SidebarProps {
   generatedAt?: string;
@@ -163,7 +194,34 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonState }) =>
     },
   ];
 
-  const orderedNavItems = orderNavItems(navItems, seasonState);
+  const groupedNavItems = groupNavItems(navItems, seasonState);
+
+  const isPathActive = (href: string) => {
+    const current = withoutTrailingSlash(pathname ?? '/');
+    return current === withoutTrailingSlash(href) || (href === '/' && current === '/teams');
+  };
+
+  const activeGroupId = groupedNavItems.find((group) =>
+    group.items.some((item) => isPathActive(item.href)),
+  )?.id;
+
+  const [manualGroups, setManualGroups] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    setManualGroups(readStoredGroups());
+  }, []);
+
+  const toggleGroup = (groupId: string, defaultOpen: boolean) => {
+    if (groupId === activeGroupId) {
+      return;
+    }
+    setManualGroups((prev) => {
+      const currentOpen = prev[groupId] ?? defaultOpen;
+      const next = { ...prev, [groupId]: !currentOpen };
+      writeStoredGroups(next);
+      return next;
+    });
+  };
 
   const renderNavLink = (item: {
     href: string;
@@ -173,14 +231,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonState }) =>
     desc: string;
   }) => {
     const Icon = item.icon;
-    const isActive =
-      withoutTrailingSlash(pathname ?? '/') === withoutTrailingSlash(item.href) ||
-      (item.href === '/' && withoutTrailingSlash(pathname ?? '/') === '/teams');
+    const isActive = isPathActive(item.href);
 
     return (
       <Link
         key={item.href}
         href={item.href}
+        aria-current={isActive ? 'page' : undefined}
         onClick={() => setIsOpen(false)}
         className={`group flex items-start gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
           isActive
@@ -216,7 +273,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonState }) =>
     );
   };
 
-  const NavContent = () => (
+  const renderNavContent = (idPrefix: string) => (
     <div className="flex flex-col h-full justify-between p-4">
       <div className="space-y-6 flex-1 overflow-y-auto min-h-0">
         {/* #220: back to the Front Office landing. A plain anchor (not Next Link,
@@ -249,8 +306,37 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonState }) =>
           </div>
         </div>
 
-        {/* One flat list in orderNavItems order (#221); no season-mode grouping. */}
-        <div className="space-y-1">{orderedNavItems.map(renderNavLink)}</div>
+        {/* 5 collapsible sections (#230); active group is always open. */}
+        <nav aria-label="Primary navigation" className="space-y-3">
+          {groupedNavItems.map((group) => {
+            const isExpanded =
+              group.id === activeGroupId || (manualGroups[group.id] ?? group.defaultOpen);
+            return (
+              <div key={group.id} className="space-y-1">
+                <button
+                  type="button"
+                  aria-expanded={isExpanded}
+                  aria-controls={`${idPrefix}-nav-group-${group.id}`}
+                  onClick={() => toggleGroup(group.id, group.defaultOpen)}
+                  className="w-full flex items-center justify-between px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-800/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
+                >
+                  <span>{group.label}</span>
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 transition-transform duration-150 ${
+                      isExpanded ? 'rotate-0' : '-rotate-90'
+                    }`}
+                    aria-hidden="true"
+                  />
+                </button>
+                {isExpanded && (
+                  <div id={`${idPrefix}-nav-group-${group.id}`} className="space-y-1">
+                    {group.items.map(renderNavLink)}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </nav>
 
         {/* Simulation Spec Footer Box */}
         <div className="space-y-2 pt-2 border-t border-slate-800/80">
@@ -416,13 +502,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonState }) =>
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <NavContent />
+            {renderNavContent('mobile')}
           </div>
         </div>
       )}
 
       <aside className="hidden md:flex w-64 lg:w-72 flex-col flex-shrink-0 h-screen sticky top-0 bg-surface-raised/90 backdrop-blur-md border-r border-slate-800 z-30">
-        <NavContent />
+        {renderNavContent('desktop')}
       </aside>
     </>
   );
