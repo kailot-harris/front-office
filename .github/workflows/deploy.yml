@@ -38,6 +38,7 @@ permissions:
   contents: write
   pages: write
   id-token: write
+  actions: write # delete this run's artifacts after a successful deploy
 
 concurrency:
   group: pages
@@ -273,6 +274,26 @@ jobs:
           echo "- **Pages URL:** $DEPLOY_URL" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Timestamp:** $TIMESTAMP" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Release Tag:** `release-latest`" >> "$GITHUB_STEP_SUMMARY"
+
+      # Artifact storage is an account-wide quota (500 MB on GitHub Free),
+      # charged hour by hour. The four site-* builds and the github-pages
+      # bundle are about 165 MB per deploy and are only needed until Pages
+      # has published, so delete them as soon as a deploy succeeds. Failed
+      # runs keep theirs (1-day retention) for debugging.
+      - name: Delete this run's artifacts
+        if: success()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          ids=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts?per_page=100" --jq '.artifacts[].id')
+          count=0
+          for id in $ids; do
+            gh api -X DELETE "repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}"
+            count=$((count + 1))
+          done
+          echo "Deleted ${count} artifact(s) from run ${GITHUB_RUN_ID}"
 
   notify-failure:
     needs: [predeploy-gate, nav-sync-check, build, assemble-and-deploy]
