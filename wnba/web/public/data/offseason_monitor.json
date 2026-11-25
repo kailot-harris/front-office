@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-11-17T20:04:32Z",
+  "generated_at": "2026-11-25T19:59:10Z",
   "version": "2026-2027.1.0",
-  "lastPublished": "2026-11-17T20:04:32Z",
-  "currentWeekNumber": 1,
-  "baselineAsOfDate": "2026-11-07",
-  "elapsedDaysSinceLastPublish": 10,
+  "lastPublished": "2026-11-25T19:59:10Z",
+  "currentWeekNumber": 2,
+  "baselineAsOfDate": "2026-11-17",
+  "elapsedDaysSinceLastPublish": 8,
   "activePhase": "Draft Lottery & Overseas Tracking",
   "editions": [
     {
@@ -61,7 +61,11 @@
           "healthStatus": "Active (Offseason Conditioning)"
         }
       ],
-      "sourcesVisited": ["https://www.wnba.com/news/transactions", "https://www.espn.com/wnba/transactions", "https://unrivaled.basketball/roster"],
+      "sourcesVisited": [
+        "https://www.wnba.com/news/transactions",
+        "https://www.espn.com/wnba/transactions",
+        "https://unrivaled.basketball/roster"
+      ],
       "mediaSentimentPulse": {
         "available": true,
         "reason": null,
@@ -172,6 +176,177 @@
         "lexicon": "jockers_rinker",
         "method": "sentimentr + udpipe"
       }
+    },
+    {
+      "weekNumber": 2,
+      "publishDate": "2026-11-25",
+      "isQuietWeek": true,
+      "stateOfPlay": "Elapsed interval 8 days (2026-11-17 to 2026-11-25). Quiet week: 0 confirmed state transitions recorded.",
+      "memoMarkdown": "## Week 2 — Wednesday, 25 November 2026\n\n**State of Play:** Elapsed interval 8 days (2026-11-17 to 2026-11-25). Quiet week: 0 confirmed state transitions recorded.\n\n### 1. Confirmed Changes\n| Date | Entity | Field | Prior State (S_last) | New State (S_t) | Source |\n|---|---|---|---|---|---|\n| — | — | — | — | — | — |\n\n### 2. Reported (Unconfirmed)\n| Entity | Claim | Source Category | First Reported | Status |\n|---|---|---|---|---|\n| — | — | — | — | — |\n\n### 3. Expired Claims (Aged Out > 28 Days)\n| Entity | Original Claim | Source Category | First Reported | Expired Date |\n|---|---|---|---|---|\n| — | — | — | — | — |\n\n### 4. Next 30 Days (Milestone Calendar)\n- [ ] [Date TBD]: Free Agency Qualifying Offer & Core Designation Filing Window\n- [ ] [Date TBD]: Free Agency Negotiation & Contract Execution Period\n- **Later:** 2027-04-12: 2027 WNBA Draft; 2027-04-25: 2027 Training Camps Open (Hand-off to Daily In-Season Pipeline); 2027-05-07: 2027 WNBA season window, reported, not confirmed: expected to open May 7 and end no later than Oct. 24 (reported by ESPN 2026-11-13, https://www.espn.com/wnba/story/_/id/50466261/sources-2027-wnba-season-start-7)\n\n**Recently passed:**\n- [x] 2026-11-15: 2027 WNBA Draft Lottery: Toronto Tempo won the No. 1 pick, Houston Comets No. 2 (ESPN, 2026-11-15, https://www.espn.com/wnba/story/_/id/50497107/toronto-tempo-win-2027-wnba-draft-lottery)\n\n### 5. Model Implications (2027 Baseline Priors)\n- No change to 2027 baseline Bayesian priors.\n\n### 6. Winter League & Alternative Play (Unrivaled / EuroLeague)\n- **Breanna Stewart** (NY): Unrivaled — Active (Offseason Conditioning)\n- **Napheesa Collier** (MIN): Unrivaled — Active (Offseason Conditioning)\n\n### 7. Sources Verified\n- https://www.wnba.com/news/transactions\n- https://www.espn.com/wnba/transactions\n- https://unrivaled.basketball/roster\n\n### Media Sentiment Pulse\n- **Articles scored:** 37 (25 full-text scraped, 12 scored from RSS summary); 33 off-topic items excluded of 70 ingested\n- **Mean sentiment:** +0.0461 per word (sentimentr + udpipe, word-count normalized, POS-disambiguated, team names and basketball jargon masked)\n- **Most positive:** \"Cameron Brink marries Ben Felter in ceremony at Stanford's Memorial Church\" — espn_wnba_beat (+0.0819) ([link](https://www.espn.com/wnba/story/_/id/50587846/cameron-brink-ben-felter-wedding))\n- **Least positive:** \"2026-27 WNBA Offseason Guides: Chicago Sky\" — her_hoop_stats (+0.0064) ([link](https://herhoopstats.substack.com/p/2026-27-wnba-offseason-guides-chicago-sky))\n- *Extremes drawn from the 25 articles of at least 40 words; all 37 count toward the mean.*\n- **Top positive words (bing):** league (60), win (43), new (40), young (39), best (38), big (38), leading (25), ability (23)\n- **Top negative words (bing):** player (84), shooting (30), injury (25), depth (15), missed (15), losing (14), enough (13), gabby (13)",
+      "confirmedChanges": [],
+      "reportedClaims": [],
+      "expiredClaims": [],
+      "upcomingMilestones": [
+        {
+          "date": "2026-11-15",
+          "event": "2027 WNBA Draft Lottery: Toronto Tempo won the No. 1 pick, Houston Comets No. 2 (ESPN, 2026-11-15, https://www.espn.com/wnba/story/_/id/50497107/toronto-tempo-win-2027-wnba-draft-lottery)",
+          "status": "Confirmed"
+        },
+        {
+          "date": null,
+          "event": "Free Agency Qualifying Offer & Core Designation Filing Window",
+          "status": "Tentative"
+        },
+        {
+          "date": null,
+          "event": "Free Agency Negotiation & Contract Execution Period",
+          "status": "Tentative"
+        },
+        {
+          "date": "2027-04-12",
+          "event": "2027 WNBA Draft",
+          "status": "Confirmed"
+        },
+        {
+          "date": "2027-04-25",
+          "event": "2027 Training Camps Open (Hand-off to Daily In-Season Pipeline)",
+          "status": "Tentative"
+        },
+        {
+          "date": "2027-05-07",
+          "event": "2027 WNBA season window, reported, not confirmed: expected to open May 7 and end no later than Oct. 24 (reported by ESPN 2026-11-13, https://www.espn.com/wnba/story/_/id/50466261/sources-2027-wnba-season-start-7)",
+          "status": "Reported"
+        }
+      ],
+      "modelPriorImpact": {
+        "hasChanges": false,
+        "summary": "No change to 2027 baseline Bayesian priors."
+      },
+      "winterLeagueNotes": [
+        {
+          "playerName": "Breanna Stewart",
+          "wnbaTeam": "NY",
+          "league": "Unrivaled",
+          "healthStatus": "Active (Offseason Conditioning)"
+        },
+        {
+          "playerName": "Napheesa Collier",
+          "wnbaTeam": "MIN",
+          "league": "Unrivaled",
+          "healthStatus": "Active (Offseason Conditioning)"
+        }
+      ],
+      "sourcesVisited": ["https://www.wnba.com/news/transactions", "https://www.espn.com/wnba/transactions", "https://unrivaled.basketball/roster"],
+      "mediaSentimentPulse": {
+        "available": true,
+        "reason": null,
+        "articleCount": 37,
+        "beatItemsSeen": 70,
+        "offTopicExcluded": 33,
+        "meanSentiment": 0.0461,
+        "scrapedCount": 25,
+        "fallbackCount": 12,
+        "mostPositive": {
+          "headline": "Cameron Brink marries Ben Felter in ceremony at Stanford's Memorial Church",
+          "score": 0.0819,
+          "rawScore": 10.65,
+          "words": 130,
+          "sourceId": "espn_wnba_beat",
+          "url": "https://www.espn.com/wnba/story/_/id/50587846/cameron-brink-ben-felter-wedding",
+          "bodyScraped": true
+        },
+        "mostNegative": {
+          "headline": "2026-27 WNBA Offseason Guides: Chicago Sky",
+          "score": 0.0064,
+          "rawScore": 4.822,
+          "words": 758,
+          "sourceId": "her_hoop_stats",
+          "url": "https://herhoopstats.substack.com/p/2026-27-wnba-offseason-guides-chicago-sky",
+          "bodyScraped": true
+        },
+        "extremesMinWords": 40,
+        "extremesFloorApplied": true,
+        "extremesEligibleCount": 25,
+        "teamNamesMasked": true,
+        "jargonMasked": true,
+        "posDisambiguated": true,
+        "modelVersion": "english-ewt-ud-2.5-191206",
+        "wordBreakdown": {
+          "available": true,
+          "reason": null,
+          "positive": [
+            {
+              "word": "league",
+              "n": 60
+            },
+            {
+              "word": "win",
+              "n": 43
+            },
+            {
+              "word": "new",
+              "n": 40
+            },
+            {
+              "word": "young",
+              "n": 39
+            },
+            {
+              "word": "best",
+              "n": 38
+            },
+            {
+              "word": "big",
+              "n": 38
+            },
+            {
+              "word": "leading",
+              "n": 25
+            },
+            {
+              "word": "ability",
+              "n": 23
+            }
+          ],
+          "negative": [
+            {
+              "word": "player",
+              "n": 84
+            },
+            {
+              "word": "shooting",
+              "n": 30
+            },
+            {
+              "word": "injury",
+              "n": 25
+            },
+            {
+              "word": "depth",
+              "n": 15
+            },
+            {
+              "word": "missed",
+              "n": 15
+            },
+            {
+              "word": "losing",
+              "n": 14
+            },
+            {
+              "word": "enough",
+              "n": 13
+            },
+            {
+              "word": "gabby",
+              "n": 13
+            }
+          ],
+          "matchedWords": 2692
+        },
+        "lexicon": "jockers_rinker",
+        "method": "sentimentr + udpipe"
+      }
     }
   ],
   "currentStateSummary": {
@@ -181,7 +356,7 @@
     "cbaLaborStatus": "Active (Hard Salary Cap $1.000M / 11-vs-12 Player Crunch)"
   },
   "nextEdition": {
-    "weekNumber": 2,
-    "projectedPublishDate": "2026-11-23"
+    "weekNumber": 3,
+    "projectedPublishDate": "2026-11-30"
   }
 }
