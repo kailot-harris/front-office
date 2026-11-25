@@ -108,11 +108,23 @@ function extractAccordionNavItems(html, sport) {
   return items;
 }
 
-/** Parses the NAV_ORDER label list out of a sport's web/lib/navOrder.ts. */
+/**
+ * Parses the tab label order out of a sport's web/lib/navOrder.ts.
+ * Since front-office#230, NAV_ORDER is derived from NAV_GROUPS
+ * (`NAV_GROUPS.flatMap((g) => g.labels)`), so the order is the concatenation
+ * of each group's `labels: [...]` array in file order. A plain
+ * `NAV_ORDER = [...]` literal (the #221 format) is still accepted.
+ */
 function extractNavOrder(src) {
+  const quoted = (s) => [...s.matchAll(/(['"`])((?:(?!\1).)*)\1/g)].map((x) => x[2]);
+  const groups = /NAV_GROUPS[^=]*=\s*\[([\s\S]*?)\n\];/.exec(src);
+  if (groups) {
+    const labels = [...groups[1].matchAll(/labels\s*:\s*\[([\s\S]*?)\]/g)].flatMap((x) => quoted(x[1]));
+    if (labels.length > 0) return labels;
+  }
   const m = /NAV_ORDER[^=]*=\s*\[([\s\S]*?)\]/.exec(src);
   if (!m) return null;
-  return [...m[1].matchAll(/(['"`])((?:(?!\1).)*)\1/g)].map((x) => x[2]);
+  return quoted(m[1]);
 }
 
 function toMap(items) {
