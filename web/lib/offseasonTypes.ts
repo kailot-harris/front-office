@@ -135,6 +135,8 @@ export interface LeagueStateBaseline {
 
 export interface OffseasonEditionSummary {
   weekNumber: number;
+  weekStartDate?: string;
+  weekEndDate?: string;
   publishDate: string;
   isQuietWeek: boolean;
   isFrozenWeek: boolean;
@@ -165,6 +167,8 @@ export interface OffseasonMonitorDataset {
 
   editions: Array<{
     weekNumber: number;
+    weekStartDate?: string;
+    weekEndDate?: string;
     publishDate: string;
     isQuietWeek: boolean;
     isFrozenWeek: boolean;

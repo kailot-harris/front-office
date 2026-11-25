@@ -87,6 +87,8 @@ const WinterLeagueNoteSchema = z.object({
 
 const OffseasonEditionSchema = z.object({
   weekNumber: z.number().int().positive(),
+  weekStartDate: z.string().optional(),
+  weekEndDate: z.string().optional(),
   publishDate: z.string(),
   isQuietWeek: z.boolean(),
   isFrozenWeek: z.boolean(),
@@ -114,6 +116,8 @@ const CurrentStateSummarySchema = z.object({
 
 const OffseasonEditionSummarySchema = z.object({
   weekNumber: z.number().int().positive(),
+  weekStartDate: z.string().optional(),
+  weekEndDate: z.string().optional(),
   publishDate: z.string(),
   isQuietWeek: z.boolean(),
   isFrozenWeek: z.boolean(),
@@ -324,5 +328,23 @@ describe('MLB Off-Season Dynamics Monitor Contract Suite', () => {
       expect(parsed.data.totalConfirmedCount).toBe(1401);
       expect(parsed.data.totalConfirmedCount).toBeGreaterThan(parsed.data.confirmedChanges.length);
     }
+  });
+
+  it('bundles editions into 7-day offseason weeks with weekStartDate and weekEndDate', () => {
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const data = JSON.parse(raw) as OffseasonMonitorDataset;
+
+    data.editions.forEach((ed) => {
+      expect(ed.weekStartDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(ed.weekEndDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      const startMs = Date.parse(`${ed.weekStartDate}T00:00:00Z`);
+      const endMs = Date.parse(`${ed.weekEndDate}T00:00:00Z`);
+      expect((endMs - startMs) / 86400000).toBe(6);
+    });
+
+    data.availableEditions.forEach((summary) => {
+      expect(summary.weekStartDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(summary.weekEndDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
   });
 });
