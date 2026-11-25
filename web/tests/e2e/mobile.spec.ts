@@ -21,6 +21,13 @@ test.describe('Mobile Viewport & Drawer Navigation', () => {
     const standingsLink = page.getByRole('link', { name: /season standings/i }).first();
     await expect(standingsLink).toBeVisible();
 
+    // Shot Charts sits in the collapsed Visualizations group (front-office#230);
+    // open that group first.
+    const vizGroup = page.getByRole('button', { name: /^visualizations$/i }).last();
+    await expect(vizGroup).toHaveAttribute('aria-expanded', 'false');
+    await vizGroup.click();
+    await expect(vizGroup).toHaveAttribute('aria-expanded', 'true');
+
     const shotsLink = page.getByRole('link', { name: /shot charts/i }).first();
     await expect(shotsLink).toBeVisible();
 
