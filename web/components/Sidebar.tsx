@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -23,9 +23,10 @@ import {
   Dna,
   Flame,
   ArrowLeft,
+  ChevronDown,
 } from 'lucide-react';
 import { BASE_PATH } from '@/lib/basePath';
-import { orderNavItems } from '@/lib/navOrder';
+import { groupNavItems } from '@/lib/navOrder';
 import { SportSwitcher } from '@/components/SportSwitcher';
 
 /**
@@ -37,6 +38,128 @@ import { SportSwitcher } from '@/components/SportSwitcher';
 const withoutTrailingSlash = (path: string) =>
   path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
 
+const SIDEBAR_GROUPS_STORAGE_KEY = 'fo-nfl-sidebar-groups';
+
+function readStoredGroupState(): Record<string, boolean> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(SIDEBAR_GROUPS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const out: Record<string, boolean> = {};
+    for (const [key, val] of Object.entries(parsed)) {
+      if (typeof val === 'boolean') out[key] = val;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function writeStoredGroupState(state: Record<string, boolean>): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(SIDEBAR_GROUPS_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Ignore storage errors (private browsing / disabled storage).
+  }
+}
+
+const NAV_ITEMS = [
+  {
+    href: '/',
+    label: 'Season Standings',
+    badge: '32 Teams',
+    icon: Trophy,
+    desc: 'Win distributions & division races',
+  },
+  {
+    href: '/matchups',
+    label: 'Matchups',
+    badge: 'Projections',
+    icon: Swords,
+    desc: 'Projected margins, totals & fatigue',
+  },
+  {
+    href: '/teams',
+    label: 'Team Ratings & EPA',
+    badge: 'Ridge + Elo',
+    icon: ShieldCheck,
+    desc: 'Power ranks & EPA quadrants',
+  },
+  {
+    href: '/coaches',
+    label: 'Coaching Staffs',
+    badge: 'Staff & Decisions',
+    icon: Briefcase,
+    desc: 'Decision profiles, aggressive index & tenure',
+  },
+  {
+    href: '/cap-sheet',
+    label: 'Payroll & Cap',
+    badge: '$301.2M Cap',
+    icon: DollarSign,
+    desc: 'Positional allocations & top contracts',
+  },
+  {
+    href: '/playoffs',
+    label: 'Playoff Simulator',
+    badge: '14-Team Field',
+    icon: Award,
+    desc: 'Tiebreaker logic & bracket sim',
+  },
+  {
+    href: '/players',
+    label: 'Player Ratings & Projections',
+    badge: 'EPA & CPOE',
+    icon: Users,
+    desc: 'QB composite & rookie snap ramp',
+  },
+  {
+    href: '/passing',
+    label: 'Passing Charts',
+    badge: 'Throw Map',
+    icon: Target,
+    desc: 'NextGenStats throw charts & depth zones',
+  },
+  {
+    href: '/player-dna',
+    label: 'Player DNA & Peer Comps',
+    badge: 'Radar & Twins',
+    icon: Dna,
+    desc: 'Empirical skill vectors & radar',
+  },
+  {
+    href: '/clutch',
+    label: 'True Clutch Index',
+    badge: '4Q Leverage',
+    icon: Flame,
+    desc: 'High-leverage EPA, CPOE & go-for-it rates',
+  },
+  {
+    href: '/variants',
+    label: 'Model Variants',
+    badge: '3 Engines',
+    icon: BarChart3,
+    desc: 'Ridge Massey + Elo ensemble weights',
+  },
+  {
+    href: '/diagnostics',
+    label: 'Diagnostics',
+    badge: 'Calibration',
+    icon: Activity,
+    desc: 'Reliability & calibration curve',
+  },
+  {
+    href: '/gallery',
+    label: 'Visual Gallery',
+    badge: '17 Animations',
+    icon: Film,
+    desc: 'Animated races & simulation GIFs',
+  },
+];
+
 export interface SidebarProps {
   generatedAt?: string;
   /** `season_state` from landing_digest.json; undefined = plain NAV_ORDER (#221). */
@@ -47,102 +170,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonState }) =>
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [showSigmaExplainer, setShowSigmaExplainer] = useState(false);
+  const [manualGroups, setManualGroups] = useState<Record<string, boolean>>({});
 
-  const navItems = orderNavItems([
-    {
-      href: '/',
-      label: 'Season Standings',
-      badge: '32 Teams',
-      icon: Trophy,
-      desc: 'Win distributions & division races',
-    },
-    {
-      href: '/matchups',
-      label: 'Matchups',
-      badge: 'Projections',
-      icon: Swords,
-      desc: 'Projected margins, totals & fatigue',
-    },
-    {
-      href: '/teams',
-      label: 'Team Ratings & EPA',
-      badge: 'Ridge + Elo',
-      icon: ShieldCheck,
-      desc: 'Power ranks & EPA quadrants',
-    },
-    {
-      href: '/coaches',
-      label: 'Coaching Staffs',
-      badge: 'Staff & Decisions',
-      icon: Briefcase,
-      desc: 'Decision profiles, aggressive index & tenure',
-    },
-    {
-      href: '/cap-sheet',
-      label: 'Payroll & Cap',
-      badge: '$301.2M Cap',
-      icon: DollarSign,
-      desc: 'Positional allocations & top contracts',
-    },
-    {
-      href: '/playoffs',
-      label: 'Playoff Simulator',
-      badge: '14-Team Field',
-      icon: Award,
-      desc: 'Tiebreaker logic & bracket sim',
-    },
-    {
-      href: '/players',
-      label: 'Player Ratings & Projections',
-      badge: 'EPA & CPOE',
-      icon: Users,
-      desc: 'QB composite & rookie snap ramp',
-    },
-    {
-      href: '/passing',
-      label: 'Passing Charts',
-      badge: 'Throw Map',
-      icon: Target,
-      desc: 'NextGenStats throw charts & depth zones',
-    },
-    {
-      href: '/player-dna',
-      label: 'Player DNA & Peer Comps',
-      badge: 'Radar & Twins',
-      icon: Dna,
-      desc: 'Empirical skill vectors & radar',
-    },
-    {
-      href: '/clutch',
-      label: 'True Clutch Index',
-      badge: '4Q Leverage',
-      icon: Flame,
-      desc: 'High-leverage EPA, CPOE & go-for-it rates',
-    },
-    {
-      href: '/variants',
-      label: 'Model Variants',
-      badge: '3 Engines',
-      icon: BarChart3,
-      desc: 'Ridge Massey + Elo ensemble weights',
-    },
-    {
-      href: '/diagnostics',
-      label: 'Diagnostics',
-      badge: 'Calibration',
-      icon: Activity,
-      desc: 'Reliability & calibration curve',
-    },
-    {
-      href: '/gallery',
-      label: 'Visual Gallery',
-      badge: '17 Animations',
-      icon: Film,
-      desc: 'Animated races & simulation GIFs',
-    },
-  ], seasonState);
+  useEffect(() => {
+    setManualGroups(readStoredGroupState());
+  }, []);
 
-  const NavContent = () => (
+  const navGroups = groupNavItems(NAV_ITEMS, seasonState);
+  const currentPath = withoutTrailingSlash(pathname ?? '/');
+
+  const toggleGroup = (groupId: string, hasActiveItem: boolean, currentlyOpen: boolean) => {
+    if (hasActiveItem) return;
+    setManualGroups((prev) => {
+      const next = { ...prev, [groupId]: !currentlyOpen };
+      writeStoredGroupState(next);
+      return next;
+    });
+  };
+
+  const renderNavContent = (prefix: string) => (
     <div className="flex flex-col h-full justify-between p-4">
       <div className="space-y-6 flex-1 overflow-y-auto min-h-0">
         {/* #220: link back to the Front Office landing page. A plain <a> (not Link,
@@ -180,53 +226,82 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonState }) =>
           </div>
         </div>
 
-        {/* Navigation Links */}
-        <div className="space-y-1">
-          <div className="px-2 text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 font-mono">
-            Main Navigation
-          </div>
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = withoutTrailingSlash(pathname ?? '/') === withoutTrailingSlash(item.href);
+        {/* Navigation Links (#230 grouped collapsible sections) */}
+        <nav aria-label="Main navigation" className="space-y-3">
+          {navGroups.map((group) => {
+            const hasActiveItem = group.items.some(
+              (item) => withoutTrailingSlash(item.href) === currentPath,
+            );
+            const isGroupOpen = hasActiveItem || (manualGroups[group.id] ?? group.defaultOpen);
+            const panelId = `${prefix}-nav-group-${group.id}`;
+
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsOpen(false)}
-                className={`group flex items-start gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  isActive
-                    ? 'bg-fo-accent text-on-accent shadow-lg shadow-accent-600/30'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-                }`}
-              >
-                <Icon
-                  className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
-                    isActive ? 'text-on-accent' : 'text-slate-400 group-hover:text-emerald-400'
-                  }`}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold">{item.label}</span>
-                    <span
-                      className={`text-[11px] sm:text-[10px] px-1.5 py-0.2 rounded font-mono font-medium ${
-                        isActive ? 'border border-on-accent/50 text-on-accent' : 'bg-slate-800 text-slate-400'
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  </div>
-                  <p
-                    className={`text-[11px] truncate ${
-                      isActive ? 'text-on-accent' : 'text-slate-500'
+              <div key={group.id} className="space-y-1">
+                <button
+                  type="button"
+                  aria-expanded={isGroupOpen}
+                  aria-controls={panelId}
+                  onClick={() => toggleGroup(group.id, hasActiveItem, isGroupOpen)}
+                  className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-[11px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 font-mono transition-colors"
+                >
+                  <span>{group.label}</span>
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 transition-transform duration-150 ${
+                      isGroupOpen ? '' : '-rotate-90'
                     }`}
-                  >
-                    {item.desc}
-                  </p>
-                </div>
-              </Link>
+                    aria-hidden="true"
+                  />
+                </button>
+                {isGroupOpen && (
+                  <div id={panelId} className="space-y-1">
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = withoutTrailingSlash(item.href) === currentPath;
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          aria-current={isActive ? 'page' : undefined}
+                          onClick={() => setIsOpen(false)}
+                          className={`group flex items-start gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                            isActive
+                              ? 'bg-fo-accent text-on-accent shadow-lg shadow-accent-600/30'
+                              : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                          }`}
+                        >
+                          <Icon
+                            className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
+                              isActive ? 'text-on-accent' : 'text-slate-400 group-hover:text-emerald-400'
+                            }`}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold">{item.label}</span>
+                              <span
+                                className={`text-[11px] sm:text-[10px] px-1.5 py-0.2 rounded font-mono font-medium ${
+                                  isActive ? 'border border-on-accent/50 text-on-accent' : 'bg-slate-800 text-slate-400'
+                                }`}
+                              >
+                                {item.badge}
+                              </span>
+                            </div>
+                            <p
+                              className={`text-[11px] truncate ${
+                                isActive ? 'text-on-accent' : 'text-slate-500'
+                              }`}
+                            >
+                              {item.desc}
+                            </p>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
-        </div>
+        </nav>
 
         {/* Model Spec & Sigma Footer */}
         <div className="bg-surface/70 border border-slate-800/80 rounded-xl p-3.5 space-y-2.5">
@@ -386,14 +461,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ generatedAt, seasonState }) =>
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <NavContent />
+            {renderNavContent('mobile')}
           </div>
         </div>
       )}
 
       {/* Desktop Persistent Sidebar */}
       <aside className="hidden md:flex w-72 flex-col flex-shrink-0 h-screen sticky top-0 bg-surface-raised/90 backdrop-blur-md border-r border-slate-800 z-30">
-        <NavContent />
+        {renderNavContent('desktop')}
       </aside>
     </>
   );
