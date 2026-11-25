@@ -65,6 +65,39 @@ permissions:
   contents: read
 
 jobs:
+  # The front-office site runs tools/check_fabrication_idioms.mjs on every
+  # sport's R code before it deploys, so code that trips it blocks the whole
+  # site's deploy after it reaches main here. This job runs the same guard, with
+  # the same allowlist, on the pull request, so the failure shows up before the
+  # merge. If a flagged line is a reviewed structural constant or test value,
+  # add an entry to tools/fabrication_guard_allowlist.json in front-office first;
+  # this job reads that file from front-office main.
+  fabrication-guard:
+    name: Fabrication guard (front-office)
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: nfl
+
+      - name: Check out the guard from front-office
+        uses: actions/checkout@v4
+        with:
+          repository: kailot-harris/front-office
+          path: _front-office
+          sparse-checkout: tools
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # The guard lists every scanned file before its result; show only the result.
+      - name: Run the fabrication guard
+        run: |
+          set -o pipefail
+          node _front-office/tools/check_fabrication_idioms.mjs --root . 2>&1 | grep -vE '^\s*\[(SCAN|EXCLUDED)\]'
+
   web:
     name: Web suite
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
