@@ -69,6 +69,8 @@ describe('Sidebar navigation', () => {
 
   it('links to all primary routes', () => {
     const { container } = render(<Sidebar />);
+    const collapsed = container.querySelectorAll('aside button[aria-expanded="false"]');
+    collapsed.forEach((btn) => fireEvent.click(btn));
     const hrefs = Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href'));
     for (const r of ROUTES) {
       expect(hrefs).toContain(r);

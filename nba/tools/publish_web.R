@@ -1091,12 +1091,14 @@ if (!dir.exists(WEB_MEDIA_DIR)) dir.create(WEB_MEDIA_DIR, recursive = TRUE)
   }
 
   rel_media <- .pw_rel_to_repo(WEB_MEDIA_DIR, repo_root)
-  # Landing-digest ratings history (NBA#213) and the Momentum Board's rank
-  # history (MOMENTUM_RANK_HISTORY in config.R): tracked, outside web/public,
+  # Landing-digest ratings history (NBA#213), the Momentum Board's rank
+  # history (MOMENTUM_RANK_HISTORY in config.R) and its forward log
+  # (MOMENTUM_FORWARD_LOG in config.R): tracked, outside web/public,
   # and staged by their exact paths without -f (they must never be gitignored),
   # each only when it exists.
   hist_paths <- c("data/history/ratings_history.csv",
-                  "data/history/momentum_rank_history.csv")
+                  "data/history/momentum_rank_history.csv",
+                  "data/history/momentum_forward_log.csv")
   rel_hist <- hist_paths[file.exists(file.path(repo_root, hist_paths))]
   all_paths <- unique(c(rel_paths, rel_media, rel_hist))
   record("git add web/public/data & web/public/media",

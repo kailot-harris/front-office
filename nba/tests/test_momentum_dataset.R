@@ -165,6 +165,32 @@ b2 <- env$elo_build_season(games, prior_games = prior, season = 2027)
 fin <- attr(env$elo_run_games(prior), "final")
 ok("carry-over seed = 0.75 * final + 0.25 * 1500", near(b2$seed[["AAA"]], 0.75 * fin[["AAA"]] + 0.25 * 1500))
 
+# Elo games from the panel: one row per game, neutral-site games included.
+# g1: home game (AAA at home vs BBB). g2: neutral game, home-flagged team sorts
+# second (ZZZ "home" vs AAA). g3: neutral game, home-flagged team sorts first.
+eg_panel <- data.frame(
+  game_id = c("g1", "g1", "g2", "g2", "g3", "g3"),
+  game_date = as.Date("2026-11-01") + c(0, 0, 1, 1, 2, 2),
+  team = c("AAA", "BBB", "ZZZ", "AAA", "CCC", "ZZZ"),
+  opp  = c("BBB", "AAA", "AAA", "ZZZ", "ZZZ", "CCC"),
+  home = c(TRUE, FALSE, TRUE, FALSE, TRUE, FALSE),
+  pts = c(110, 100, 99, 104, 120, 118), opp_pts = c(100, 110, 104, 99, 118, 120),
+  neutral = c(FALSE, FALSE, TRUE, TRUE, TRUE, TRUE), stringsAsFactors = FALSE)
+eg <- env$elo_games_from_panel(eg_panel)
+ok("elo games: exactly one row per game_id", nrow(eg) == 3L && !anyDuplicated(eg$game_id))
+ok("elo games: non-neutral game keeps the home row", eg$home[eg$game_id == "g1"] == "AAA" && !eg$neutral[eg$game_id == "g1"])
+ok("elo games: neutral games keep the neutral flag", all(eg$neutral[eg$game_id %in% c("g2", "g3")]))
+ok("elo games: neutral game keeps the home-flagged row with its own score",
+   identical(eg$home[eg$game_id == "g2"], "ZZZ") && identical(eg$home_pts[eg$game_id == "g2"], 99) && identical(eg$away_pts[eg$game_id == "g2"], 104))
+old_filter <- eg_panel[eg_panel$home | (eg_panel$neutral & eg_panel$team < eg_panel$opp), ]
+ok("elo games: the previous filter double-counted the neutral game", sum(old_filter$game_id == "g2") == 2L)
+eg_noflag <- eg_panel; eg_noflag$home[eg_noflag$game_id == "g2"] <- FALSE
+eg2 <- env$elo_games_from_panel(eg_noflag)
+ok("elo games: neutral game with no home flag keeps the alphabetically first team",
+   nrow(eg2) == 3L && identical(eg2$home[eg2$game_id == "g2"], "AAA"))
+dup_panel <- rbind(eg_panel, eg_panel[1, ])
+ok("elo games: duplicate game_id stops", inherits(tryCatch(env$elo_games_from_panel(dup_panel), error = function(e) e), "error"))
+
 # --- 6. Change baseline: games before the window ------------------------------
 cat("\n[change baseline]\n")
 mk_rows_n <- function(n) {

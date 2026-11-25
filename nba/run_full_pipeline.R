@@ -245,6 +245,15 @@ run_stage("build_momentum_dataset.R", "Build Momentum Board (Rolling Windows, El
           output = c(WEB_JSON_MOMENTUM_BOARD,
                      file.path(CACHE_DIR, sprintf("elo_daily_%d.rds", MATCHUPS_HOOPR_SEASON))))
 
+# 9.15. Momentum forward log. Reads momentum_board.json as the stage above just
+# wrote it and appends one row per team for today only (key: as-of date + team) to
+# data/history/momentum_forward_log.csv, which publish_web.R stages. Non-fatal: a
+# missing or stale board is a [WARN] line with nothing written, and any error is
+# caught by run_stage() as a [FAILED] warning; the pipeline and publish continue.
+# No `output =` declared: a re-run on the same date appends nothing by design.
+run_stage("tools/log_momentum_forward.R", "Append Momentum Board Forward Log (today's rows only)",
+          call_fn = "run_log_momentum_forward")
+
 # 9.2. Landing digest (front-office#200). Reads the matchups payload written just
 # above plus the schedule and ensemble-ratings caches; appends today's ratings to
 # data/history/ratings_history.csv (tracked) and writes web/public/data/landing_digest.json.
