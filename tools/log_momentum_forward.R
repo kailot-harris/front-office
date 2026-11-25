@@ -4,7 +4,7 @@
 # Forward log of the Momentum Board. Each pipeline run appends, for the run date
 # only, what the board said about every team BEFORE that team's next games were
 # played: the combined score, its four components (form, trend, residual, Elo
-# change) for each window (5, 10, 18), the team's pregame Elo and games played.
+# change) for each window (5, 10, ROLLING_WINDOW_SIZE = 18), the team's pregame Elo and games played.
 # tools/score_forward_log.R later compares these logged values with the games
 # that followed.
 #
@@ -36,7 +36,32 @@
 
 suppressPackageStartupMessages(library(jsonlite))
 
-FORWARD_LOG_WINDOWS <- c(5L, 10L, 18L)
+# Window sizes come from ROLLING_WINDOW_SIZE (config.R) through the same helper
+# the board uses (R/momentum_windows.R, also behind MOMENTUM_WINDOWS in
+# build_momentum_dataset.R). They are taken from the setting, not from the
+# published board's window sizes, because the log's header must be fixed when
+# this file is loaded, before (and whether or not) any board is read; a header
+# that followed whichever board happened to be on disk could change between runs.
+# The published sizes are still checked against the setting at run time: if they
+# differ, the logger warns and writes nothing. If the setting ever changes, the
+# derived header no longer matches the existing log, and the append-only guard
+# below warns and writes nothing (the file is never rewritten).
+.FL_REPO_DIR <- local({
+  argv <- commandArgs(trailingOnly = FALSE)
+  f <- sub("^--file=", "", argv[grepl("^--file=", argv)])
+  ofile <- NULL
+  for (fr in sys.frames()) {
+    cand <- tryCatch(get("ofile", envir = fr, inherits = FALSE), error = function(e) NULL)
+    if (is.character(cand) && length(cand) == 1L && nzchar(cand) && grepl("log_momentum_forward\\.R$", cand)) ofile <- cand
+  }
+  base <- if (!is.null(ofile)) dirname(dirname(ofile))
+          else if (length(f) == 1L && grepl("log_momentum_forward\\.R$", f)) dirname(dirname(f))
+          else getwd()
+  normalizePath(base, winslash = "/", mustWork = FALSE)
+})
+if (!exists("ROLLING_WINDOW_SIZE")) source(file.path(.FL_REPO_DIR, "config.R"), local = TRUE)
+if (!exists("momentum_windows", mode = "function")) source(file.path(.FL_REPO_DIR, "R", "momentum_windows.R"), local = TRUE)
+FORWARD_LOG_WINDOWS <- momentum_windows(ROLLING_WINDOW_SIZE)
 FORWARD_LOG_WINDOW_FIELDS <- c("combined", "combined_rank", "form_z", "trend_z", "residual_z", "elo_z",
                                "form", "trend", "residual", "elo_change", "games_in_window")
 FORWARD_LOG_COLUMNS <- c(
@@ -146,6 +171,20 @@ log_momentum_forward <- function(board_path, log_path, as_of = Sys.Date(), today
   if (is.na(through) || through >= as_of)
     return(none(.fl_warn("momentum board through_date %s is not before the run date %s, so it may already include games of %s; nothing logged.",
                          format(through), format(as_of), format(as_of))))
+  # Guard 2b: the board's published window sizes (top-level `windows` and
+  # `methods.windows.sizes`, when present) must match the windows this logger
+  # was built with from ROLLING_WINDOW_SIZE.
+  top <- board$windows
+  published <- list(windows = if (is.list(top) && is.null(names(top))) top else .fl_get(top, "sizes"),
+                    methods.windows.sizes = .fl_get(board, c("methods", "windows", "sizes")))
+  for (src in names(published)) {
+    sizes <- published[[src]]
+    if (is.null(sizes)) next
+    sizes <- suppressWarnings(as.integer(unlist(sizes)))
+    if (!identical(sizes, FORWARD_LOG_WINDOWS))
+      return(none(.fl_warn("momentum board window sizes in %s (%s) differ from the logger's windows (%s, from ROLLING_WINDOW_SIZE); nothing logged for %s.",
+                           src, paste(sizes, collapse = ", "), paste(FORWARD_LOG_WINDOWS, collapse = ", "), format(as_of))))
+  }
 
   rows <- fl_board_rows(board, as_of, format(as.POSIXct(now), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"))
   if (is.null(rows) || !nrow(rows)) return(none(.fl_warn("momentum board has no team rows; nothing logged for %s.", format(as_of))))
