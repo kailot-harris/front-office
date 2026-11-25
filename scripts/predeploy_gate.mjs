@@ -140,6 +140,13 @@ function checkSyntheticDataFlags() {
   return flagged;
 }
 
+function guardSummaryLines(output) {
+  return String(output || '')
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim() !== '' && !/^\s*\[(SCAN|EXCLUDED)\]/.test(line));
+}
+
 function checkFabricationIdioms() {
   const guardPath = path.join(ROOT_DIR, 'tools', 'check_fabrication_idioms.mjs');
   if (!fs.existsSync(guardPath)) {
@@ -208,11 +215,14 @@ function main() {
   if (!fabricationGate.ok) {
     blocked = true;
     console.log('BLOCKED: fabrication-idiom guard failed:');
-    for (const line of fabricationGate.output.split('\n').slice(0, 25)) {
+    // The guard lists every scanned and excluded file on stdout before the
+    // violations on stderr; drop those listings so the violations are shown.
+    for (const line of guardSummaryLines(fabricationGate.output)) {
       console.log(`  ${line}`);
     }
   } else {
-    console.log(`OK: ${fabricationGate.output || 'no unreviewed fabrication idioms found.'}`);
+    const summary = guardSummaryLines(fabricationGate.output);
+    console.log(`OK: ${summary[summary.length - 1] || 'no unreviewed fabrication idioms found.'}`);
   }
 
   console.log('');
