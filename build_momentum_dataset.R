@@ -375,7 +375,13 @@ attach_elo <- function(p, played) {
 }
 
 elo_games_from_panel <- function(p) {
-  h <- p[p$home | (p$neutral & p$team < p$opp), , drop = FALSE]
+  # Exactly one row per game_id. Non-neutral: the home row. Neutral: the row
+  # flagged home when exactly one is, else the alphabetically first team. The
+  # stored neutral flag is kept so the Elo update applies no home advantage.
+  n_home <- ave(as.integer(p$home %in% TRUE), p$game_id, FUN = sum)
+  keep <- ifelse(p$neutral & n_home != 1L, p$team < p$opp, p$home %in% TRUE)
+  h <- p[keep, , drop = FALSE]
+  if (anyDuplicated(h$game_id)) stop("elo_games_from_panel: duplicate game_id in Elo games")
   data.frame(game_id = h$game_id, game_date = h$game_date, home = h$team, away = h$opp,
              home_pts = h$pts, away_pts = h$opp_pts, neutral = h$neutral, stringsAsFactors = FALSE)
 }
