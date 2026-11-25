@@ -92,6 +92,110 @@ validate_zero_betting <- function(text_vector) {
   TRUE
 }
 
+# 7-day offseason week bundling anchored to 2026-10-31 (issue #166)
+OFFSEASON_START_DATE <- as.Date("2026-10-31")
+
+compute_offseason_week <- function(date_val, start_date = OFFSEASON_START_DATE) {
+  d <- as.Date(date_val)
+  max(1L, as.integer(floor(as.numeric(d - start_date) / 7)) + 1L)
+}
+
+offseason_week_bounds <- function(week_num, start_date = OFFSEASON_START_DATE) {
+  w <- max(1L, as.integer(week_num))
+  week_start <- start_date + (w - 1L) * 7L
+  week_end <- week_start + 6L
+  list(
+    weekStartDate = format(week_start, "%Y-%m-%d"),
+    weekEndDate = format(week_end, "%Y-%m-%d")
+  )
+}
+
+dedup_confirmed_changes <- function(changes_list) {
+  if (is.null(changes_list) || length(changes_list) == 0L) return(list())
+  seen_urls <- character(0)
+  seen_tuples <- character(0)
+  out <- list()
+  for (ch in changes_list) {
+    url_val <- if (!is.null(ch$sourceUrl) && is.character(ch$sourceUrl) && nzchar(ch$sourceUrl)) ch$sourceUrl else ""
+    date_val <- if (!is.null(ch$date)) as.character(ch$date) else ""
+    player_val <- if (!is.null(ch$playerName)) as.character(ch$playerName) else ""
+    type_val <- if (!is.null(ch$transactionType)) as.character(ch$transactionType) else ""
+    tuple_key <- paste(date_val, player_val, type_val, sep = "|")
+
+    is_dup <- (nzchar(url_val) && (url_val %in% seen_urls)) || (tuple_key %in% seen_tuples)
+    if (!is_dup) {
+      if (nzchar(url_val)) seen_urls <- c(seen_urls, url_val)
+      seen_tuples <- c(seen_tuples, tuple_key)
+      out[[length(out) + 1L]] <- ch
+    }
+  }
+  out
+}
+
+consolidate_offseason_editions <- function(editions_list, start_date = OFFSEASON_START_DATE) {
+  if (is.null(editions_list) || length(editions_list) == 0L) return(list())
+
+  # Map each edition into its 7-day bundle by publishDate (fallback to max tx date)
+  bundle_weeks <- integer(length(editions_list))
+  for (i in seq_along(editions_list)) {
+    ed <- editions_list[[i]]
+    anchor_date <- ed$publishDate
+    if (is.null(anchor_date) || !nzchar(as.character(anchor_date))) {
+      tx_dates <- vapply(ed$confirmedChanges, function(c) if (!is.null(c$date)) as.character(c$date) else "", character(1))
+      tx_dates <- tx_dates[nzchar(tx_dates)]
+      anchor_date <- if (length(tx_dates) > 0L) max(tx_dates) else format(start_date, "%Y-%m-%d")
+    }
+    bundle_weeks[i] <- compute_offseason_week(anchor_date, start_date = start_date)
+  }
+
+  unique_weeks <- sort(unique(bundle_weeks), decreasing = TRUE)
+  consolidated <- list()
+
+  for (w in unique_weeks) {
+    idxs <- which(bundle_weeks == w)
+    group <- editions_list[idxs]
+
+    # Sort group newest-first by publishDate then legacy weekNumber
+    pub_dates <- vapply(group, function(e) if (!is.null(e$publishDate)) as.character(e$publishDate) else "", character(1))
+    orig_weeks <- vapply(group, function(e) if (!is.null(e$weekNumber)) as.integer(e$weekNumber) else 0L, integer(1))
+    ord <- order(pub_dates, orig_weeks, decreasing = TRUE)
+    group <- group[ord]
+
+    base_ed <- group[[1L]]
+    all_changes <- list()
+    truncated_extra <- 0L
+    for (ed in group) {
+      ed_changes <- if (!is.null(ed$confirmedChanges)) ed$confirmedChanges else list()
+      if (length(ed_changes) > 0L) {
+        all_changes <- c(all_changes, ed_changes)
+      }
+      ed_tot <- if (!is.null(ed$totalConfirmedCount)) as.integer(ed$totalConfirmedCount) else length(ed_changes)
+      if (ed_tot > length(ed_changes)) {
+        truncated_extra <- truncated_extra + (ed_tot - length(ed_changes))
+      }
+    }
+
+    merged_changes <- dedup_confirmed_changes(all_changes)
+    total_count <- length(merged_changes) + truncated_extra
+    is_quiet <- (total_count == 0L)
+    bounds <- offseason_week_bounds(w, start_date = start_date)
+
+    base_ed$weekNumber <- as.integer(w)
+    base_ed$weekStartDate <- bounds$weekStartDate
+    base_ed$weekEndDate <- bounds$weekEndDate
+    base_ed$isQuietWeek <- is_quiet
+    if (length(base_ed$freezeDayCount) == 0L) base_ed$freezeDayCount <- NULL
+    if (length(base_ed$freezeStartDate) == 0L) base_ed$freezeStartDate <- NULL
+    base_ed$totalConfirmedCount <- as.integer(total_count)
+    base_ed$confirmedChanges <- merged_changes
+    base_ed$stateOfPlay <- build_state_of_play_summary(base_ed)
+
+    consolidated[[length(consolidated) + 1L]] <- base_ed
+  }
+
+  consolidated
+}
+
 # Active phases lookup
 # 'Post-World Series Review' | 'Option & Qualifying Offer Window' |
 # 'Pre-Lockout Surge' | 'Transaction Freeze' | 'Winter Meetings & Rule 5 Draft' |
@@ -397,13 +501,45 @@ build_offseason_monitor <- function(allow_degraded = FALSE,
   
   current_week_num <- if (!is.null(week_number)) {
     as.integer(week_number)
-  } else if (!is.null(prior_monitor) && !is.null(prior_monitor$currentWeekNumber)) {
-    prior_monitor$currentWeekNumber + 1L
   } else {
-    1L
+    compute_offseason_week(current_date)
   }
-  
-  is_quiet <- (length(confirmed_events) == 0)
+  week_bounds <- offseason_week_bounds(current_week_num)
+
+  # Check if current_week_num already exists in prior_monitor$editions or prior_archive
+  existing_week_ed <- NULL
+  if (!is.null(prior_monitor) && !is.null(prior_monitor$editions)) {
+    for (pe in prior_monitor$editions) {
+      if (identical(as.integer(pe$weekNumber), current_week_num)) {
+        existing_week_ed <- pe
+        break
+      }
+    }
+  }
+  if (is.null(existing_week_ed) && length(prior_archive) > 0L) {
+    for (pa in prior_archive) {
+      if (identical(as.integer(pa$weekNumber), current_week_num)) {
+        existing_week_ed <- pa
+        break
+      }
+    }
+  }
+
+  merged_confirmed <- if (!is.null(existing_week_ed) && !is.null(existing_week_ed$confirmedChanges)) {
+    dedup_confirmed_changes(c(confirmed_events, existing_week_ed$confirmedChanges))
+  } else {
+    dedup_confirmed_changes(confirmed_events)
+  }
+  prior_truncated_extra <- if (!is.null(existing_week_ed)) {
+    prev_len <- if (!is.null(existing_week_ed$confirmedChanges)) length(existing_week_ed$confirmedChanges) else 0L
+    prev_tot <- if (!is.null(existing_week_ed$totalConfirmedCount)) as.integer(existing_week_ed$totalConfirmedCount) else prev_len
+    max(0L, prev_tot - prev_len)
+  } else {
+    0L
+  }
+  merged_total_count <- length(merged_confirmed) + prior_truncated_extra
+
+  is_quiet <- (merged_total_count == 0L)
   is_frozen <- identical(operating_status, "TRANSACTION_FREEZE")
   
   # State of play string
@@ -414,7 +550,7 @@ build_offseason_monitor <- function(allow_degraded = FALSE,
     sprintf("Elapsed interval %d day(s) since last baseline. Quiet week: 0 confirmed state transitions recorded.", elapsed_days)
   } else {
     sprintf("Elapsed interval %d day(s) since the 2026 World Series conclusion. %d confirmed state transitions recorded (free agency declarations, contract option filings).",
-            elapsed_days, length(confirmed_events))
+            elapsed_days, merged_total_count)
   }
   
   active_phase <- determine_active_phase(current_date, operating_status)
@@ -448,14 +584,16 @@ build_offseason_monitor <- function(allow_degraded = FALSE,
   # Construct edition object
   edition_obj <- list(
     weekNumber = current_week_num,
+    weekStartDate = week_bounds$weekStartDate,
+    weekEndDate = week_bounds$weekEndDate,
     publishDate = format(current_date, "%Y-%m-%d"),
     isQuietWeek = is_quiet,
     isFrozenWeek = is_frozen,
     freezeDayCount = freeze_day_count,
     freezeStartDate = freeze_start_date,
     stateOfPlay = state_of_play_msg,
-    totalConfirmedCount = length(confirmed_events),
-    confirmedChanges = confirmed_events,
+    totalConfirmedCount = merged_total_count,
+    confirmedChanges = merged_confirmed,
     reportedClaims = list(),
     expiredClaims = list(),
     laborEvents = labor_events,
@@ -488,6 +626,8 @@ build_offseason_monitor <- function(allow_degraded = FALSE,
   # Step 7: Update availableEditions Catalog and Payload Partitioning
   new_summary <- list(
     weekNumber = current_week_num,
+    weekStartDate = week_bounds$weekStartDate,
+    weekEndDate = week_bounds$weekEndDate,
     publishDate = format(current_date, "%Y-%m-%d"),
     isQuietWeek = is_quiet,
     isFrozenWeek = is_frozen,
@@ -500,15 +640,22 @@ build_offseason_monitor <- function(allow_degraded = FALSE,
     list()
   }
   
-  # Combine editions history (deduplicating by weekNumber so re-running current week updates it cleanly)
+  # Combine editions history (deduplicating by weekNumber and sorting newest-first)
   all_editions <- list(edition_obj)
   if (!is.null(prior_monitor) && !is.null(prior_monitor$editions)) {
     for (prior_ed in prior_monitor$editions) {
-      if (!identical(prior_ed$weekNumber, current_week_num)) {
+      if (!identical(as.integer(prior_ed$weekNumber), current_week_num)) {
+        if (is.null(prior_ed$weekStartDate) || is.null(prior_ed$weekEndDate)) {
+          b <- offseason_week_bounds(prior_ed$weekNumber)
+          prior_ed$weekStartDate <- b$weekStartDate
+          prior_ed$weekEndDate <- b$weekEndDate
+        }
         all_editions[[length(all_editions) + 1L]] <- prior_ed
       }
     }
   }
+  ed_weeks <- vapply(all_editions, function(e) as.integer(e$weekNumber), integer(1))
+  all_editions <- all_editions[order(ed_weeks, decreasing = TRUE)]
   
   # Partition: Keep active edition + rolling 4 editions in main file (max 5)
   max_main_editions <- 5
@@ -522,22 +669,29 @@ build_offseason_monitor <- function(allow_degraded = FALSE,
   if (length(overflow_editions) > 0) {
     combined_archive <- c(overflow_editions, prior_archive)
     # Deduplicate archive by weekNumber
-    arch_weeks <- vapply(combined_archive, function(e) e$weekNumber, integer(1))
+    arch_weeks <- vapply(combined_archive, function(e) as.integer(e$weekNumber), integer(1))
     combined_archive <- combined_archive[!duplicated(arch_weeks)]
-    writeLines(toJSON(combined_archive, pretty = TRUE, auto_unbox = TRUE), archive_json_path, useBytes = TRUE)
+    writeLines(toJSON(combined_archive, pretty = TRUE, auto_unbox = TRUE, null = "null", digits = 6), archive_json_path, useBytes = TRUE)
   }
   
-  # Rebuild availableEditions list
+  # Rebuild availableEditions list sorted newest-first
   available_list <- list(new_summary)
   for (s in existing_summaries) {
-    if (s$weekNumber != current_week_num) {
+    if (as.integer(s$weekNumber) != current_week_num) {
       s_copy <- s
-      if (s_copy$weekNumber <= (current_week_num - max_main_editions)) {
+      if (is.null(s_copy$weekStartDate) || is.null(s_copy$weekEndDate)) {
+        b <- offseason_week_bounds(s_copy$weekNumber)
+        s_copy$weekStartDate <- b$weekStartDate
+        s_copy$weekEndDate <- b$weekEndDate
+      }
+      if (as.integer(s_copy$weekNumber) <= (current_week_num - max_main_editions)) {
         s_copy$isArchived <- TRUE
       }
       available_list[[length(available_list) + 1]] <- s_copy
     }
   }
+  avail_weeks <- vapply(available_list, function(s) as.integer(s$weekNumber), integer(1))
+  available_list <- available_list[order(avail_weeks, decreasing = TRUE)]
   
   # Summary counts
   cbt_leader <- "NYM"
@@ -581,8 +735,8 @@ build_offseason_monitor <- function(allow_degraded = FALSE,
     availableEditions = I(available_list),
     editions = I(protected_editions),
     currentStateSummary = list(
-      totalConfirmedTransactions = length(confirmed_events),
-      totalConfirmedCount = length(confirmed_events),
+      totalConfirmedTransactions = merged_total_count,
+      totalConfirmedCount = merged_total_count,
       pendingReportedRumors = length(edition_obj$reportedClaims),
       expiredRumorCount = length(edition_obj$expiredClaims),
       cbtPayrollLeader = cbt_leader
@@ -597,29 +751,123 @@ build_offseason_monitor <- function(allow_degraded = FALSE,
   json_output <- toJSON(dataset, pretty = TRUE, auto_unbox = TRUE, null = "null", digits = 6)
   writeLines(json_output, output_json_path, useBytes = TRUE)
   
-  log_info(sprintf("build_offseason_monitor: generated %s (week %d, status=%s, confirmed_events=%d)",
-                   output_json_path, current_week_num, operating_status, length(confirmed_events)),
+  log_info(sprintf("build_offseason_monitor: generated %s (week %d, status=%s, confirmed_events=%d, week_total=%d)",
+                   output_json_path, current_week_num, operating_status, length(confirmed_events), merged_total_count),
            script = "build_offseason_monitor.R")
   
   invisible(dataset)
 }
 
-if (!interactive()) {
+consolidate_offseason_files <- function(
+  output_json_path = file.path(WEB_DATA_DIR, "offseason_monitor.json"),
+  archive_json_path = file.path(WEB_DATA_DIR, "archive", "offseason_2026_editions.json"),
+  max_main_editions = 5L,
+  max_inline_changes = 100L
+) {
+  if (!file.exists(output_json_path)) {
+    stop(sprintf("consolidate_offseason_files: %s does not exist", output_json_path))
+  }
+  monitor <- fromJSON(output_json_path, simplifyDataFrame = FALSE)
+  archive <- if (file.exists(archive_json_path)) {
+    tryCatch(fromJSON(archive_json_path, simplifyDataFrame = FALSE), error = function(e) list())
+  } else {
+    list()
+  }
+
+  raw_editions <- c(
+    if (!is.null(monitor$editions)) monitor$editions else list(),
+    archive
+  )
+  consolidated <- consolidate_offseason_editions(raw_editions)
+  if (length(consolidated) == 0L) {
+    stop("consolidate_offseason_files: no editions to consolidate")
+  }
+
+  main_editions <- head(consolidated, max_main_editions)
+  overflow_editions <- if (length(consolidated) > max_main_editions) {
+    tail(consolidated, length(consolidated) - max_main_editions)
+  } else {
+    list()
+  }
+
+  protect_ed <- function(ed) {
+    if (is.null(ed$totalConfirmedCount)) {
+      ed$totalConfirmedCount <- length(ed$confirmedChanges)
+    }
+    if (length(ed$confirmedChanges) > max_inline_changes) {
+      ed$confirmedChanges <- head(ed$confirmedChanges, max_inline_changes)
+    }
+    ed$confirmedChanges   <- I(ed$confirmedChanges)
+    ed$reportedClaims     <- I(ed$reportedClaims)
+    ed$expiredClaims      <- I(ed$expiredClaims)
+    ed$laborEvents        <- I(ed$laborEvents)
+    ed$upcomingMilestones <- I(ed$upcomingMilestones)
+    ed$winterLeagueNotes  <- I(ed$winterLeagueNotes)
+    ed$sourcesVisited     <- I(ed$sourcesVisited)
+    ed
+  }
+
+  protected_main <- lapply(main_editions, protect_ed)
+  protected_overflow <- lapply(overflow_editions, protect_ed)
+
+  main_weeks <- vapply(main_editions, function(e) as.integer(e$weekNumber), integer(1))
+  available_list <- lapply(consolidated, function(ed) {
+    list(
+      weekNumber = as.integer(ed$weekNumber),
+      weekStartDate = ed$weekStartDate,
+      weekEndDate = ed$weekEndDate,
+      publishDate = ed$publishDate,
+      isQuietWeek = isTRUE(ed$isQuietWeek),
+      isFrozenWeek = isTRUE(ed$isFrozenWeek),
+      isArchived = !(as.integer(ed$weekNumber) %in% main_weeks)
+    )
+  })
+
+  active_ed <- main_editions[[1L]]
+  monitor$currentWeekNumber <- as.integer(active_ed$weekNumber)
+  monitor$availableEditions <- I(available_list)
+  monitor$editions <- I(protected_main)
+  if (!is.null(monitor$currentStateSummary)) {
+    monitor$currentStateSummary$totalConfirmedTransactions <- as.integer(active_ed$totalConfirmedCount)
+    monitor$currentStateSummary$totalConfirmedCount <- as.integer(active_ed$totalConfirmedCount)
+  }
+
+  for (ed in consolidated) {
+    validate_zero_betting(ed$stateOfPlay)
+  }
+
+  writeLines(toJSON(monitor, pretty = TRUE, auto_unbox = TRUE, null = "null", digits = 6),
+             output_json_path, useBytes = TRUE)
+  dir.create(dirname(archive_json_path), recursive = TRUE, showWarnings = FALSE)
+  writeLines(toJSON(protected_overflow, pretty = TRUE, auto_unbox = TRUE, null = "null", digits = 6),
+             archive_json_path, useBytes = TRUE)
+
+  log_info(sprintf("consolidate_offseason_files: consolidated %d legacy editions into %d weekly bundles (main=%d, archive=%d)",
+                   length(raw_editions), length(consolidated), length(main_editions), length(overflow_editions)),
+           script = "build_offseason_monitor.R")
+  invisible(list(monitor = monitor, archive = protected_overflow))
+}
+
+if (!interactive() && sys.nframe() == 0L) {
   args <- commandArgs(trailingOnly = TRUE)
-  allow_deg <- "--allow-degraded" %in% args
-  force_qt <- "--quiet" %in% args
-  frozen <- "--frozen" %in% args
-  # Issue #58: explicit opt-in to replay the demoted issue #45 benchmark
-  # fixture instead of the live wire-items artifact. Test-only.
-  fixture_md <- "--fixture-mode" %in% args
-  op_status <- if (frozen) "TRANSACTION_FREEZE" else NULL
-  
-  week_arg <- grep("^--week=", args, value = TRUE)
-  week_val <- if (length(week_arg)) as.integer(sub("^--week=", "", week_arg[1])) else NULL
-  
-  build_offseason_monitor(allow_degraded = allow_deg,
-                          force_quiet = force_qt,
-                          operating_status_override = op_status,
-                          week_number = week_val,
-                          fixture_mode = fixture_md)
+  if ("--consolidate-only" %in% args) {
+    consolidate_offseason_files()
+  } else {
+    allow_deg <- "--allow-degraded" %in% args
+    force_qt <- "--quiet" %in% args
+    frozen <- "--frozen" %in% args
+    # Issue #58: explicit opt-in to replay the demoted issue #45 benchmark
+    # fixture instead of the live wire-items artifact. Test-only.
+    fixture_md <- "--fixture-mode" %in% args
+    op_status <- if (frozen) "TRANSACTION_FREEZE" else NULL
+    
+    week_arg <- grep("^--week=", args, value = TRUE)
+    week_val <- if (length(week_arg)) as.integer(sub("^--week=", "", week_arg[1])) else NULL
+    
+    build_offseason_monitor(allow_degraded = allow_deg,
+                            force_quiet = force_qt,
+                            operating_status_override = op_status,
+                            week_number = week_val,
+                            fixture_mode = fixture_md)
+  }
 }

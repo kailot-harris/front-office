@@ -348,7 +348,11 @@ export const OffseasonMonitorClient: React.FC<Props> = ({ initialDataset }) => {
                   <span className="font-bold">Week {ed.weekNumber}</span>
                   {ed.isArchived && <Archive className="w-3 h-3 text-slate-400" />}
                 </div>
-                <span className="text-[11px] sm:text-[10px] text-slate-400">{ed.publishDate}</span>
+                <span className="text-[11px] sm:text-[10px] text-slate-400">
+                  {ed.weekStartDate && ed.weekEndDate
+                    ? `${ed.weekStartDate} – ${ed.weekEndDate}`
+                    : ed.publishDate}
+                </span>
                 <div className="flex items-center gap-1 mt-0.5">
                   {ed.isFrozenWeek ? (
                     <span className="text-[11px] sm:text-[9px] px-1 py-0.2 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">
