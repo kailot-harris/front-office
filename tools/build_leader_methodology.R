@@ -212,7 +212,8 @@ build_leader_methodology <- function(
 
   source_commit <- get("LEADERS_STUDY_SOURCE_COMMIT", envir = cfg_env, inherits = TRUE)
   base_games <- as.integer(get("LEADERS_FULL_SEASON_GAMES", envir = cfg_env, inherits = TRUE))
-  source_sha256 <- unname(as.character(tools::sha256sum(study_path)))
+  # CRLF normalised to LF, so a Windows checkout and CI record the same hash.
+  source_sha256 <- get("nba_lifecycle_sha256", envir = cfg_env, inherits = TRUE)(study_path)
   study_run_date <- lm_git_date(c("log", "-n", "1", "--format=%cs", "--", LM_STUDY_REPO_PATH)) %||%
     lm_git_date(c("log", "-n", "1", "--format=%cs", source_commit))
   published_at <- format(as.POSIXct(now), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
