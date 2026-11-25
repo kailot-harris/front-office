@@ -121,7 +121,9 @@
       letter-spacing: 0.06em;
       color: var(--fo-text-muted);
     }
-    nav {
+    /* Scoped to the module list: a bare `nav` also matched the shared site
+       header's nav and turned it into a two-column grid on tablets. */
+    nav[aria-label="Leagues and modules"] {
       display: grid;
       grid-template-columns: repeat(2, minmax(200px, 1fr));
       gap: 1rem;
@@ -184,7 +186,7 @@
        shrink past its minimum and the page scrolls sideways instead. Stack
        into one column before that happens. */
     @media (max-width: 480px) {
-      nav {
+      nav[aria-label="Leagues and modules"] {
         grid-template-columns: 1fr;
         width: 100%;
       }
