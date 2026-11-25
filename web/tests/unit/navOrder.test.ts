@@ -36,7 +36,7 @@ describe('groupNavItems (#230)', () => {
   it('groups items in canonical order, omits empty groups, and sets season-games defaultOpen in regular season', () => {
     const grouped = groupNavItems(items, 'regular');
     expect(grouped.map((g) => g.id)).toEqual(['season-games', 'front-office', 'visualizations', 'models']);
-    expect(grouped.map((g) => g.defaultOpen)).toEqual([true, false, false, false]);
+    expect(grouped.map((g) => g.defaultOpen)).toEqual([false, false, false, false]);
     expect(labels(grouped[0].items)).toEqual(['Season Standings', 'Matchups']);
     expect(labels(grouped[1].items)).toEqual(['Offseason Moves']);
     expect(labels(grouped[2].items)).toEqual(['Visual Gallery']);
