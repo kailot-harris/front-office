@@ -210,6 +210,9 @@ WEB_JSON_MOMENTUM_BOARD              <- file.path(WEB_DATA_DIR, "momentum_board.
 # Weekly momentum rank snapshots (NBA_analytics#237), tracked in git like
 # data/history/ratings_history.csv; written by build_momentum_dataset.R.
 MOMENTUM_RANK_HISTORY <- file.path(PROJECT_DIR, "data", "history", "momentum_rank_history.csv")
+# Forward log of the Momentum Board (append-only, tracked in git, never gitignored);
+# written by tools/log_momentum_forward.R, scored by tools/score_forward_log.R.
+MOMENTUM_FORWARD_LOG <- file.path(PROJECT_DIR, "data", "history", "momentum_forward_log.csv")
 # Non-members (see above), named so no caller re-types them.
 WEB_JSON_OFFSEASON_TRANSACTIONS      <- file.path(WEB_DATA_DIR, "offseason_transactions.json")
 WEB_JSON_SHOTS_INDEX                 <- file.path(WEB_DATA_DIR, "shots_index.json")
