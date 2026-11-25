@@ -74,6 +74,11 @@ test.describe('mobile navigation drawer', () => {
 
     expect(await isDrawerOpen(page), 'the drawer did not open').toBe(true);
 
+    // The drawer's groups are collapsible (#230/#231) and a collapsed group does not
+    // render its links, so open every group before looking for each route.
+    const collapsed = page.locator(`${PANEL} nav button[aria-expanded="false"]`);
+    while ((await collapsed.count()) > 0) await collapsed.first().click();
+
     for (const route of ROUTES) {
       const x = await drawerLinkX(page, route.path);
       expect(x, `${route.path} is not present in the mobile drawer`).not.toBeNull();

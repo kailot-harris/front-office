@@ -119,3 +119,6 @@ cache/player_dna_profiles.rds
 # at repo root or under web/ never triggers a `git stash push -u` failure).
 /test-results/
 /web/test-results/
+
+# League leaders players table (NFL_analytics#230): refetched by build_player_leaders.R, never committed
+cache/leaders_players.rds

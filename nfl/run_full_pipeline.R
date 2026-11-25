@@ -409,6 +409,16 @@ run_stage("build_coaching_dataset.R", "Build Head-Coach Decision Profiles (coach
           call_fn = "run_build_coaching_dataset",
           output = WEB_JSON_COACHING_PROFILES)
 
+# Stage 14.4b: League leaders panel (build_player_leaders.R, NFL_analytics#230)
+# Must run after Stage 14.1 (refreshes CACHE_DNA_PBP) and daily_ingest.R (snap counts).
+# Reads the current season's play-by-play, player stats and snap counts, fetches the
+# nflverse players table and Pro Football Reference weekly stats, and writes
+# web/public/data/player_leaders.json with the owner's scaled minimums (config.R LEADERS_*).
+# A WEB_DATA_FILES member, so the publish gate (Assertions A and F) blocks a stale copy.
+run_stage("build_player_leaders.R", "Build League Leaders Panel (player_leaders.json)",
+          call_fn = "run_build_player_leaders",
+          output = WEB_JSON_PLAYER_LEADERS)
+
 # Stage 14.5: Landing digest (tools/build_landing_digest.R, NFL_analytics#182-#185)
 # Must run after Stage 14 (reads matchups_current_week.json). Also appends today's
 # power_rating rows to the tracked data/history/ratings_history.csv for movers.

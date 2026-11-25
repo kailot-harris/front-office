@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "sport": "nfl",
-  "generated_at": "2026-11-25T13:00:24Z",
+  "generated_at": "2026-11-25T13:05:08Z",
   "schedule_through_date": "2026-11-23",
   "datasets": {
     "clutch_leverage_metrics.json": {
@@ -95,6 +95,18 @@
       "content_sha256": "d18cff1b2b23f9391d6d0b56b2a1dba8e6dbc33b60054d58d647d853c45fd914",
       "through_date": "2026-11-23",
       "through_date_source": "payload:throughWeek (week -> latest completed gameday via matchups_current_week.json)",
+      "static": false,
+      "max_lag_days": 8,
+      "lifecycle": "live",
+      "coverage_note": null
+    },
+    "player_leaders.json": {
+      "builder": "build_player_leaders.R",
+      "generated_at": "2026-11-25T12:23:06Z",
+      "stamp_source": "payload:generated_at",
+      "content_sha256": "785da99b81ee20f322b802ed128ba4bb55f2161a008311f9fa85fd5b15b142a7",
+      "through_date": "2026-11-23",
+      "through_date_source": "payload:through_date (latest game date across the leader cards)",
       "static": false,
       "max_lag_days": 8,
       "lifecycle": "live",

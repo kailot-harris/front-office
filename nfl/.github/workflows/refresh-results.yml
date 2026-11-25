@@ -56,6 +56,8 @@ jobs:
       # nflverse/duckdb stack for a job whose entire payload is one CSV and two
       # JSON files. This repo has no renv.lock to restore from in any case
       # (FOUR_REPO_COMPARISON section 5.4).
+      # The league leaders rebuild (NFL_analytics#230) also needs nothing more:
+      # it downloads the nflverse release .rds files with base R.
       - name: Install jsonlite
         run: install.packages("jsonlite")
         shell: Rscript {0}
@@ -72,18 +74,20 @@ jobs:
           # --porcelain over the two files the script owns, not `git diff`:
           # diff only sees tracked files, and scoping to these two paths means
           # an unrelated dirty file can never be swept into a data commit.
-          if [ -z "$(git status --porcelain -- web/public/data/matchups_current_week.json web/public/data/model_diagnostics.json web/public/data/landing_digest.json)" ]; then
+          if [ -z "$(git status --porcelain -- web/public/data/matchups_current_week.json web/public/data/model_diagnostics.json web/public/data/landing_digest.json web/public/data/player_leaders.json)" ]; then
             echo "No newly finished games; nothing to commit."
             exit 0
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add web/public/data/matchups_current_week.json web/public/data/model_diagnostics.json web/public/data/landing_digest.json
+          git add web/public/data/matchups_current_week.json web/public/data/model_diagnostics.json web/public/data/landing_digest.json web/public/data/player_leaders.json
           git commit -m "chore(data): refresh finished game results
 
           Written by .github/workflows/refresh-results.yml from the public
           nflverse schedule file. Scores plus the grading that follows
           mechanically from them - no prediction was recomputed and no model
-          was re-fit. The diagnostics row is reconciled rather than appended;
-          the next full pipeline run rewrites it from cache/accuracy_history.rds."
+          was re-fit. Non-model league leader cards are rebuilt from the
+          nflverse player data release files (total EPA waits for the
+          full pipeline). The diagnostics row is reconciled rather than
+          appended; the next full pipeline run rewrites it from cache/accuracy_history.rds."
           git push
