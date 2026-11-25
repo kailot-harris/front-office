@@ -1,13 +1,20 @@
 {
   "version": "2026-2027.1.0",
-  "lastPublished": "2026-11-24T12:00:31Z",
-  "currentWeekNumber": 16,
-  "baselineAsOfDate": "2026-11-23T12:00:32Z",
+  "lastPublished": "2026-11-25T12:00:33Z",
+  "currentWeekNumber": 17,
+  "baselineAsOfDate": "2026-11-24T12:00:31Z",
   "elapsedDaysSinceLastPublish": 1,
   "leagueOperatingStatus": "NORMAL",
   "freezeDayCount": null,
   "activePhase": "Pre-Lockout Surge",
   "availableEditions": [
+    {
+      "weekNumber": 17,
+      "publishDate": "2026-11-25",
+      "isQuietWeek": false,
+      "isFrozenWeek": false,
+      "isArchived": false
+    },
     {
       "weekNumber": 16,
       "publishDate": "2026-11-24",
@@ -41,7 +48,7 @@
       "publishDate": "2026-11-20",
       "isQuietWeek": false,
       "isFrozenWeek": false,
-      "isArchived": false
+      "isArchived": true
     },
     {
       "weekNumber": 11,
@@ -123,6 +130,87 @@
   ],
   "editions": [
     {
+      "weekNumber": 17,
+      "publishDate": "2026-11-25",
+      "isQuietWeek": false,
+      "isFrozenWeek": false,
+      "freezeDayCount": null,
+      "freezeStartDate": null,
+      "stateOfPlay": "2 confirmed state transitions recorded across 1 club(s) (2 40-man roster moves, 0 minor-league moves). By transaction type: 2 Free agent signing. Notable moves: Freddy Peralta (FA, Free agent signing), Brent Suter (FA, Free agent signing).",
+      "totalConfirmedCount": 2,
+      "confirmedChanges": [
+        {
+          "date": "2026-11-24",
+          "team": "FA",
+          "playerName": "Freddy Peralta",
+          "playerId": "P_18679",
+          "rosterTier": "MAJOR_40_MAN",
+          "transactionType": "FREE_AGENT_SIGNING",
+          "priorValue": "FREE_AGENT",
+          "newValue": "40_MAN",
+          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=110&transactionIds=950970"
+        },
+        {
+          "date": "2026-11-24",
+          "team": "FA",
+          "playerName": "Brent Suter",
+          "playerId": "P_13942",
+          "rosterTier": "MAJOR_40_MAN",
+          "transactionType": "FREE_AGENT_SIGNING",
+          "priorValue": "FREE_AGENT",
+          "newValue": "40_MAN",
+          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=147&transactionIds=950958"
+        }
+      ],
+      "reportedClaims": [],
+      "expiredClaims": [],
+      "laborEvents": [],
+      "upcomingMilestones": [
+        {
+          "date": "2026-11-02",
+          "event": "Deadline to exercise contract options and extend qualifying offers",
+          "status": "Confirmed"
+        },
+        {
+          "date": "2026-11-17",
+          "event": "Deadline to accept/reject qualifying offers (4:00 p.m. ET)",
+          "status": "Confirmed"
+        },
+        {
+          "date": "2026-11-17",
+          "event": "MLB Owners Meetings begin",
+          "status": "Confirmed"
+        },
+        {
+          "date": "2026-12-01",
+          "event": "Collective Bargaining Agreement expires (11:59 p.m. ET)",
+          "status": "Confirmed"
+        },
+        {
+          "date": "2026-12-07",
+          "event": "Winter Meetings, San Diego (conditional on CBA)",
+          "status": "Tentative"
+        }
+      ],
+      "modelPriorImpact": {
+        "hasChanges": false,
+        "summary": "No change to 2027 baseline Marcel priors."
+      },
+      "winterLeagueNotes": [
+        {
+          "playerName": "Jackson Chourio",
+          "mlbTeam": "MIL",
+          "league": "AFL",
+          "notes": "Participating in instructional development program."
+        }
+      ],
+      "sourcesVisited": [
+        "MLB Official Transaction Wire (statsapi.mlb.com)",
+        "30 Club Official Media Portals",
+        "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"
+      ]
+    },
+    {
       "weekNumber": 16,
       "publishDate": "2026-11-24",
       "isQuietWeek": false,
@@ -186,11 +274,7 @@
           "notes": "Participating in instructional development program."
         }
       ],
-      "sourcesVisited": [
-        "MLB Official Transaction Wire (statsapi.mlb.com)",
-        "30 Club Official Media Portals",
-        "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"
-      ]
+      "sourcesVisited": ["MLB Official Transaction Wire (statsapi.mlb.com)", "30 Club Official Media Portals", "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"]
     },
     {
       "weekNumber": 15,
@@ -717,297 +801,11 @@
         }
       ],
       "sourcesVisited": ["MLB Official Transaction Wire (statsapi.mlb.com)", "30 Club Official Media Portals", "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"]
-    },
-    {
-      "weekNumber": 12,
-      "publishDate": "2026-11-20",
-      "isQuietWeek": false,
-      "isFrozenWeek": false,
-      "freezeDayCount": null,
-      "freezeStartDate": null,
-      "stateOfPlay": "21 confirmed state transitions recorded across 12 club(s) (21 40-man roster moves, 0 minor-league moves). By transaction type: 12 Designated for Assignment, 4 Trade, 2 Free agent signing, 1 Outright, 1 Release, 1 Waiver Claim. Notable moves: Hayden Juenger (FA, Designated for Assignment), Yunior Tur (ATH, Designated for Assignment), Gus Varland (WSH, Designated for Assignment).",
-      "totalConfirmedCount": 21,
-      "confirmedChanges": [
-        {
-          "date": "2026-11-17",
-          "team": "FA",
-          "playerName": "Hayden Juenger",
-          "playerId": "P_29640",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "DFA",
-          "priorValue": "FREE_AGENT",
-          "newValue": "DFA",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=133&transactionIds=950460"
-        },
-        {
-          "date": "2026-11-17",
-          "team": "ATH",
-          "playerName": "Yunior Tur",
-          "playerId": "P_33026",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "DFA",
-          "priorValue": "40_MAN",
-          "newValue": "DFA",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=133&transactionIds=950461"
-        },
-        {
-          "date": "2026-11-17",
-          "team": "WSH",
-          "playerName": "Gus Varland",
-          "playerId": "P_24737",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "DFA",
-          "priorValue": "40_MAN",
-          "newValue": "DFA",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=120&transactionIds=950352"
-        },
-        {
-          "date": "2026-11-17",
-          "team": "FA",
-          "playerName": "Emilio Pagán",
-          "playerId": "P_14771",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "FREE_AGENT_SIGNING",
-          "priorValue": "FREE_AGENT",
-          "newValue": "40_MAN",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=116&transactionIds=950369"
-        },
-        {
-          "date": "2026-11-17",
-          "team": "FA",
-          "playerName": "Joey Bart",
-          "playerId": "B_21524",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "DFA",
-          "priorValue": "FREE_AGENT",
-          "newValue": "DFA",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=145&transactionIds=950370"
-        },
-        {
-          "date": "2026-11-17",
-          "team": "WSH",
-          "playerName": "Carson Palmquist",
-          "playerId": "P_31612",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "DFA",
-          "priorValue": "40_MAN",
-          "newValue": "DFA",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=120&transactionIds=950353"
-        },
-        {
-          "date": "2026-11-17",
-          "team": "SF",
-          "playerName": "Christian Koss",
-          "playerId": "B_27653",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "DFA",
-          "priorValue": "40_MAN",
-          "newValue": "DFA",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=137&transactionIds=950509"
-        },
-        {
-          "date": "2026-11-17",
-          "team": "KC",
-          "playerName": "Nick Mears",
-          "playerId": "P_25376",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "DFA",
-          "priorValue": "40_MAN",
-          "newValue": "DFA",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=118&transactionIds=950377"
-        },
-        {
-          "date": "2026-11-17",
-          "team": "DET",
-          "playerName": "Jace Jung",
-          "playerId": "B_31437",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "DFA",
-          "priorValue": "40_MAN",
-          "newValue": "DFA",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=116&transactionIds=950424"
-        },
-        {
-          "date": "2026-11-17",
-          "team": "DET",
-          "playerName": "Matt Vierling",
-          "playerId": "B_21558",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "DFA",
-          "priorValue": "40_MAN",
-          "newValue": "DFA",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=116&transactionIds=950427"
-        },
-        {
-          "date": "2026-11-17",
-          "team": "WSH",
-          "playerName": "Philip Abner",
-          "playerId": "P_33821",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "WAIVER_CLAIM",
-          "priorValue": "BAL",
-          "newValue": "WSH",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=120&transactionIds=950344"
-        },
-        {
-          "date": "2026-11-17",
-          "team": "HOU",
-          "playerName": "Joey Loperfido",
-          "playerId": "B_29630",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "OUTRIGHT",
-          "priorValue": "40_MAN",
-          "newValue": "MINOR_LEAGUE",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=5434&transactionIds=950402"
-        },
-        {
-          "date": "2026-11-18",
-          "team": "KC",
-          "playerName": "Kyle Isbel",
-          "playerId": "B_21614",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "DFA",
-          "priorValue": "40_MAN",
-          "newValue": "DFA",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=118&transactionIds=950622"
-        },
-        {
-          "date": "2026-11-18",
-          "team": "CHW",
-          "playerName": "Jordan Leasure",
-          "playerId": "P_29950",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "DFA",
-          "priorValue": "40_MAN",
-          "newValue": "DFA",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=145&transactionIds=950620"
-        },
-        {
-          "date": "2026-11-18",
-          "team": "FA",
-          "playerName": "Dustin May",
-          "playerId": "P_19716",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "FREE_AGENT_SIGNING",
-          "priorValue": "FREE_AGENT",
-          "newValue": "40_MAN",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=145&transactionIds=950619"
-        },
-        {
-          "date": "2026-11-18",
-          "team": "BOS",
-          "playerName": "Connor Wong",
-          "playerId": "B_19896",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "DFA",
-          "priorValue": "40_MAN",
-          "newValue": "DFA",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=111&transactionIds=950611"
-        },
-        {
-          "date": "2026-11-18",
-          "team": "BOS",
-          "playerName": "Nick Fortes",
-          "playerId": "B_21538",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "TRADE",
-          "priorValue": "TB",
-          "newValue": "BOS",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=111&transactionIds=950612"
-        },
-        {
-          "date": "2026-11-18",
-          "team": "SEA",
-          "playerName": "Maikel Garcia",
-          "playerId": "B_22715",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "TRADE",
-          "priorValue": "KC",
-          "newValue": "SEA",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=136&transactionIds=950608"
-        },
-        {
-          "date": "2026-11-18",
-          "team": "LAA",
-          "playerName": "Jace Jung",
-          "playerId": "B_31437",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "TRADE",
-          "priorValue": "DET",
-          "newValue": "LAA",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=108&transactionIds=950609"
-        },
-        {
-          "date": "2026-11-19",
-          "team": "TB",
-          "playerName": "Jesse Scholtens",
-          "playerId": "P_19205",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "RELEASE",
-          "priorValue": "40_MAN",
-          "newValue": "FREE_AGENT",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=139&transactionIds=950687"
-        },
-        {
-          "date": "2026-11-19",
-          "team": "CHW",
-          "playerName": "Luis Castillo",
-          "playerId": "P_15689",
-          "rosterTier": "MAJOR_40_MAN",
-          "transactionType": "TRADE",
-          "priorValue": "None",
-          "newValue": "CHW",
-          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=145&transactionIds=950733"
-        }
-      ],
-      "reportedClaims": [],
-      "expiredClaims": [],
-      "laborEvents": [],
-      "upcomingMilestones": [
-        {
-          "date": "2026-11-02",
-          "event": "Deadline to exercise contract options and extend qualifying offers",
-          "status": "Confirmed"
-        },
-        {
-          "date": "2026-11-17",
-          "event": "Deadline to accept/reject qualifying offers (4:00 p.m. ET)",
-          "status": "Confirmed"
-        },
-        {
-          "date": "2026-11-17",
-          "event": "MLB Owners Meetings begin",
-          "status": "Confirmed"
-        },
-        {
-          "date": "2026-12-01",
-          "event": "Collective Bargaining Agreement expires (11:59 p.m. ET)",
-          "status": "Confirmed"
-        },
-        {
-          "date": "2026-12-07",
-          "event": "Winter Meetings, San Diego (conditional on CBA)",
-          "status": "Tentative"
-        }
-      ],
-      "modelPriorImpact": {
-        "hasChanges": false,
-        "summary": "No change to 2027 baseline Marcel priors."
-      },
-      "winterLeagueNotes": [
-        {
-          "playerName": "Jackson Chourio",
-          "mlbTeam": "MIL",
-          "league": "AFL",
-          "notes": "Participating in instructional development program."
-        }
-      ],
-      "sourcesVisited": ["MLB Official Transaction Wire (statsapi.mlb.com)", "30 Club Official Media Portals", "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"]
     }
   ],
   "currentStateSummary": {
-    "totalConfirmedTransactions": 1,
-    "totalConfirmedCount": 1,
+    "totalConfirmedTransactions": 2,
+    "totalConfirmedCount": 2,
     "pendingReportedRumors": 0,
     "expiredRumorCount": 0,
     "cbtPayrollLeader": "NYM"
