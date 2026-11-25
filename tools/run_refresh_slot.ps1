@@ -244,7 +244,7 @@ $MODEL_REFRESH = [ordered]@{
 $SPORT_REFRESH = [ordered]@{
     mlb  = @{ Dir = 'MLB Analytics';  Args = @();    Paths = @('web/public/data') }
     nfl  = @{ Dir = 'NFL Analytics';  Args = @();    Paths = @('web/public/data/matchups_current_week.json', 'web/public/data/model_diagnostics.json', 'web/public/data/landing_digest.json') }
-    nba  = @{ Dir = 'NBA Analytics';  Args = @('3'); Paths = @('web/public/data/matchups_slates.json', 'web/public/data/landing_digest.json') }
+    nba  = @{ Dir = 'NBA Analytics';  Args = @('3'); Paths = @('web/public/data/matchups_slates.json', 'web/public/data/landing_digest.json', 'web/public/data/player_leaders.json') }
     wnba = @{ Dir = 'WNBA Analytics'; Args = @('3'); Paths = @('web/public/data/matchups_slates.json', 'web/public/data/landing_digest.json') }
 }
 
