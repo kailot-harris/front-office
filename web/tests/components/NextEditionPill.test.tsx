@@ -60,17 +60,22 @@ describe('Next edition slot in the edition selector', () => {
   });
 
   it('appears after the published pills on the real page and cannot change the selected edition', () => {
+    // Read the live edition numbers from the data: a new edition is published
+    // every week, so fixed week numbers here go stale.
     const dataset = getOffseasonMonitorData();
-    expect(dataset?.nextEdition).toEqual(nextEdition);
+    if (!dataset?.nextEdition) throw new Error('offseason_monitor.json has no nextEdition');
+    const latestWeek = Math.max(...dataset.editions.map((e) => e.weekNumber));
+    const { weekNumber: nextWeek, projectedPublishDate } = dataset.nextEdition;
+    expect(nextWeek).toBe(latestWeek + 1);
     render(<OffseasonMonitorClient initialDataset={dataset} />);
 
-    const week1 = screen.getByRole('button', { name: /^Week 1/ });
+    const latest = screen.getByRole('button', { name: new RegExp(`^Week ${latestWeek}`) });
     const pill = screen.getByTestId('next-edition-pill');
-    expect(pill.textContent).toMatch(/^Week 2 · expected Mon 23 Nov/);
-    expect(week1.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(pill.textContent?.startsWith(`Week ${nextWeek} · expected ${formatProjectedDate(projectedPublishDate)}`)).toBe(true);
+    expect(latest.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
     fireEvent.click(pill);
-    expect(week1.className).toContain('bg-violet-600');
+    expect(latest.className).toContain('bg-violet-600');
   });
 
   it('is absent from the page when the dataset has no nextEdition', () => {
