@@ -197,6 +197,12 @@ const parityCases: ParityCase[] = [
     iface: 'MatchupGame',
     pick: (j) => (j as { matchups: Record<string, unknown>[] }).matchups,
   },
+  { file: 'leader_methodology.json', tsFile: 'lib/leaderMethodologyTypes.ts', iface: 'LeaderMethodologyPayload', pick: (j) => [j as Record<string, unknown>] },
+  { file: 'leader_methodology.json', tsFile: 'lib/leaderMethodologyTypes.ts', iface: 'LeaderStudySettings', pick: (j) => [(j as { settings: Record<string, unknown> }).settings] },
+  { file: 'leader_methodology.json', tsFile: 'lib/leaderMethodologyTypes.ts', iface: 'LeaderDataAuditRow', pick: (j) => (j as { data_audit: Record<string, unknown>[] }).data_audit },
+  { file: 'leader_methodology.json', tsFile: 'lib/leaderMethodologyTypes.ts', iface: 'LeaderMethodologyMinimum', pick: (j) => (j as { minimums: Record<string, unknown>[] }).minimums },
+  { file: 'leader_methodology.json', tsFile: 'lib/leaderMethodologyTypes.ts', iface: 'LeaderMinimumReliability', pick: (j) => (j as { minimums: { reliability: Record<string, unknown> }[] }).minimums.map((m) => m.reliability) },
+  { file: 'leader_methodology.json', tsFile: 'lib/leaderMethodologyTypes.ts', iface: 'LeaderScalingExample', pick: (j) => [(j as { scaling_example: Record<string, unknown> }).scaling_example] },
 ];
 
 describe('TypeScript interface vs JSON payload key parity', () => {

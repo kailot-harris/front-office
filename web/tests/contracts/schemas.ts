@@ -1459,3 +1459,207 @@ export const MomentumMethodologySchema = z
     limits: z.array(z.string().min(1)).min(1),
   })
   .strict();
+
+// ---------------------------------------------------------------------------
+// leader_methodology.json (lib/leaderMethodologyTypes.ts)
+// ---------------------------------------------------------------------------
+const lmCrossing = z
+  .object({
+    bar: num,
+    point: num.nullable(),
+    lo: num.nullable(),
+    hi: num.nullable(),
+    share_not_reached: num,
+  })
+  .strict();
+
+const lmSplitHalfPoint = z
+  .object({
+    n: z.number().int().positive(),
+    n_players: z.number().int().nonnegative(),
+    n_missing: z.number().int().nonnegative(),
+    mean_realised_units: num.nullable(),
+    r: num.nullable(),
+    r_lo: num.nullable(),
+    r_hi: num.nullable(),
+    sb_sample: z.number().int().positive(),
+    r_sb: num.nullable(),
+    r_sb_lo: num.nullable(),
+    r_sb_hi: num.nullable(),
+  })
+  .strict();
+
+const lmRestOfSeasonPoint = z
+  .object({
+    n: z.number().int().positive(),
+    n_players: z.number().int().nonnegative(),
+    n_missing: z.number().int().nonnegative(),
+    mean_realised_units: num.nullable(),
+    r: num.nullable(),
+    r_lo: num.nullable(),
+    r_hi: num.nullable(),
+  })
+  .strict();
+
+const lmStatStudy = z
+  .object({
+    label: z.string().min(1),
+    group: z.enum(['counting', 'shooting', 'rates']),
+    unit: z.string().min(1),
+    unit_label: z.string().min(1),
+    split_half: z.array(lmSplitHalfPoint).min(1),
+    rest_of_season: z.array(lmRestOfSeasonPoint).min(1),
+    crossings: z
+      .object({
+        split_half: z.array(lmCrossing).min(1),
+        spearman_brown: z.array(lmCrossing).min(1),
+        rest_of_season: z.array(lmCrossing).min(1),
+      })
+      .strict(),
+  })
+  .strict();
+
+const lmRapmPoint = z
+  .object({
+    measure: z.enum(['orapm', 'drapm', 'total_rapm']),
+    kind: z.enum(['bin', 'threshold']),
+    lo: num,
+    hi: num.nullable(),
+    n_players: z.number().int().nonnegative(),
+    r: num,
+    r_lo: num,
+    r_hi: num,
+    r_sb: num,
+    r_sb_lo: num,
+    r_sb_hi: num,
+  })
+  .strict();
+
+const lmMinimumRow = z
+  .object({
+    key: z.string().min(1),
+    label: z.string().min(1),
+    group: z.enum(['counting', 'shooting', 'rates', 'rapm']),
+    bucket: z.enum(['early', 'middle', 'late', 'attempts', 'possessions']),
+    unit: z.string().min(1),
+    unit_label: z.string().min(1),
+    constant: z.string().min(1),
+    minimum_full_season: z.number().int().positive(),
+    minimum_minutes_constant: z.string().min(1).nullable(),
+    minimum_minutes_full_season: z.number().int().positive().nullable(),
+    noise_note: z.boolean(),
+    reliability: z
+      .object({
+        split_half_n: z.number().int().positive(),
+        split_half_r: num,
+        split_half_lo: num,
+        split_half_hi: num,
+        split_half_n_players: z.number().int().positive(),
+        spearman_brown_n: z.number().int().positive().nullable(),
+        spearman_brown_r: num.nullable(),
+        spearman_brown_lo: num.nullable(),
+        spearman_brown_hi: num.nullable(),
+        spearman_brown_n_players: z.number().int().positive().nullable(),
+        spearman_brown_null_reason: z.string().min(1).nullable(),
+        rest_of_season_r: num.nullable(),
+        rest_of_season_lo: num.nullable(),
+        rest_of_season_hi: num.nullable(),
+        rest_of_season_n_players: z.number().int().positive().nullable(),
+        rest_of_season_null_reason: z.string().min(1).nullable(),
+      })
+      .strict(),
+  })
+  .strict();
+
+export const LeaderMethodologySchema = z
+  .object({
+    schema_version: z.literal(1),
+    source_commit: z.string().regex(/^[0-9a-f]{40}$/),
+    source_sha256: z.string().regex(/^[0-9a-f]{64}$/),
+    study_run_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+    published_at: z.string().min(1),
+    issue: z.string().min(1),
+    note: z.string().min(1),
+    base_games: z.number().int().positive(),
+    settings: z
+      .object({
+        seasons: z.array(z.number().int().positive()).min(1),
+        rapm_seasons: z.array(z.number().int().positive()).min(1),
+        seed: z.number().int(),
+        n_boot: z.number().int().positive(),
+        grid_games: z.array(z.number().int().positive()).min(1),
+        grid_attempts: z.array(z.number().int().positive()).min(1),
+        grid_minutes: z.array(z.number().int().positive()).min(1),
+        rapm_bin_edges_per_side_per_half: z.array(num).min(1),
+        rapm_thresholds_per_side_per_half: z.array(num).min(1),
+        reference_bars: z.array(num).min(1),
+        min_players_per_point: z.number().int().positive(),
+        rapm_lambda: num.positive(),
+        rapm_rule_poss_per_side: num.positive(),
+      })
+      .strict(),
+    data_audit: z
+      .array(
+        z
+          .object({
+            season: z.number().int().positive(),
+            player_box_source: z.string().min(1),
+            regular_season_rows: z.number().int().nonnegative(),
+            did_not_play_rows: z.number().int().nonnegative(),
+            played_but_minutes_missing_rows: z.number().int().nonnegative(),
+            player_games_used: z.number().int().nonnegative(),
+            games: z.number().int().nonnegative(),
+            players: z.number().int().nonnegative(),
+            player_games_missing_any_box_stat: z.number().int().nonnegative(),
+            player_games_missing_team_context: z.number().int().nonnegative(),
+          })
+          .strict(),
+      )
+      .min(1),
+    player_seasons: z.number().int().positive(),
+    runtime_minutes: num.positive(),
+    scaling_example: z
+      .object({
+        formula: z.string().min(1),
+        team_games_played: z.number().int().positive(),
+        base_games: z.number().int().positive(),
+        examples: z
+          .array(
+            z
+              .object({
+                key: z.string().min(1),
+                label: z.string().min(1),
+                unit_label: z.string().min(1),
+                minimum_full_season: z.number().int().positive(),
+                required: num.positive(),
+              })
+              .strict(),
+          )
+          .min(1),
+      })
+      .strict(),
+    minimums: z.array(lmMinimumRow).length(21),
+    stats: z.record(z.string(), lmStatStudy),
+    rapm: z
+      .object({
+        available: z.boolean(),
+        seasons_fit: z.array(z.number().int().positive()),
+        seasons_failed: z.array(z.number().int().positive()),
+        audit: z.array(z.unknown()),
+        player_seasons: z.number().int().positive(),
+        bins: z.array(lmRapmPoint).min(1),
+        thresholds: z.array(lmRapmPoint).min(1),
+        at_current_rule: z.array(lmRapmPoint).min(1),
+        crossings: z.record(
+          z.enum(['orapm', 'drapm', 'total_rapm']),
+          z
+            .object({
+              split_half: z.array(lmCrossing).min(1),
+              spearman_brown: z.array(lmCrossing).min(1),
+            })
+            .strict(),
+        ),
+      })
+      .strict(),
+  })
+  .strict();

@@ -66,6 +66,8 @@ DM_SPEC <- list(
   "momentum_board.json"              = list(builder = "build_momentum_dataset.R",   max_lag_days = 2L),
   "momentum_methodology.json"        = list(builder = "publish_momentum_methodology.R", max_lag_days = 0L,
     static_reason = "Frozen momentum measures study results (study run date and source commit inside the file); copied by tools/publish_momentum_methodology.R only when the study is re-run, never by the daily pipeline."),
+  "leader_methodology.json"          = list(builder = "build_leader_methodology.R", max_lag_days = 0L,
+    static_reason = "Frozen leader reliability study results plus config.R owner minimums (study run date and source commit inside the file); built by tools/build_leader_methodology.R when the study or minimums change, never by the daily pipeline."),
   "player_leaders.json"              = list(builder = "build_player_leaders.R",     max_lag_days = 2L),
   "visual_media_index.json"          = list(builder = "export_visual_media_index.R", max_lag_days = 2L,
     coverage_note = "Media inventory (per-item build stamps); content carries no game date."),
