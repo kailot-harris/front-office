@@ -385,6 +385,12 @@
       "rule": "affine_clamp_formula",
       "pattern": "pmax\\(0, pmin\\(47, coordinate_y_raw \\+ 4\\.0\\)\\)",
       "justification": "Physical NBA half-court y-coordinate boundary clamp ([0, 47] ft from baseline to half-court)."
+    },
+    {
+      "file": "nba/tools/log_momentum_forward.R",
+      "rule": "hardcoded_metric_vector",
+      "pattern": "c\\(5L, 10L, 18L\\)",
+      "justification": "Momentum forward-log column schema: the board's published window sizes in games (5, 10 and ROLLING_WINDOW_SIZE = 18), matching MOMENTUM_WINDOWS in build_momentum_dataset.R; window lengths, not observed data."
     }
   ],
   "exclusions": [
