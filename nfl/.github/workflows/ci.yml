@@ -125,7 +125,7 @@ jobs:
           fi
 
       - name: Upload test results
-        if: always()
+        if: failure()
         # Debug files only: a failed upload (e.g. the account's Actions storage
         # budget is used up) must not turn a passing test run red.
         continue-on-error: true
@@ -133,7 +133,7 @@ jobs:
         with:
           name: web-test-results
           path: web/test-results
-          retention-days: 3
+          retention-days: 1
           if-no-files-found: warn
 
   r:
