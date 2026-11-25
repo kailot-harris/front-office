@@ -207,6 +207,9 @@ WEB_GAMES_DIR                        <- file.path(WEB_DATA_DIR, "games")
 WEB_JSON_PLAYOFF_SERIES_MATCHUPS     <- file.path(WEB_DATA_DIR, "playoff_series_matchups.json")
 WEB_JSON_LANDING_DIGEST              <- file.path(WEB_DATA_DIR, "landing_digest.json")
 WEB_JSON_MOMENTUM_BOARD              <- file.path(WEB_DATA_DIR, "momentum_board.json")
+# League leaders panel on /players (NBA_analytics#254), written by build_player_leaders.R
+# and patched with new box scores by tools/refresh_live_results.R.
+WEB_JSON_PLAYER_LEADERS              <- file.path(WEB_DATA_DIR, "player_leaders.json")
 # Weekly momentum rank snapshots (NBA_analytics#237), tracked in git like
 # data/history/ratings_history.csv; written by build_momentum_dataset.R.
 MOMENTUM_RANK_HISTORY <- file.path(PROJECT_DIR, "data", "history", "momentum_rank_history.csv")
@@ -234,8 +237,52 @@ WEB_DATA_FILES <- c(
   WEB_JSON_MATCHUPS_SLATES,
   WEB_JSON_PLAYOFF_SERIES_MATCHUPS,
   WEB_JSON_LANDING_DIGEST,
-  WEB_JSON_MOMENTUM_BOARD
+  WEB_JSON_MOMENTUM_BOARD,
+  WEB_JSON_PLAYER_LEADERS
 )
+
+# ---------------------------------------------------------------------------
+# League leaders qualifying minimums (NBA_analytics#254)
+# ---------------------------------------------------------------------------
+# The owner set every number below after reviewing the reliability curves of the
+# leader reliability study (NBA_analytics#253, draft PR #256); the study measured
+# reliability only and did not choose them. Each is the FULL-SEASON (82-game) bar
+# and scales linearly with the player's current team's games played:
+#   required = minimum * team_games_played / LEADERS_FULL_SEASON_GAMES
+# Do not edit a minimum without a new owner decision. The RAPM leaderboard rule in
+# rapm_engine.R (RAPM_LEADERBOARD_MIN_POSS_PER_SIDE) is separate and unchanged.
+LEADERS_STUDY_SOURCE_COMMIT <- "d340cfdf247cb4876228d7a5f917cac0cba60de9"
+LEADERS_FULL_SEASON_GAMES   <- 82L
+# Counting stats, by games played.
+LEADERS_MIN_GAMES_PTS  <- 10L
+LEADERS_MIN_GAMES_REB  <- 10L
+LEADERS_MIN_GAMES_AST  <- 10L
+LEADERS_MIN_GAMES_TOV  <- 20L
+# Turnovers per game also need minutes, so low-minute players with 0 turnovers
+# don't lead the card (owner decision, 2026-11-25): 1,000 minutes, scaled.
+LEADERS_MIN_MINUTES_TOV_PER_GAME <- 1000L
+LEADERS_MIN_GAMES_FG3M <- 20L
+LEADERS_MIN_GAMES_OREB <- 20L
+LEADERS_MIN_GAMES_BLK  <- 20L
+LEADERS_MIN_GAMES_STL  <- 30L
+# Shooting, by attempts of that shot type.
+LEADERS_MIN_FTA_FT_PCT   <- 250L
+LEADERS_MIN_FGA_FG_PCT   <- 250L
+LEADERS_MIN_FG3A_FG3_PCT <- 150L
+# Rates, by minutes.
+LEADERS_MIN_MINUTES_USG_PCT <- 250L
+LEADERS_MIN_MINUTES_AST_PCT <- 250L
+LEADERS_MIN_MINUTES_ORB_PCT <- 400L
+LEADERS_MIN_MINUTES_DRB_PCT <- 400L
+LEADERS_MIN_MINUTES_TOV_PCT <- 1000L
+LEADERS_MIN_MINUTES_EFG_PCT <- 1000L
+LEADERS_MIN_MINUTES_TS_PCT  <- 1000L
+# RAPM (offensive, defensive, total), by possessions on EACH side.
+LEADERS_MIN_POSS_PER_SIDE_RAPM <- 2000L
+# The RAPM cards use their own current-season fit, written here by
+# build_player_leaders.R. The ensemble's cache/rapm_ratings.rds (fit by
+# rapm_engine.R, RAPM_SEASON) is separate and unchanged.
+LEADERS_RAPM_CACHE_FILE <- "rapm_ratings_leaders.rds"
 
 # CACHE_COACHING_JSON, CACHE_CBA_JSON, CACHE_MATCHUPS_JSON and
 # CACHE_PLAYOFF_MATCHUPS are the ORIGINAL names for four of the paths listed

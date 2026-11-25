@@ -254,6 +254,14 @@ run_stage("build_momentum_dataset.R", "Build Momentum Board (Rolling Windows, El
 run_stage("tools/log_momentum_forward.R", "Append Momentum Board Forward Log (today's rows only)",
           call_fn = "run_log_momentum_forward")
 
+# 9.17. League leaders panel (NBA_analytics#254). Reads the current-season player
+# box (ingest), the team box refreshed at 8.55 and cache/rapm_ratings.rds (stage 3);
+# writes web/public/data/player_leaders.json. Minimums live in config.R (LEADERS_*).
+# A missing box-score input stops the stage; run_stage() catches that as [FAILED]
+# and the pipeline continues. Self-executes on source(), so no call_fn.
+run_stage("build_player_leaders.R", "Build League Leaders Panel (scaled owner minimums)",
+          output = WEB_JSON_PLAYER_LEADERS)
+
 # 9.2. Landing digest (front-office#200). Reads the matchups payload written just
 # above plus the schedule and ensemble-ratings caches; appends today's ratings to
 # data/history/ratings_history.csv (tracked) and writes web/public/data/landing_digest.json.
