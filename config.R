@@ -545,6 +545,15 @@ WEB_DATA_SEASON_FILES <- c(
   "visual_media_index.json"
 )
 
+# Season files whose content covers the REGULAR season only, so their coverage ends at
+# the season's last completed regular-season game, not at the last playoff game.
+# freeze_season.R requires each of these to reach (and records as final_through_date)
+# the last regular-season game instead of the season's last game. player_leaders.json:
+# build_player_leaders.R aggregates regular-season games only (season_type 2), so its
+# through_date is the last regular-season game by design, not a stale file. Every entry
+# must also be in WEB_DATA_SEASON_FILES.
+WEB_DATA_REGULAR_SEASON_FILES <- basename(WEB_JSON_PLAYER_LEADERS)
+
 # Archived static snapshots (the same four tools/write_data_manifest.R marks static).
 WEB_DATA_ARCHIVED_FILES <- basename(c(
   WEB_JSON_CBA_CAP_SHEET,
