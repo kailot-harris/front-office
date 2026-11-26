@@ -475,6 +475,15 @@ WEB_DATA_SEASON_FILES <- c(
   "visual_media_index.json"
 )
 
+# Season files whose content covers the REGULAR season only. Their latest game
+# date is the last regular-season game, not the last postseason game, so
+# freeze_season.R checks them against (and records) the season's last completed
+# regular-season game instead. player_leaders.json is built from regular-season
+# game logs only (gameType R, build_player_leaders.R), so postseason games never
+# appear in it. Every entry must also be in WEB_DATA_SEASON_FILES.
+WEB_DATA_REGULAR_SEASON_FILES <- basename(WEB_JSON_PLAYER_LEADERS)
+stopifnot(all(WEB_DATA_REGULAR_SEASON_FILES %in% WEB_DATA_SEASON_FILES))
+
 # Static snapshots that no pipeline stage rebuilds (empty today; old-season
 # unique filenames also move here in WEB_DATA_LIFECYCLE_REGISTRY on `--thaw`).
 WEB_DATA_ARCHIVED_FILES <- character(0)

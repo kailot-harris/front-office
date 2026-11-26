@@ -162,3 +162,110 @@ test_that("freeze_season CLI exits non-zero when --season is omitted", {
   st <- attr(out, "status")
   expect_true(!is.null(st) && st != 0L)
 })
+
+# Regular-season-only files (config.R's WEB_DATA_REGULAR_SEASON_FILES) and
+# already-frozen entries. lc_schedule(): last regular-season game 2026-09-27,
+# last game of the season 2026-10-28.
+LC_REG_FILE <- "player_leaders.json"
+lc_leaders <- function(through) list(generated_at = "2026-11-01T12:00:00Z", season = 2026L,
+                                     through_date = through, batting = list())
+
+test_that("freeze_season freezes a regular-season-only file at the last regular-season game", {
+  d <- lc_data_dir(digest_through = "2026-10-28", extra = setNames(list(lc_leaders("2026-09-27")), LC_REG_FILE))
+  reg <- tempfile("fs_reg_", fileext = ".json")
+  on.exit(unlink(c(d, reg), recursive = TRUE), add = TRUE)
+
+  expect_identical(fs_season_last_game(lc_schedule(), 2026L, today = TODAY, types = "R"), as.Date("2026-09-27"))
+  r <- freeze_season(2026L, data_dir = d, registry_path = reg, schedule = lc_schedule(),
+                     season_files = c(LC_SEASON_FILES, LC_REG_FILE), regular_season_files = LC_REG_FILE,
+                     today = TODAY, now = NOW)
+  expect_true(r$ok)
+  expect_identical(r$regular_season_last_game, as.Date("2026-09-27"))
+  rg <- mlb_read_lifecycle_registry(reg)
+  expect_identical(rg$files[[LC_REG_FILE]]$final_through_date, "2026-09-27")
+  expect_identical(rg$files[[LC_REG_FILE]]$frozen_sha256, mlb_lifecycle_sha256(file.path(d, LC_REG_FILE)))
+  # Every other file keeps the full-season rule.
+  expect_identical(rg$files[["landing_digest.json"]]$final_through_date, "2026-10-28")
+
+  # Without the regular-season classification the same file is refused (postseason rule).
+  reg_b <- tempfile("fs_reg_", fileext = ".json")
+  on.exit(unlink(reg_b), add = TRUE)
+  r_b <- freeze_season(2026L, data_dir = d, registry_path = reg_b, schedule = lc_schedule(),
+                       season_files = c(LC_SEASON_FILES, LC_REG_FILE), regular_season_files = character(0),
+                       today = TODAY, now = NOW)
+  expect_false(r_b$ok)
+  expect_identical(r_b$refused$file, LC_REG_FILE)
+  expect_false(file.exists(reg_b))
+})
+
+test_that("freeze_season refuses a regular-season-only file that stops before the regular-season end", {
+  d <- lc_data_dir(digest_through = "2026-10-28", extra = setNames(list(lc_leaders("2026-09-20")), LC_REG_FILE))
+  reg <- tempfile("fs_reg_", fileext = ".json")
+  on.exit(unlink(c(d, reg), recursive = TRUE), add = TRUE)
+
+  r <- freeze_season(2026L, data_dir = d, registry_path = reg, schedule = lc_schedule(),
+                     season_files = c(LC_SEASON_FILES, LC_REG_FILE), regular_season_files = LC_REG_FILE,
+                     today = TODAY, now = NOW)
+  expect_false(r$ok)
+  expect_identical(r$refused$file, LC_REG_FILE)
+  expect_true(grepl("2026-09-20 is before the season's last regular-season game 2026-09-27",
+                    r$refused$reason, fixed = TRUE))
+  expect_false(file.exists(reg))
+})
+
+test_that("freeze_season keeps an already-frozen file with a matching hash, frozen_at unchanged", {
+  d <- lc_data_dir(digest_through = "2026-10-28")
+  reg <- tempfile("fs_reg_", fileext = ".json")
+  on.exit(unlink(c(d, reg), recursive = TRUE), add = TRUE)
+  r1 <- freeze_season(2026L, data_dir = d, registry_path = reg, schedule = lc_schedule(),
+                      season_files = LC_SEASON_FILES, today = TODAY, now = NOW)
+  expect_true(r1$ok)
+  before <- readLines(reg)
+
+  # A season file added later is frozen on its own; the earlier entries stay byte-identical.
+  lc_write(d, LC_REG_FILE, lc_leaders("2026-09-27"))
+  later <- as.POSIXct("2026-11-26 21:00:00", tz = "UTC")
+  r2 <- freeze_season(2026L, data_dir = d, registry_path = reg, schedule = lc_schedule(),
+                      season_files = c(LC_SEASON_FILES, LC_REG_FILE), regular_season_files = LC_REG_FILE,
+                      today = TODAY, now = later)
+  expect_true(r2$ok)
+  expect_setequal(r2$kept, LC_SEASON_FILES)
+  expect_identical(names(r2$frozen), LC_REG_FILE)
+  rg <- mlb_read_lifecycle_registry(reg)
+  expect_identical(rg$files[["landing_digest.json"]]$frozen_at, "2026-11-24T03:00:00Z")
+  expect_identical(rg$files[[LC_REG_FILE]]$frozen_at, "2026-11-26T21:00:00Z")
+  after <- readLines(reg)
+  expect_identical(setdiff(before, after), character(0))
+  expect_identical(length(after) - length(before), 7L)
+
+  # Nothing new to freeze: the registry is not rewritten at all.
+  mtime <- file.mtime(reg)
+  r3 <- freeze_season(2026L, data_dir = d, registry_path = reg, schedule = lc_schedule(),
+                      season_files = c(LC_SEASON_FILES, LC_REG_FILE), regular_season_files = LC_REG_FILE,
+                      today = TODAY, now = later + 3600)
+  expect_true(r3$ok)
+  expect_length(r3$frozen, 0L)
+  expect_identical(readLines(reg), after)
+  expect_identical(file.mtime(reg), mtime)
+})
+
+test_that("freeze_season refuses an already-frozen file whose content changed", {
+  d <- lc_data_dir(digest_through = "2026-10-28")
+  reg <- tempfile("fs_reg_", fileext = ".json")
+  on.exit(unlink(c(d, reg), recursive = TRUE), add = TRUE)
+  expect_true(freeze_season(2026L, data_dir = d, registry_path = reg, schedule = lc_schedule(),
+                            season_files = LC_SEASON_FILES, today = TODAY, now = NOW)$ok)
+  before <- readLines(reg)
+
+  lc_write(d, "projections_season_teams.json",
+           list(generated_at = "2026-11-25T08:00:00Z", teams = list(list(team = "changed"))))
+  lc_write(d, LC_REG_FILE, lc_leaders("2026-09-27"))
+  r <- freeze_season(2026L, data_dir = d, registry_path = reg, schedule = lc_schedule(),
+                     season_files = c(LC_SEASON_FILES, LC_REG_FILE), regular_season_files = LC_REG_FILE,
+                     today = TODAY, now = NOW + 86400)
+  expect_false(r$ok)
+  expect_identical(r$refused$file, "projections_season_teams.json")
+  expect_match(r$refused$reason, "content changed since it was frozen", fixed = TRUE)
+  expect_length(r$frozen, 0L)
+  expect_identical(readLines(reg), before)   # all or nothing: the new file is not frozen either
+})
