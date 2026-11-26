@@ -399,6 +399,18 @@ run_full_pipeline <- function(season = MLB_CURRENT_SEASON, force_refresh = FALSE
   )
 
   # ----------------------------------------------------------------------------
+  # Stage 14d: League leaders panel (build_player_leaders.R, MLB-Analytics#163)
+  # ----------------------------------------------------------------------------
+  run_stage(
+    script_name   = "build_player_leaders.R",
+    description   = "Build League Leaders Panel (162G owner minimums)",
+    call_fn       = "build_player_leaders",
+    output        = WEB_JSON_PLAYER_LEADERS,
+    require_fresh = force_refresh,
+    season        = season
+  )
+
+  # ----------------------------------------------------------------------------
   # Stage 15: Front-Office Operations Alert Dispatcher (notify_pipeline_ops.R)
   # ----------------------------------------------------------------------------
   run_stage(

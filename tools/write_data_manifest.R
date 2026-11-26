@@ -80,6 +80,12 @@ DM_COVERAGE_EXTRACTORS <- list(
       if (length(d)) max(d) else NA_character_
     }
   ),
+  "player_leaders.json" = list(
+    field = "through_date",
+    fn = function(j) {
+      if (.dm_is_ymd(j$through_date)) substr(j$through_date, 1L, 10L) else NA_character_
+    }
+  ),
   "world_series.json" = list(
     field = "games[].game_date (scored games)",
     fn = function(j) {

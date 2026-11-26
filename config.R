@@ -358,6 +358,7 @@ WEB_JSON_PLAYER_DNA_PROFILES         <- file.path(WEB_DATA_DIR, "player_dna_prof
 WEB_JSON_CLUTCH_LEVERAGE_METRICS     <- file.path(WEB_DATA_DIR, "clutch_leverage_metrics.json")
 WEB_JSON_CBT_PAYROLL_SHEET           <- file.path(WEB_DATA_DIR, "cbt_payroll_sheet.json")
 WEB_JSON_MATCHUPS_INDEX              <- file.path(WEB_DATA_DIR, "matchups_index.json")
+WEB_JSON_PLAYER_LEADERS              <- file.path(WEB_DATA_DIR, "player_leaders.json")
 # Non-members of WEB_DATA_FILES (see above), named here so no caller re-types them.
 WEB_JSON_STATCAST_SPATIAL_ANALYTICS  <- file.path(WEB_DATA_DIR, "statcast_spatial_analytics.json")
 WEB_JSON_PLAYER_SPATIAL_MAPS         <- file.path(WEB_DATA_DIR, "player_spatial_maps.json")
@@ -384,8 +385,42 @@ WEB_DATA_FILES <- c(
   WEB_JSON_CLUTCH_LEVERAGE_METRICS,
   WEB_JSON_CBT_PAYROLL_SHEET,
   WEB_JSON_MATCHUPS_INDEX,
+  WEB_JSON_PLAYER_LEADERS,
   WEB_JSON_LANDING_DIGEST
 )
+
+# ---------------------------------------------------------------------------
+# 7b. League leaders panel minimums (MLB-Analytics#163, owner decisions)
+# ---------------------------------------------------------------------------
+# Full-season (162-game) qualifying bars set by the owner after reviewing the
+# reliability study's curves (tools/leader_reliability_study.R, commit below).
+# build_player_leaders.R scales each bar by the player's current team's games
+# played:
+#   required = minimum * team_games_played / LEADERS_FULL_SEASON_GAMES
+# Changing a bar here updates the next pipeline build and the web contract test.
+LEADERS_STUDY_SOURCE_COMMIT <- "fed327b554883807469ee381225145815f1fa1a3"
+LEADERS_FULL_SEASON_GAMES   <- 162L
+
+# Batting (plate appearances)
+LEADERS_MIN_PA_AVG        <- 502L
+LEADERS_MIN_PA_OBP        <- 502L
+LEADERS_MIN_PA_SLG        <- 502L
+LEADERS_MIN_PA_OPS        <- 502L
+LEADERS_MIN_PA_WOBA       <- 502L
+LEADERS_MIN_PA_HR         <- 502L
+LEADERS_MIN_PA_K_PCT      <- 200L
+LEADERS_MIN_PA_SB         <- 200L
+LEADERS_MIN_PA_BB_PCT     <- 250L
+LEADERS_MIN_PA_BARREL_PCT <- 250L
+
+# Pitching (batters faced / appearances / relief appearances)
+LEADERS_MIN_BF_ERA           <- 675L
+LEADERS_MIN_BF_FIP           <- 675L
+LEADERS_MIN_BF_WHIP          <- 675L
+LEADERS_MIN_BF_K_PCT         <- 250L
+LEADERS_MIN_BF_BB_PCT        <- 675L
+LEADERS_MIN_APP_IP           <- 10L
+LEADERS_MIN_RELIEF_APP_SAVES <- 15L
 
 # ---------------------------------------------------------------------------
 # 8. Off-season published web artifacts and burst windows
