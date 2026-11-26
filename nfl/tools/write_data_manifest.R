@@ -136,8 +136,25 @@ dm_list_payloads <- function(data_dir) {
 }
 
 dm_sha256 <- function(path) {
-  # Base R (>= 4.5) so CI needs no extra package.
-  unname(tools::sha256sum(path))
+  # Base R (>= 4.5) so CI needs no extra package. Hash the content with LF line
+  # endings: a Windows checkout (core.autocrlf) holds CRLF while CI checks out
+  # LF, and both must record the same value for the same committed file.
+  con <- file(path, "rb")
+  chunks <- list()
+  repeat {
+    b <- readBin(con, "raw", n = 1048576L)
+    if (!length(b)) break
+    chunks[[length(chunks) + 1L]] <- b
+  }
+  close(con)
+  bytes <- if (length(chunks)) unlist(chunks, use.names = FALSE) else raw(0)
+  cr <- which(bytes == as.raw(13L))
+  cr <- cr[cr < length(bytes) & bytes[cr + 1L] == as.raw(10L)]
+  if (length(cr)) bytes <- bytes[-cr]
+  tmp <- tempfile("dm_sha256_")
+  on.exit(unlink(tmp), add = TRUE)
+  writeBin(bytes, tmp)
+  unname(tools::sha256sum(tmp))
 }
 
 # Embedded stamp: list(value = ISO string, field = name) or NULL.

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "sport": "nfl",
-  "generated_at": "2026-11-26T17:59:04Z",
+  "generated_at": "2026-11-26T22:07:12Z",
   "slate_date": "2026-11-26",
   "season_state": "regular",
   "next_milestone": {
@@ -14,10 +14,15 @@
       "start_time_utc": "2026-11-26T18:00:00Z",
       "home": "DET",
       "away": "CHI",
-      "status": "scheduled",
+      "status": "final",
       "home_win_prob": 0.569,
       "away_win_prob": 0.431,
-      "prediction_status": "available"
+      "prediction_status": "available",
+      "home_score": 35,
+      "away_score": 39,
+      "final": true,
+      "predicted_winner": "DET",
+      "hit": false
     },
     {
       "game_id": "2026_12_PHI_DAL",
@@ -27,7 +32,12 @@
       "status": "scheduled",
       "home_win_prob": 0.681,
       "away_win_prob": 0.319,
-      "prediction_status": "available"
+      "prediction_status": "available",
+      "home_score": null,
+      "away_score": null,
+      "final": false,
+      "predicted_winner": "DAL",
+      "hit": null
     },
     {
       "game_id": "2026_12_KC_BUF",
@@ -37,7 +47,12 @@
       "status": "scheduled",
       "home_win_prob": 0.672,
       "away_win_prob": 0.328,
-      "prediction_status": "available"
+      "prediction_status": "available",
+      "home_score": null,
+      "away_score": null,
+      "final": false,
+      "predicted_winner": "BUF",
+      "hit": null
     }
   ],
   "yesterday": [
@@ -119,6 +134,18 @@
             "delta": -2.2
           },
           {
+            "team": "DET",
+            "previous": 8.9,
+            "current": 9.26,
+            "delta": 0.36
+          },
+          {
+            "team": "CHI",
+            "previous": 4.72,
+            "current": 4.9,
+            "delta": 0.19
+          },
+          {
             "team": "DAL",
             "previous": -1.09,
             "current": -1,
@@ -128,18 +155,6 @@
             "team": "ARI",
             "previous": -18.75,
             "current": -18.66,
-            "delta": 0.09
-          },
-          {
-            "team": "BAL",
-            "previous": -8.36,
-            "current": -8.28,
-            "delta": 0.09
-          },
-          {
-            "team": "LV",
-            "previous": -11.25,
-            "current": -11.16,
             "delta": 0.09
           }
         ]
