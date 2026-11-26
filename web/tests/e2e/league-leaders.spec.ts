@@ -7,11 +7,13 @@ import fs from 'fs';
 import path from 'path';
 import { expect, test } from '@playwright/test';
 
+// The static export is served under the app's basePath, as in a11y.spec.ts.
+const BASE = `${process.env.PAGES_BASE_PATH ?? ''}/wnba`;
 const DATA = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'public', 'data', 'player_leaders.json'), 'utf8'));
 
 test.describe('league leaders panel', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/players', { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/players/`, { waitUntil: 'networkidle' });
   });
 
   test('sits at the top of /players with every group and card', async ({ page }) => {
