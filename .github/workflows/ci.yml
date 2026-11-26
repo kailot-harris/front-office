@@ -82,6 +82,13 @@ concurrency:
 permissions:
   contents: read
 
+# Time limits: every job runs on the shared self-hosted runner, whose
+# job-started hook waits for a host-wide lock before the first step (front-office
+# tools/ci-runner/README.md). That wait counts against a job's timeout-minutes,
+# so a job limit of 45 cancelled jobs that were still queued. The job limits
+# are therefore 180 (the hook's worst-case 3 x 45 minute queue plus a run),
+# and each step carries its own limit, which is what bounds the actual run.
+# Keep a healthy job's run under the hook's 60-minute stale-lock age.
 jobs:
   # The front-office site runs tools/check_fabrication_idioms.mjs on every
   # sport's R code before it deploys, so code that trips it blocks the whole
@@ -93,13 +100,15 @@ jobs:
   fabrication-guard:
     name: Fabrication guard (front-office)
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 45  # includes time queued for the shared runner's host CI lock
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
+        timeout-minutes: 10
         with:
           path: wnba
 
       - name: Check out the guard from front-office
+        timeout-minutes: 10
         uses: actions/checkout@v4
         with:
           repository: kailot-harris/front-office
@@ -107,11 +116,13 @@ jobs:
           sparse-checkout: tools
 
       - uses: actions/setup-node@v4
+        timeout-minutes: 10
         with:
           node-version: 22
 
       # The guard lists every scanned file before its result; show only the result.
       - name: Run the fabrication guard
+        timeout-minutes: 5
         run: |
           set -o pipefail
           node _front-office/tools/check_fabrication_idioms.mjs --root . 2>&1 | grep -vE '^\s*\[(SCAN|EXCLUDED)\]'
@@ -119,23 +130,27 @@ jobs:
   web:
     name: Web suite
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 45
+    timeout-minutes: 180
     defaults:
       run:
         working-directory: web
     steps:
       - uses: actions/checkout@v4
+        timeout-minutes: 10
 
       - uses: actions/setup-node@v4
+        timeout-minutes: 10
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: web/package-lock.json
 
       - name: Install dependencies
+        timeout-minutes: 15
         run: npm ci
 
       - name: Install Playwright Chromium
+        timeout-minutes: 15
         run: npx playwright install --with-deps chromium
 
       # The suite's own exit code is the gate: a failure listed in
@@ -143,9 +158,11 @@ jobs:
       # a REGRESSION and fails. The baseline is currently empty on purpose --
       # measured green on main at 8a98d89, 2026-10-26.
       - name: Run the web test suite
+        timeout-minutes: 30
         run: npm test
 
       - name: Publish the suite summary
+        timeout-minutes: 5
         if: always()
         run: |
           if [ -f test-results/SUMMARY.md ]; then
@@ -155,6 +172,7 @@ jobs:
           fi
 
       - name: Upload test results
+        timeout-minutes: 10
         if: always()
         # Debug files only: a failed upload (e.g. the account's Actions storage
         # budget is used up) must not turn a passing test run red.
@@ -169,15 +187,17 @@ jobs:
   r:
     name: R pipeline tests
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 45
+    timeout-minutes: 180
     env:
       # See difference 3 in the header.
       RENV_CONFIG_AUTOLOADER_ENABLED: 'FALSE'
       R_LIBS_USER: ${{ github.workspace }}/.rlib
     steps:
       - uses: actions/checkout@v4
+        timeout-minutes: 10
 
       - uses: r-lib/actions/setup-r@v2
+        timeout-minutes: 10
         with:
           r-version: '4.5'
           use-public-rspm: true
@@ -186,6 +206,7 @@ jobs:
       # fails fast on a syntax error anywhere in the pipeline. Measured on
       # main 2026-10-26: 102 tracked .R files, 0 failures.
       - name: Parse every tracked R file
+        timeout-minutes: 5
         run: Rscript .github/scripts/parse-all.R
 
       # Static check (base R only, no packages, no execution) guarding
@@ -193,6 +214,7 @@ jobs:
       # missing silently drawing invented values instead of refusing to
       # render. Placed here (cheap, before package install) to fail fast.
       - name: Check chart scripts for non-data-derived values
+        timeout-minutes: 5
         run: Rscript .github/scripts/check-chart-authenticity.R
 
       # The cached library holds compiled packages linked against the runner
@@ -207,6 +229,7 @@ jobs:
       # a host OS upgrade now changes the key. "unknown" is left only for a
       # host with neither.
       - name: Record the runner image for the cache key
+        timeout-minutes: 5
         run: |
           image="${ImageOS:-}"
           if [ -z "$image" ] && [ -r /etc/os-release ]; then
@@ -216,12 +239,14 @@ jobs:
           echo "R library cache key image: ${image:-unknown}"
 
       - name: Cache R library
+        timeout-minutes: 10
         uses: actions/cache@v4
         with:
           path: ${{ env.R_LIBS_USER }}
           key: rlib-${{ runner.os }}-${{ env.RUNNER_IMAGE }}-R4.5-${{ hashFiles('.github/r-dependencies.txt') }}
 
       - name: Install R dependencies
+        timeout-minutes: 40
         run: |
           mkdir -p "$R_LIBS_USER"
           Rscript .github/scripts/install-deps.R
@@ -230,4 +255,5 @@ jobs:
       # by name and by reason in the script. Measured on main 2026-10-26:
       # 74 assertions, 0 failures, twice.
       - name: Run R tests
+        timeout-minutes: 20
         run: Rscript .github/scripts/run-tests.R
