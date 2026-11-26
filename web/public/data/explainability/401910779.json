@@ -1,36 +1,36 @@
 {
   "schema_version": "1.0",
   "game_id": "401910779",
-  "generated_at": "2026-11-25T14:02:52Z",
+  "generated_at": "2026-11-26T14:04:10Z",
   "data": {
     "projection_basis": "primary_ensemble",
     "predicted_margin": 18.02,
     "predicted_home_win_prob": 0.9307,
-    "sigma_game": 12.165,
+    "sigma_game": 12.1682,
     "margin_waterfall": [
       {
         "key": "bottom_up",
         "label": "Bottom-up BPM",
         "points": 6.26,
-        "detail": "35% BPM blend (BOS +8.98 vs NOP -8.90)"
+        "detail": "35% BPM blend (BOS +8.93 vs NOP -8.95)"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
-        "points": 2.16,
-        "detail": "25% RAPM blend (BOS +5.07 vs NOP -3.55)"
+        "points": 2.15,
+        "detail": "25% RAPM blend (BOS +5.09 vs NOP -3.53)"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": 2.75,
-        "detail": "20% Shot/Fatigue blend (BOS +8.99 vs NOP -4.75)"
+        "detail": "20% Shot/Fatigue blend (BOS +9.01 vs NOP -4.73)"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
         "points": 3.57,
-        "detail": "20% Embeddings blend (BOS +9.02 vs NOP -8.82)"
+        "detail": "20% Embeddings blend (BOS +8.98 vs NOP -8.86)"
       },
       {
         "key": "home_court",
@@ -43,12 +43,6 @@
         "label": "Schedule & travel",
         "points": 0.89,
         "detail": "NOP fatigue 0.89 minus BOS fatigue 0.00"
-      },
-      {
-        "key": "rounding",
-        "label": "Component rounding",
-        "points": -0.01,
-        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,
@@ -108,8 +102,8 @@
         {
           "feature": "diff_roll_dreb",
           "label": "18-Game Defensive Rebound Diff",
-          "feature_value": 0.5,
-          "z_score": 0.1637,
+          "feature_value": 0.4444,
+          "z_score": 0.1455,
           "shap_log_odds": 0.04092,
           "shap_prob_approx": 0.0101
         },

@@ -1,36 +1,36 @@
 {
   "schema_version": "1.0",
   "game_id": "401910100",
-  "generated_at": "2026-11-25T14:02:52Z",
+  "generated_at": "2026-11-26T14:04:10Z",
   "data": {
     "projection_basis": "primary_ensemble",
     "predicted_margin": -1.36,
-    "predicted_home_win_prob": 0.4556,
-    "sigma_game": 12.1824,
+    "predicted_home_win_prob": 0.4555,
+    "sigma_game": 12.1799,
     "margin_waterfall": [
       {
         "key": "bottom_up",
         "label": "Bottom-up BPM",
         "points": -0.81,
-        "detail": "35% BPM blend (IND +1.76 vs DET +4.07)"
+        "detail": "35% BPM blend (IND +1.71 vs DET +4.02)"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
         "points": -2.36,
-        "detail": "25% RAPM blend (IND -4.70 vs DET +4.74)"
+        "detail": "25% RAPM blend (IND -4.68 vs DET +4.76)"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": -0.03,
-        "detail": "20% Shot/Fatigue blend (IND +3.16 vs DET +3.30)"
+        "detail": "20% Shot/Fatigue blend (IND +3.19 vs DET +3.32)"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
         "points": -0.5,
-        "detail": "20% Embeddings blend (IND +1.59 vs DET +4.07)"
+        "detail": "20% Embeddings blend (IND +1.54 vs DET +4.02)"
       },
       {
         "key": "home_court",
@@ -84,8 +84,8 @@
         {
           "feature": "diff_roll_dreb",
           "label": "18-Game Defensive Rebound Diff",
-          "feature_value": 1.1895,
-          "z_score": 0.3896,
+          "feature_value": 1.1307,
+          "z_score": 0.3703,
           "shap_log_odds": 0.0873,
           "shap_prob_approx": 0.0214
         },

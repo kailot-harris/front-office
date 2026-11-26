@@ -1,36 +1,36 @@
 {
   "schema_version": "1.0",
   "game_id": "401910617",
-  "generated_at": "2026-11-25T14:02:52Z",
+  "generated_at": "2026-11-26T14:04:10Z",
   "data": {
     "projection_basis": "primary_ensemble",
     "predicted_margin": 3.1,
     "predicted_home_win_prob": 0.5985,
-    "sigma_game": 12.4215,
+    "sigma_game": 12.4292,
     "margin_waterfall": [
       {
         "key": "bottom_up",
         "label": "Bottom-up BPM",
         "points": -0.32,
-        "detail": "35% BPM blend (UTA -8.91 vs WAS -8.01)"
+        "detail": "35% BPM blend (UTA -8.96 vs WAS -8.06)"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
         "points": 1.66,
-        "detail": "25% RAPM blend (UTA -0.21 vs WAS -6.85)"
+        "detail": "25% RAPM blend (UTA -0.19 vs WAS -6.83)"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
-        "points": -0.55,
-        "detail": "20% Shot/Fatigue blend (UTA -9.45 vs WAS -6.72)"
+        "points": -0.54,
+        "detail": "20% Shot/Fatigue blend (UTA -9.42 vs WAS -6.70)"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
-        "points": -0.17,
-        "detail": "20% Embeddings blend (UTA -8.90 vs WAS -8.07)"
+        "points": -0.16,
+        "detail": "20% Embeddings blend (UTA -8.94 vs WAS -8.12)"
       },
       {
         "key": "home_court",
@@ -47,7 +47,7 @@
       {
         "key": "rounding",
         "label": "Component rounding",
-        "points": 0.01,
+        "points": -0.01,
         "detail": "2-decimal component rounding residual"
       }
     ],

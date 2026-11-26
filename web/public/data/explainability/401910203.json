@@ -1,36 +1,36 @@
 {
   "schema_version": "1.0",
   "game_id": "401910203",
-  "generated_at": "2026-11-25T14:02:52Z",
+  "generated_at": "2026-11-26T14:04:10Z",
   "data": {
     "projection_basis": "primary_ensemble",
-    "predicted_margin": 5.73,
-    "predicted_home_win_prob": 0.6802,
-    "sigma_game": 12.2359,
+    "predicted_margin": 5.74,
+    "predicted_home_win_prob": 0.6806,
+    "sigma_game": 12.2295,
     "margin_waterfall": [
       {
         "key": "bottom_up",
         "label": "Bottom-up BPM",
         "points": 1.04,
-        "detail": "35% BPM blend (DEN +4.72 vs IND +1.76)"
+        "detail": "35% BPM blend (DEN +4.67 vs IND +1.71)"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
         "points": 1.91,
-        "detail": "25% RAPM blend (DEN +2.93 vs IND -4.70)"
+        "detail": "25% RAPM blend (DEN +2.95 vs IND -4.68)"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": -0.3,
-        "detail": "20% Shot/Fatigue blend (DEN +1.66 vs IND +3.16)"
+        "detail": "20% Shot/Fatigue blend (DEN +1.69 vs IND +3.19)"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
         "points": 0.62,
-        "detail": "20% Embeddings blend (DEN +4.67 vs IND +1.59)"
+        "detail": "20% Embeddings blend (DEN +4.63 vs IND +1.54)"
       },
       {
         "key": "home_court",
@@ -43,12 +43,6 @@
         "label": "Schedule & travel",
         "points": 0.07,
         "detail": "IND fatigue 2.00 minus DEN fatigue 1.93"
-      },
-      {
-        "key": "rounding",
-        "label": "Component rounding",
-        "points": -0.01,
-        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,

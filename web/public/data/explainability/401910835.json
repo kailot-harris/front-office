@@ -1,36 +1,36 @@
 {
   "schema_version": "1.0",
   "game_id": "401910835",
-  "generated_at": "2026-11-25T14:02:52Z",
+  "generated_at": "2026-11-26T14:04:10Z",
   "data": {
     "projection_basis": "primary_ensemble",
-    "predicted_margin": -2.79,
-    "predicted_home_win_prob": 0.4069,
-    "sigma_game": 11.8461,
+    "predicted_margin": -2.8,
+    "predicted_home_win_prob": 0.4066,
+    "sigma_game": 11.8456,
     "margin_waterfall": [
       {
         "key": "bottom_up",
         "label": "Bottom-up BPM",
         "points": -1.91,
-        "detail": "35% BPM blend (WAS -8.01 vs DAL -2.56)"
+        "detail": "35% BPM blend (WAS -8.06 vs DAL -2.61)"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
         "points": -0.6,
-        "detail": "25% RAPM blend (WAS -6.85 vs DAL -4.46)"
+        "detail": "25% RAPM blend (WAS -6.83 vs DAL -4.44)"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": -0.56,
-        "detail": "20% Shot/Fatigue blend (WAS -6.72 vs DAL -3.91)"
+        "detail": "20% Shot/Fatigue blend (WAS -6.70 vs DAL -3.88)"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
         "points": -1.1,
-        "detail": "20% Embeddings blend (WAS -8.07 vs DAL -2.56)"
+        "detail": "20% Embeddings blend (WAS -8.12 vs DAL -2.60)"
       },
       {
         "key": "home_court",
@@ -43,12 +43,6 @@
         "label": "Schedule & travel",
         "points": -1.03,
         "detail": "DAL fatigue 0.82 minus WAS fatigue 1.85"
-      },
-      {
-        "key": "rounding",
-        "label": "Component rounding",
-        "points": 0.01,
-        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,

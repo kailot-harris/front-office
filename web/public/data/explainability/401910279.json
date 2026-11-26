@@ -1,36 +1,36 @@
 {
   "schema_version": "1.0",
   "game_id": "401910279",
-  "generated_at": "2026-11-24T14:04:36Z",
+  "generated_at": "2026-11-26T14:04:10Z",
   "data": {
     "projection_basis": "primary_ensemble",
     "predicted_margin": 4.46,
     "predicted_home_win_prob": 0.6426,
-    "sigma_game": 12.2012,
+    "sigma_game": 12.2015,
     "margin_waterfall": [
       {
         "key": "bottom_up",
         "label": "Bottom-up BPM",
         "points": -0.88,
-        "detail": "35% BPM blend (ATL -0.74 vs IND +1.76)"
+        "detail": "35% BPM blend (ATL -0.79 vs IND +1.71)"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
-        "points": 1.31,
-        "detail": "25% RAPM blend (ATL +0.52 vs IND -4.70)"
+        "points": 1.3,
+        "detail": "25% RAPM blend (ATL +0.54 vs IND -4.68)"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": -0.37,
-        "detail": "20% Shot/Fatigue blend (ATL +1.29 vs IND +3.16)"
+        "detail": "20% Shot/Fatigue blend (ATL +1.32 vs IND +3.19)"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
         "points": -0.46,
-        "detail": "20% Embeddings blend (ATL -0.69 vs IND +1.59)"
+        "detail": "20% Embeddings blend (ATL -0.74 vs IND +1.54)"
       },
       {
         "key": "home_court",
@@ -43,6 +43,12 @@
         "label": "Schedule & travel",
         "points": 2.46,
         "detail": "IND fatigue 2.55 minus ATL fatigue 0.09"
+      },
+      {
+        "key": "rounding",
+        "label": "Component rounding",
+        "points": 0.01,
+        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,
@@ -72,7 +78,7 @@
           "label": "18-Game Offensive Rebound Diff",
           "feature_value": 4.1699,
           "z_score": 1.8244,
-          "shap_log_odds": 0.19817,
+          "shap_log_odds": 0.19813,
           "shap_prob_approx": 0.0482
         },
         {
@@ -80,7 +86,7 @@
           "label": "18-Game True Shooting Diff",
           "feature_value": -0.0151,
           "z_score": -0.4473,
-          "shap_log_odds": -0.19003,
+          "shap_log_odds": -0.18989,
           "shap_prob_approx": -0.0472
         },
         {
@@ -112,7 +118,7 @@
           "label": "16-D Style Embedding Cosine Sim",
           "feature_value": -0.3232,
           "z_score": -1.3105,
-          "shap_log_odds": 0.04071,
+          "shap_log_odds": 0.04085,
           "shap_prob_approx": 0.01
         },
         {
@@ -120,24 +126,24 @@
           "label": "18-Game Defensive Rebound Diff",
           "feature_value": -1.1307,
           "z_score": -0.3706,
-          "shap_log_odds": -0.04066,
-          "shap_prob_approx": -0.01
+          "shap_log_odds": -0.04024,
+          "shap_prob_approx": -0.0099
+        },
+        {
+          "feature": "diff_roll_blk",
+          "label": "18-Game Blocks Diff",
+          "feature_value": -0.9575,
+          "z_score": -0.6693,
+          "shap_log_odds": -0.02006,
+          "shap_prob_approx": -0.005
         },
         {
           "feature": "diff_roll_tovp",
           "label": "18-Game Turnover Rate Diff",
           "feature_value": 0.0014,
           "z_score": 0.0657,
-          "shap_log_odds": -0.01976,
-          "shap_prob_approx": -0.0049
-        },
-        {
-          "feature": "diff_roll_blk",
-          "label": "18-Game Blocks Diff",
-          "feature_value": -0.8987,
-          "z_score": -0.628,
-          "shap_log_odds": -0.01912,
-          "shap_prob_approx": -0.0047
+          "shap_log_odds": -0.01957,
+          "shap_prob_approx": -0.0048
         },
         {
           "feature": "diff_is_b2b",
@@ -152,8 +158,8 @@
           "label": "18-Game Assists Diff",
           "feature_value": 2.5719,
           "z_score": 0.7852,
-          "shap_log_odds": -0.00347,
-          "shap_prob_approx": -0.0009
+          "shap_log_odds": -0.00338,
+          "shap_prob_approx": -0.0008
         },
         {
           "feature": "diff_days_rest",

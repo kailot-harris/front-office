@@ -1,36 +1,36 @@
 {
   "schema_version": "1.0",
   "game_id": "401910638",
-  "generated_at": "2026-11-25T14:02:52Z",
+  "generated_at": "2026-11-26T14:04:10Z",
   "data": {
     "projection_basis": "primary_ensemble",
-    "predicted_margin": -4.67,
-    "predicted_home_win_prob": 0.352,
-    "sigma_game": 12.2911,
+    "predicted_margin": -4.68,
+    "predicted_home_win_prob": 0.3516,
+    "sigma_game": 12.2859,
     "margin_waterfall": [
       {
         "key": "bottom_up",
         "label": "Bottom-up BPM",
         "points": -2.53,
-        "detail": "35% BPM blend (IND +1.76 vs BOS +8.98)"
+        "detail": "35% BPM blend (IND +1.71 vs BOS +8.93)"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
         "points": -2.44,
-        "detail": "25% RAPM blend (IND -4.70 vs BOS +5.07)"
+        "detail": "25% RAPM blend (IND -4.68 vs BOS +5.09)"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
-        "points": -1.17,
-        "detail": "20% Shot/Fatigue blend (IND +3.16 vs BOS +8.99)"
+        "points": -1.16,
+        "detail": "20% Shot/Fatigue blend (IND +3.19 vs BOS +9.01)"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
         "points": -1.49,
-        "detail": "20% Embeddings blend (IND +1.59 vs BOS +9.02)"
+        "detail": "20% Embeddings blend (IND +1.54 vs BOS +8.98)"
       },
       {
         "key": "home_court",
@@ -47,7 +47,7 @@
       {
         "key": "rounding",
         "label": "Component rounding",
-        "points": 0.01,
+        "points": -0.01,
         "detail": "2-decimal component rounding residual"
       }
     ],

@@ -1,36 +1,36 @@
 {
   "schema_version": "1.0",
   "game_id": "401910836",
-  "generated_at": "2026-11-25T14:02:52Z",
+  "generated_at": "2026-11-26T14:04:10Z",
   "data": {
     "projection_basis": "primary_ensemble",
     "predicted_margin": -10.24,
     "predicted_home_win_prob": 0.2,
-    "sigma_game": 12.165,
+    "sigma_game": 12.1682,
     "margin_waterfall": [
       {
         "key": "bottom_up",
         "label": "Bottom-up BPM",
         "points": -6.26,
-        "detail": "35% BPM blend (NOP -8.90 vs BOS +8.98)"
+        "detail": "35% BPM blend (NOP -8.95 vs BOS +8.93)"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
-        "points": -2.16,
-        "detail": "25% RAPM blend (NOP -3.55 vs BOS +5.07)"
+        "points": -2.15,
+        "detail": "25% RAPM blend (NOP -3.53 vs BOS +5.09)"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": -2.75,
-        "detail": "20% Shot/Fatigue blend (NOP -4.75 vs BOS +8.99)"
+        "detail": "20% Shot/Fatigue blend (NOP -4.73 vs BOS +9.01)"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
         "points": -3.57,
-        "detail": "20% Embeddings blend (NOP -8.82 vs BOS +9.02)"
+        "detail": "20% Embeddings blend (NOP -8.86 vs BOS +8.98)"
       },
       {
         "key": "home_court",
@@ -43,12 +43,6 @@
         "label": "Schedule & travel",
         "points": 2.09,
         "detail": "BOS fatigue 2.27 minus NOP fatigue 0.18"
-      },
-      {
-        "key": "rounding",
-        "label": "Component rounding",
-        "points": 0.01,
-        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,
@@ -70,7 +64,7 @@
           "label": "18-Game Turnover Rate Diff",
           "feature_value": 0.0112,
           "z_score": 0.6102,
-          "shap_log_odds": -0.23666,
+          "shap_log_odds": -0.23656,
           "shap_prob_approx": -0.0589
         },
         {
@@ -86,15 +80,15 @@
           "label": "18-Game True Shooting Diff",
           "feature_value": -0.0006,
           "z_score": -0.005,
-          "shap_log_odds": 0.0998,
+          "shap_log_odds": 0.0999,
           "shap_prob_approx": 0.0245
         },
         {
           "feature": "diff_roll_dreb",
           "label": "18-Game Defensive Rebound Diff",
-          "feature_value": -0.5,
-          "z_score": -0.1639,
-          "shap_log_odds": -0.09234,
+          "feature_value": -0.4444,
+          "z_score": -0.1457,
+          "shap_log_odds": -0.09251,
           "shap_prob_approx": -0.0229
         },
         {
@@ -142,7 +136,7 @@
           "label": "18-Game Blocks Diff",
           "feature_value": 0.1111,
           "z_score": 0.0808,
-          "shap_log_odds": 0.01819,
+          "shap_log_odds": 0.01817,
           "shap_prob_approx": 0.0045
         },
         {

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-11-25T14:02:29Z",
+  "generated_at": "2026-11-26T14:03:45Z",
   "sport": "nba",
   "endpoint": "game_detail",
   "season": 2027,
@@ -57,7 +57,7 @@
         "key": "oreb_pct",
         "label": "Offensive Rebound %",
         "away_value": 17.4,
-        "home_value": 41.4,
+        "home_value": 40.7,
         "unit": "pct",
         "higher_is_better": true,
         "description": "Share of available offensive rebounds grabbed against opponent defensive rebounds: 100 * OREB / (OREB + OppDREB)."
@@ -74,8 +74,8 @@
       {
         "key": "ortg",
         "label": "Offensive Rating",
-        "away_value": 98.3,
-        "home_value": 108.5,
+        "away_value": 98.1,
+        "home_value": 108.2,
         "unit": "per100poss",
         "higher_is_better": true,
         "description": "Points scored per 100 estimated Dean Oliver possessions: 100 * PTS / Poss."
@@ -83,8 +83,8 @@
       {
         "key": "drtg",
         "label": "Defensive Rating",
-        "away_value": 108.5,
-        "home_value": 98.3,
+        "away_value": 108.2,
+        "home_value": 98.1,
         "unit": "per100poss",
         "higher_is_better": false,
         "description": "Points allowed per 100 estimated Dean Oliver possessions (equals opponent Offensive Rating)."
@@ -92,8 +92,8 @@
       {
         "key": "pace",
         "label": "Pace",
-        "away_value": 98.6,
-        "home_value": 98.6,
+        "away_value": 98.9,
+        "home_value": 98.9,
         "unit": "poss48",
         "higher_is_better": null,
         "description": "Estimated Dean Oliver possessions per 48 minutes: 48 * Poss / game_minutes."
@@ -146,7 +146,7 @@
         "key": "blocks",
         "label": "Blocks",
         "away_value": 6,
-        "home_value": 4
+        "home_value": 3
       }
     ],
     "box_score": {
@@ -163,8 +163,8 @@
         "fta": 14,
         "ft_pct": 100,
         "oreb": 8,
-        "dreb": 34,
-        "reb": 42,
+        "dreb": 35,
+        "reb": 43,
         "ast": 30,
         "stl": 10,
         "blk": 6,
@@ -174,10 +174,10 @@
         "pf": 21,
         "efg_pct": 48.8,
         "ts_pct": 53.2,
-        "possessions_est": 98.6,
-        "ortg": 98.3,
-        "drtg": 108.5,
-        "pace": 98.6
+        "possessions_est": 98.9,
+        "ortg": 98.1,
+        "drtg": 108.2,
+        "pace": 98.9
       },
       "home_totals": {
         "minutes": 241,
@@ -196,17 +196,17 @@
         "reb": 62,
         "ast": 23,
         "stl": 12,
-        "blk": 4,
+        "blk": 3,
         "tov": 15,
         "team_tov": 2,
         "total_tov": 17,
         "pf": 15,
         "efg_pct": 43.9,
         "ts_pct": 49,
-        "possessions_est": 98.6,
-        "ortg": 108.5,
-        "drtg": 98.3,
-        "pace": 98.6
+        "possessions_est": 98.9,
+        "ortg": 108.2,
+        "drtg": 98.1,
+        "pace": 98.9
       },
       "away_players": [
         {
@@ -219,8 +219,8 @@
           "minutes": 38,
           "points": 18,
           "oreb": 1,
-          "dreb": 10,
-          "reb": 11,
+          "dreb": 11,
+          "reb": 12,
           "ast": 5,
           "stl": 1,
           "blk": 2,
@@ -238,7 +238,7 @@
           "ft_pct": 100,
           "efg_pct": 70,
           "ts_pct": 76.5,
-          "game_score": 20.4
+          "game_score": 20.7
         },
         {
           "playerId": "5107199",
@@ -504,7 +504,7 @@
           "reb": 14,
           "ast": 8,
           "stl": 5,
-          "blk": 3,
+          "blk": 2,
           "tov": 3,
           "pf": 1,
           "plus_minus": 9,
@@ -519,7 +519,7 @@
           "ft_pct": 50,
           "efg_pct": 22.2,
           "ts_pct": 25.3,
-          "game_score": 15.4
+          "game_score": 14.7
         },
         {
           "playerId": "4701230",
@@ -816,9 +816,9 @@
           "playerId": "4684742",
           "playerName": "Ausar Thompson",
           "points": 18,
-          "reb": 11,
+          "reb": 12,
           "ast": 5,
-          "game_score": 20.4
+          "game_score": 20.7
         },
         {
           "teamAbbr": "ATL",
@@ -928,8 +928,8 @@
             {
               "key": "ortg",
               "entering": 115.3,
-              "realized": 98.3,
-              "difference": -17
+              "realized": 98.1,
+              "difference": -17.2
             }
           ]
         },
@@ -952,8 +952,8 @@
             {
               "key": "oreb_pct",
               "entering": 28.1,
-              "realized": 41.4,
-              "difference": 13.3
+              "realized": 40.7,
+              "difference": 12.6
             },
             {
               "key": "fta_rate",
@@ -964,8 +964,8 @@
             {
               "key": "ortg",
               "entering": 113,
-              "realized": 108.5,
-              "difference": -4.5
+              "realized": 108.2,
+              "difference": -4.8
             }
           ]
         }

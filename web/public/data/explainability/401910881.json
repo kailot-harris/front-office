@@ -1,36 +1,36 @@
 {
   "schema_version": "1.0",
   "game_id": "401910881",
-  "generated_at": "2026-11-25T14:02:52Z",
+  "generated_at": "2026-11-26T14:04:10Z",
   "data": {
     "projection_basis": "primary_ensemble",
-    "predicted_margin": 11.64,
-    "predicted_home_win_prob": 0.8376,
-    "sigma_game": 11.8194,
+    "predicted_margin": 12.63,
+    "predicted_home_win_prob": 0.8573,
+    "sigma_game": 11.824,
     "margin_waterfall": [
       {
         "key": "bottom_up",
         "label": "Bottom-up BPM",
-        "points": 2.8,
-        "detail": "35% BPM blend (ORL -0.01 vs WAS -8.01)"
+        "points": 3.26,
+        "detail": "35% BPM blend (ORL +1.24 vs WAS -8.06)"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
-        "points": 1.78,
-        "detail": "25% RAPM blend (ORL +0.26 vs WAS -6.85)"
+        "points": 1.79,
+        "detail": "25% RAPM blend (ORL +0.34 vs WAS -6.83)"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
-        "points": 1.24,
-        "detail": "20% Shot/Fatigue blend (ORL -0.54 vs WAS -6.72)"
+        "points": 1.5,
+        "detail": "20% Shot/Fatigue blend (ORL +0.79 vs WAS -6.70)"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
-        "points": 1.61,
-        "detail": "20% Embeddings blend (ORL -0.03 vs WAS -8.07)"
+        "points": 1.87,
+        "detail": "20% Embeddings blend (ORL +1.22 vs WAS -8.12)"
       },
       {
         "key": "home_court",
@@ -68,10 +68,10 @@
         {
           "feature": "diff_roll_tovp",
           "label": "18-Game Turnover Rate Diff",
-          "feature_value": 0.0125,
-          "z_score": 0.6868,
-          "shap_log_odds": -0.26186,
-          "shap_prob_approx": -0.0652
+          "feature_value": 0.0131,
+          "z_score": 0.7161,
+          "shap_log_odds": -0.25844,
+          "shap_prob_approx": -0.0643
         },
         {
           "feature": "diff_fatigue_index",
@@ -110,16 +110,8 @@
           "label": "16-D Style Embedding Cosine Sim",
           "feature_value": 0.37,
           "z_score": 1.5846,
-          "shap_log_odds": 0.0187,
-          "shap_prob_approx": 0.0046
-        },
-        {
-          "feature": "diff_roll_stl",
-          "label": "18-Game Steals Diff",
-          "feature_value": 0.4804,
-          "z_score": 0.3003,
-          "shap_log_odds": 0.01835,
-          "shap_prob_approx": 0.0045
+          "shap_log_odds": 0.01992,
+          "shap_prob_approx": 0.0049
         },
         {
           "feature": "diff_roll_blk",
@@ -128,6 +120,14 @@
           "z_score": -0.8092,
           "shap_log_odds": -0.01683,
           "shap_prob_approx": -0.0042
+        },
+        {
+          "feature": "diff_roll_stl",
+          "label": "18-Game Steals Diff",
+          "feature_value": 0.4804,
+          "z_score": 0.3003,
+          "shap_log_odds": 0.01372,
+          "shap_prob_approx": 0.0034
         },
         {
           "feature": "diff_roll_pts",
