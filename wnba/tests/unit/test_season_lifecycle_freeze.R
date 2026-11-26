@@ -2,7 +2,9 @@
 # test_season_lifecycle_freeze.R  (WNBA#250)
 # tools/freeze_season.R: season-end detection, refusal of incomplete files,
 # frozen_sha256 recording, --thaw lifecycle moves, and a freeze -> manifest ->
-# off-season gate round trip. Offline: temp-dir fixtures only.
+# off-season gate round trip, regular-season-only files, and already-frozen
+# entries (kept on a matching hash, refused on a changed one). Offline: temp-dir
+# fixtures only.
 # Run: Rscript tests/unit/test_season_lifecycle_freeze.R
 # ==============================================================================
 
@@ -106,5 +108,73 @@ invisible(freeze_season(2026L, data_dir = d2, registry_path = reg3, schedule = l
                         season_files = LC_SEASON_FILES, today = TODAY, now = NOW))
 t3 <- thaw_season(2026L, registry_path = reg3, season_files = LC_SEASON_FILES)
 check("thaw leaves the same season's frozen files alone", length(t3$to_live) == 0 && length(t3$to_archived) == 0)
+
+cat("\n-- regular-season-only files freeze at the last regular-season game --\n")
+LC_REG_FILES <- c(LC_SEASON_FILES, "player_leaders.json")
+lc_leaders <- function(through) list("player_leaders.json" = list(
+  schema_version = 1L, generated_at = "2026-11-26T06:00:00Z", season = "2026", through_date = through, cards = list()))
+check("last regular-season game = latest completed season_type 2 game",
+      identical(fs_season_last_game(lc_schedule(), 2026L, today = TODAY, regular_season_only = TRUE), as.Date("2026-09-10")))
+d_rs <- lc_data_dir(bracket_through = "2026-10-29", extra = lc_leaders("2026-09-10"))
+reg_rs <- tempfile("fs_reg_", fileext = ".json")
+r_rs <- freeze_season(2026L, data_dir = d_rs, registry_path = reg_rs, schedule = lc_schedule(),
+                      season_files = LC_REG_FILES, regular_season_files = "player_leaders.json",
+                      today = TODAY, now = NOW)
+check("a regular-season file that reaches the regular-season end freezes at that date",
+      r_rs$ok && identical(r_rs$frozen[["player_leaders.json"]]$final_through_date, "2026-09-10") &&
+        identical(wnba_read_lifecycle_registry(reg_rs)$files[["player_leaders.json"]]$final_through_date, "2026-09-10"),
+      r_rs$refused$reason)
+check("other season files in the same freeze keep the season's last game",
+      identical(r_rs$frozen[["playoff_bracket_2026.json"]]$final_through_date, "2026-10-29"))
+r_rs0 <- freeze_season(2026L, data_dir = d_rs, registry_path = tempfile("fs_reg_", fileext = ".json"),
+                       schedule = lc_schedule(), season_files = LC_REG_FILES, regular_season_files = character(0),
+                       today = TODAY, now = NOW, write = FALSE)
+check("the same file outside the regular-season list must reach the season's last game",
+      !r_rs0$ok && identical(r_rs0$refused$file, "player_leaders.json"), r_rs0$refused$reason)
+
+d_rs_short <- lc_data_dir(bracket_through = "2026-10-29", extra = lc_leaders("2026-09-03"))
+reg_rs_short <- tempfile("fs_reg_", fileext = ".json")
+r_rs_short <- freeze_season(2026L, data_dir = d_rs_short, registry_path = reg_rs_short, schedule = lc_schedule(),
+                            season_files = LC_REG_FILES, regular_season_files = "player_leaders.json",
+                            today = TODAY, now = NOW)
+check("a regular-season file that stops before the regular-season end is refused",
+      !r_rs_short$ok && identical(r_rs_short$refused$file, "player_leaders.json") &&
+        grepl("2026-09-03 is before the season's last regular-season game 2026-09-10",
+              r_rs_short$refused$reason, fixed = TRUE) && !file.exists(reg_rs_short),
+      r_rs_short$refused$reason)
+
+cat("\n-- already-frozen entries --\n")
+d_k <- lc_data_dir(bracket_through = "2026-10-29")
+reg_k <- tempfile("fs_reg_", fileext = ".json")
+r_k1 <- freeze_season(2026L, data_dir = d_k, registry_path = reg_k, schedule = lc_schedule(),
+                      season_files = LC_SEASON_FILES, regular_season_files = character(0), today = TODAY, now = NOW)
+before_k <- wnba_read_lifecycle_registry(reg_k)$files
+lc_write(d_k, "player_leaders.json", lc_leaders("2026-09-10")[[1]])
+NOW2 <- as.POSIXct("2026-11-26 21:00:00", tz = "UTC")
+r_k2 <- freeze_season(2026L, data_dir = d_k, registry_path = reg_k, schedule = lc_schedule(),
+                      season_files = LC_REG_FILES, regular_season_files = "player_leaders.json",
+                      today = TODAY, now = NOW2)
+after_k <- wnba_read_lifecycle_registry(reg_k)$files
+check("an already-frozen file with a matching hash keeps its frozen_at",
+      r_k1$ok && r_k2$ok && identical(sort(r_k2$kept), sort(LC_SEASON_FILES)) &&
+        identical(names(r_k2$frozen), "player_leaders.json") &&
+        identical(after_k[LC_SEASON_FILES], before_k[LC_SEASON_FILES]) &&
+        identical(after_k[["playoff_bracket_2026.json"]]$frozen_at, "2026-11-24T03:00:00Z") &&
+        identical(after_k[["player_leaders.json"]]$frozen_at, "2026-11-26T21:00:00Z"),
+      c(r_k2$refused$reason, r_k2$kept))
+reg_k_bytes <- readBin(reg_k, "raw", n = file.info(reg_k)$size)
+lc_write(d_k, "matchups_slates.json", list(
+  generated_at = "2026-11-25T12:00:00Z",
+  matchups = list(list(game_date = "2026-10-20", is_completed = TRUE),
+                  list(game_date = "2026-10-29", is_completed = TRUE),
+                  list(game_date = "2026-10-29", is_completed = TRUE))))
+r_k3 <- freeze_season(2026L, data_dir = d_k, registry_path = reg_k, schedule = lc_schedule(),
+                      season_files = LC_REG_FILES, regular_season_files = "player_leaders.json",
+                      today = TODAY, now = NOW2)
+check("an already-frozen file with a changed hash is refused and nothing is written",
+      !r_k3$ok && identical(r_k3$refused$file, "matchups_slates.json") &&
+        grepl("content hash changed", r_k3$refused$reason, fixed = TRUE) &&
+        identical(readBin(reg_k, "raw", n = file.info(reg_k)$size), reg_k_bytes),
+      r_k3$refused$reason)
 
 lc_finish()
