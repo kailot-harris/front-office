@@ -525,6 +525,10 @@ run_registered_stage("matchups_dataset")
 # 18. Landing digest for the front-office landing page (WNBA#224); reads matchups_slates.json.
 run_registered_stage("landing_digest")
 
+# 19. League leaders panel (WNBA_analytics#268). Reads the current-season player and team
+# box-score caches, fits current-season RAPM, and writes web/public/data/player_leaders.json.
+run_registered_stage("player_leaders")
+
 # 18a. Weekly GIF re-render (front-office weekly GIF design, 2026-11-21). Runs the scheduled
 # tools/gif_*.R scripts (each in its own R process, 10-min timeout, process tree killed on
 # timeout) when in season and the last successful render is GIF_RERENDER_DAYS+ days old

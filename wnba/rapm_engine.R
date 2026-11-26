@@ -1107,6 +1107,6 @@ estimate_rapm_ratings <- function(lambda = RAPM_LAMBDA, seasons = ALL_SEASONS, f
   return(rapm_df)
 }
 
-if (!interactive()) {
+if (!interactive() && sys.nframe() == 0 && !nzchar(Sys.getenv("WNBA_SKIP_STAGE_AUTORUN"))) {
   invisible(estimate_rapm_ratings())
 }

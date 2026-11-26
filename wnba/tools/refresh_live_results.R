@@ -72,6 +72,37 @@ RLR_DEFAULT_LOOKBACK_DAYS <- 3L
 
 .rlr_is_true <- function(x) !is.na(x) & x
 
+# League leaders patcher (WNBA_analytics#268). build_player_leaders.R is jsonlite
+# + base R only, so it runs in the same minimal CI job without renv. Loading it
+# is fail-safe: if it cannot be sourced, the leaders step is skipped with a
+# message and score patching proceeds as usual.
+.rlr_leaders_env <- local({
+  env <- new.env(parent = globalenv())
+  old <- Sys.getenv("WNBA_SKIP_STAGE_AUTORUN", unset = NA)
+  Sys.setenv(WNBA_SKIP_STAGE_AUTORUN = "1")
+  on.exit(if (is.na(old)) Sys.unsetenv("WNBA_SKIP_STAGE_AUTORUN") else
+    Sys.setenv(WNBA_SKIP_STAGE_AUTORUN = old), add = TRUE)
+  ok <- tryCatch({ sys.source("build_player_leaders.R", envir = env); TRUE },
+                 error = function(e) {
+                   message(sprintf("refresh_live_results: leaders patcher unavailable (%s); scores only.",
+                                   conditionMessage(e)))
+                   FALSE
+                 })
+  if (ok) env else NULL
+})
+
+#' Add newly finished games' player box scores to player_leaders.json
+#'
+#' Fail-safe wrapper around pl_refresh_leaders(): any error is caught and
+#' reported, and the leaders file is left unchanged (pl_refresh_leaders is all
+#' or nothing across the night's games). Absent leaders file -> nothing to patch.
+.rlr_refresh_leaders <- function(leaders_path, matchups, summary_fetcher = NULL) {
+  if (is.null(.rlr_leaders_env)) return(list(status = "patcher_unavailable", n_games = 0L, file = NULL))
+  fetch <- summary_fetcher %||% .rlr_leaders_env$pl_espn_fetch_summary
+  tryCatch(.rlr_leaders_env$pl_refresh_leaders(leaders_path, matchups, fetch_summary = fetch),
+           error = function(e) list(status = sprintf("error: %s", conditionMessage(e)), n_games = 0L, file = NULL))
+}
+
 # ------------------------------------------------------------------------------
 # Patch
 # ------------------------------------------------------------------------------
@@ -255,10 +286,13 @@ refresh_live_results <- function(dates = NULL,
                                  payload_path = WEB_JSON_MATCHUPS_SLATES,
                                  fetcher = espn_fetch_dates,
                                  today = Sys.Date(),
-                                 digest_path = LD_DIGEST_PATH) {
+                                 digest_path = LD_DIGEST_PATH,
+                                 summary_fetcher = NULL,
+                                 leaders_path = file.path(dirname(payload_path), basename(WEB_JSON_PLAYER_LEADERS))) {
   res <- .rlr_refresh_matchups(dates, lookback_days, payload_path, fetcher, today)
   rows <- jsonlite::fromJSON(payload_path, simplifyVector = TRUE)$matchups
   res$digest_file <- if (isTRUE(ld_patch_digest(rows, digest_path))) digest_path else NULL
+  res$leaders <- .rlr_refresh_leaders(leaders_path, rows, summary_fetcher)
   res
 }
 
@@ -320,5 +354,9 @@ local({
     cat("No files changed.\n")
   } else {
     cat(sprintf("Files rewritten: %s\n", basename(res$file)))
+  }
+  if (!is.null(res$leaders)) {
+    cat(sprintf("League leaders: %s (%d game(s) added)%s\n", res$leaders$status, res$leaders$n_games,
+                if (is.null(res$leaders$file)) "" else sprintf(", rewrote %s", basename(res$leaders$file))))
   }
 })

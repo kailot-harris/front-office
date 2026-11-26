@@ -1,7 +1,23 @@
 import { Metadata } from 'next';
+import fs from 'fs';
+import path from 'path';
 import { getPlayersData } from '@/lib/data';
 import { PlayersClient } from '@/components/PlayersClient';
 import { HowToRead } from '@/components/HowToRead';
+import { LeagueLeadersPanel } from '@/components/LeagueLeadersPanel';
+import type { PlayerLeadersPayload } from '@/lib/playerLeadersTypes';
+
+// League leaders panel (WNBA_analytics#268): read at build time; a missing or
+// unreadable file shows an "unavailable" note instead of failing the page.
+function getPlayerLeaders(): PlayerLeadersPayload | null {
+  try {
+    const filePath = path.join(process.cwd(), 'public', 'data', 'player_leaders.json');
+    return JSON.parse(fs.readFileSync(filePath, 'utf-8')) as PlayerLeadersPayload;
+  } catch (error) {
+    console.error('Error reading player_leaders.json:', error);
+    return null;
+  }
+}
 
 export const metadata: Metadata = {
   title: 'Player Ratings & Projections',
@@ -11,6 +27,7 @@ export const metadata: Metadata = {
 
 export default function PlayersPage() {
   const players = getPlayersData();
+  const leaders = getPlayerLeaders();
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -41,6 +58,8 @@ export default function PlayersPage() {
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-violet-400 via-violet-500/40 to-transparent" />
       </div>
+
+      <LeagueLeadersPanel data={leaders} />
 
       <PlayersClient players={players} />
     </div>

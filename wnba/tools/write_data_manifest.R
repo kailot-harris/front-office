@@ -138,7 +138,10 @@ DM_COVERAGE_EXTRACTORS <- list(
                                          `[[`, "game_date"))),
   "offseason_transactions.json" = list(
     source = "payload:[].date",
-    fn = function(j) .dm_max_date(lapply(j, `[[`, "date")))
+    fn = function(j) .dm_max_date(lapply(j, `[[`, "date"))),
+  "player_leaders.json" = list(
+    source = "payload:through_date",
+    fn = function(j) .dm_max_date(j$through_date))
 )
 
 DM_UNDATED_NOTES <- c(
