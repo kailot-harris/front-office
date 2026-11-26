@@ -59,9 +59,31 @@ ok("last success 6 days ago -> due, even though a GIF looks brand new",
    is.null(due6$skipped_reason) && identical(due6$rendered, basename(good)))
 unlink(out_file)
 unlink(status)
+# Fallback reads the rendered cache GIFs (status file's directory), not media_dir.
+cache_gif <- file.path(tmp, "gif_x.gif"); writeBin(as.raw(1:3), cache_gif)
+Sys.setFileTime(cache_gif, now + 6 * 86400)
 nd2 <- run_render_weekly_gifs(media, scripts = good, in_season = TRUE, now = now + 7 * 86400, status_path = status)
-ok("status file missing -> falls back to newest GIF mtime (1 day old -> not due)",
+ok("status file missing -> falls back to newest cache GIF mtime (1 day old -> not due)",
    identical(nd2$skipped_reason, "not_due") && !file.exists(out_file))
+ok("a skip on the fallback does not record it as last_success_at",
+   is.null(jsonlite::fromJSON(status)$last_success_at))
+# Regression: a pull/checkout gives media_dir GIFs a fresh mtime while the cache GIFs are
+# 9 days old; with no status file the stage must be due, not "not_due" from the checkout time.
+unlink(status)
+Sys.setFileTime(cache_gif, now - 2 * 86400)
+Sys.setFileTime(g, now + 7 * 86400)
+co <- run_render_weekly_gifs(media, scripts = good, in_season = TRUE, now = now + 7 * 86400, status_path = status)
+ok("fresh checkout mtime in media_dir does not hide 9-day-old cache GIFs (due)",
+   is.null(co$skipped_reason) && identical(co$rendered, basename(good)) && file.exists(out_file))
+# Regression: a status last_success_at that no render backs up (cache GIFs older) is capped
+# by the cache GIF mtime, so the stage is due once those GIFs are 6+ days old.
+unlink(out_file)
+writeLines(sprintf('{"last_success_at":"%s"}', format(now + 5 * 86400, "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")), status)
+Sys.setFileTime(cache_gif, now - 2 * 86400)
+pz <- run_render_weekly_gifs(media, scripts = good, in_season = TRUE, now = now + 7 * 86400, status_path = status)
+ok("status time newer than every cache GIF is capped by the cache GIF mtime (due)",
+   is.null(pz$skipped_reason) && identical(pz$rendered, basename(good)) && file.exists(out_file))
+unlink(c(cache_gif, out_file))
 
 Sys.setenv(FO_FORCE_GIF_RENDER = "1")
 forced <- run_render_weekly_gifs(media, scripts = good, in_season = FALSE, now = now, status_path = status)

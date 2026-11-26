@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-25T12:23:06Z",
+  "generated_at": "2026-11-26T17:58:53Z",
   "season": "2026",
   "season_type": "REG",
-  "through_date": "2026-11-23",
+  "through_date": "2026-11-25",
   "groups": [
     {
       "key": "passing",
@@ -38,7 +38,7 @@
       "unit_label": "games played",
       "minimum_full_season": 8,
       "minimum_constant": "LEADERS_MIN_GAMES_YARDS_PER_GAME",
-      "through_date": "2026-11-23",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -66,22 +66,22 @@
         },
         {
           "rank": 2,
-          "player_id": "00-0036264",
-          "player": "Jordan Love",
-          "team": "GB",
-          "position": "QB",
-          "value": 283.8,
-          "sample": 10,
-          "required": 4.7,
-          "team_games_played": 10
-        },
-        {
-          "rank": 3,
           "player_id": "00-0033077",
           "player": "Dak Prescott",
           "team": "DAL",
           "position": "QB",
           "value": 277.1818,
+          "sample": 11,
+          "required": 5.2,
+          "team_games_played": 11
+        },
+        {
+          "rank": 3,
+          "player_id": "00-0036264",
+          "player": "Jordan Love",
+          "team": "GB",
+          "position": "QB",
+          "value": 276,
           "sample": 11,
           "required": 5.2,
           "team_games_played": 11
@@ -143,23 +143,23 @@
         },
         {
           "rank": 9,
-          "player_id": "00-0026498",
-          "player": "Matthew Stafford",
-          "team": "LA",
-          "position": "QB",
-          "value": 262.3,
-          "sample": 10,
-          "required": 4.7,
-          "team_games_played": 10
-        },
-        {
-          "rank": 10,
           "player_id": "00-0036971",
           "player": "Trevor Lawrence",
           "team": "JAX",
           "position": "QB",
           "value": 258.5,
           "sample": 10,
+          "required": 4.7,
+          "team_games_played": 10
+        },
+        {
+          "rank": 10,
+          "player_id": "00-0029604",
+          "player": "Kirk Cousins",
+          "team": "MIN",
+          "position": "QB",
+          "value": 252.9091,
+          "sample": 11,
           "required": 4.7,
           "team_games_played": 10
         }
@@ -176,7 +176,7 @@
       "unit_label": "season total",
       "minimum_full_season": null,
       "minimum_constant": null,
-      "through_date": "2026-11-23",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -186,7 +186,7 @@
       "source": "nflreadr::load_player_stats(summary_level = \"week\")",
       "refresh": "pipeline_and_evening",
       "formula": "sum(passing TDs)",
-      "candidates": 1838,
+      "candidates": 1840,
       "qualified_count": 50,
       "excluded_no_value": 0,
       "notes": null,
@@ -270,20 +270,20 @@
         },
         {
           "rank": 8,
-          "player_id": "00-0033106",
-          "player": "Jared Goff",
-          "team": "DET",
-          "position": "QB",
-          "value": 20,
-          "sample": null,
-          "required": null,
-          "team_games_played": 10
-        },
-        {
-          "rank": 8,
           "player_id": "00-0036264",
           "player": "Jordan Love",
           "team": "GB",
+          "position": "QB",
+          "value": 21,
+          "sample": null,
+          "required": null,
+          "team_games_played": 11
+        },
+        {
+          "rank": 9,
+          "player_id": "00-0033106",
+          "player": "Jared Goff",
+          "team": "DET",
           "position": "QB",
           "value": 20,
           "sample": null,
@@ -299,7 +299,7 @@
           "value": 19,
           "sample": null,
           "required": null,
-          "team_games_played": 10
+          "team_games_played": 11
         }
       ]
     },
@@ -314,7 +314,7 @@
       "unit_label": "dropbacks",
       "minimum_full_season": 250,
       "minimum_constant": "LEADERS_MIN_DROPBACKS_PASSING_RATES",
-      "through_date": "2026-11-23",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -452,7 +452,7 @@
       "unit_label": "dropbacks",
       "minimum_full_season": 250,
       "minimum_constant": "LEADERS_MIN_DROPBACKS_PASSING_RATES",
-      "through_date": "2026-11-23",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": true,
       "noise_note_text": "Mostly noise at season sample sizes: treat the order as rough.",
@@ -590,7 +590,7 @@
       "unit_label": "dropbacks",
       "minimum_full_season": 250,
       "minimum_constant": "LEADERS_MIN_DROPBACKS_PASSING_RATES",
-      "through_date": "2026-11-23",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -699,10 +699,10 @@
           "player": "Matthew Stafford",
           "team": "LA",
           "position": "QB",
-          "value": 0.4897,
-          "sample": 388,
-          "required": 147.1,
-          "team_games_played": 10
+          "value": 0.4903,
+          "sample": 412,
+          "required": 161.8,
+          "team_games_played": 11
         },
         {
           "rank": 10,
@@ -728,7 +728,7 @@
       "unit_label": "dropbacks",
       "minimum_full_season": 250,
       "minimum_constant": "LEADERS_MIN_DROPBACKS_PASSING_RATES",
-      "through_date": "2026-11-23",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -793,10 +793,10 @@
           "player": "Matthew Stafford",
           "team": "LA",
           "position": "QB",
-          "value": 0.0387,
-          "sample": 388,
-          "required": 147.1,
-          "team_games_played": 10
+          "value": 0.0388,
+          "sample": 412,
+          "required": 161.8,
+          "team_games_played": 11
         },
         {
           "rank": 6,
@@ -866,7 +866,7 @@
       "unit_label": "dropbacks",
       "minimum_full_season": 250,
       "minimum_constant": "LEADERS_MIN_DROPBACKS_PASSING_RATES",
-      "through_date": "2026-11-23",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": true,
       "noise_note_text": "Mostly noise at season sample sizes: treat the order as rough.",
@@ -1004,7 +1004,7 @@
       "unit_label": "games played",
       "minimum_full_season": 8,
       "minimum_constant": "LEADERS_MIN_GAMES_YARDS_PER_GAME",
-      "through_date": "2026-11-23",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -1014,10 +1014,10 @@
       "source": "nflreadr::load_player_stats(summary_level = \"week\") + load_snap_counts()",
       "refresh": "pipeline_and_evening",
       "formula": "sum(rushing yards) / games played",
-      "candidates": 268,
+      "candidates": 270,
       "qualified_count": 206,
       "excluded_no_value": 0,
-      "notes": "4 of 272 pool players have no linked snap-count rows and cannot be ranked.",
+      "notes": "4 of 274 pool players have no linked snap-count rows and cannot be ranked.",
       "leaders": [
         {
           "rank": 1,
@@ -1142,7 +1142,7 @@
       "unit_label": "designed carries",
       "minimum_full_season": 100,
       "minimum_constant": "LEADERS_MIN_DESIGNED_CARRIES_RUSHING_RATES",
-      "through_date": "2026-11-23",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": true,
       "noise_note_text": "Mostly noise at season sample sizes: treat the order as rough.",
@@ -1152,8 +1152,8 @@
       "source": "nflreadr::load_pbp()",
       "refresh": "pipeline_and_evening",
       "formula": "sum(epa) / designed carries",
-      "candidates": 272,
-      "qualified_count": 45,
+      "candidates": 274,
+      "qualified_count": 44,
       "excluded_no_value": 0,
       "notes": null,
       "leaders": [
@@ -1163,10 +1163,10 @@
           "player": "Blake Corum",
           "team": "LA",
           "position": "RB",
-          "value": 0.17,
-          "sample": 103,
-          "required": 58.8,
-          "team_games_played": 10
+          "value": 0.1563,
+          "sample": 135,
+          "required": 64.7,
+          "team_games_played": 11
         },
         {
           "rank": 2,
@@ -1280,7 +1280,7 @@
       "unit_label": "designed carries",
       "minimum_full_season": 100,
       "minimum_constant": "LEADERS_MIN_DESIGNED_CARRIES_RUSHING_RATES",
-      "through_date": "2026-11-23",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": true,
       "noise_note_text": "Mostly noise at season sample sizes: treat the order as rough.",
@@ -1290,8 +1290,8 @@
       "source": "nflreadr::load_pbp()",
       "refresh": "pipeline_and_evening",
       "formula": "sum(success) / designed carries",
-      "candidates": 272,
-      "qualified_count": 45,
+      "candidates": 274,
+      "qualified_count": 44,
       "excluded_no_value": 0,
       "notes": null,
       "leaders": [
@@ -1301,10 +1301,10 @@
           "player": "Blake Corum",
           "team": "LA",
           "position": "RB",
-          "value": 0.6019,
-          "sample": 103,
-          "required": 58.8,
-          "team_games_played": 10
+          "value": 0.563,
+          "sample": 135,
+          "required": 64.7,
+          "team_games_played": 11
         },
         {
           "rank": 2,
@@ -1396,12 +1396,12 @@
         },
         {
           "rank": 10,
-          "player_id": "00-0037840",
-          "player": "Kyren Williams",
-          "team": "LA",
+          "player_id": "00-0036555",
+          "player": "Chuba Hubbard",
+          "team": "CAR",
           "position": "RB",
-          "value": 0.4604,
-          "sample": 139,
+          "value": 0.4574,
+          "sample": 188,
           "required": 58.8,
           "team_games_played": 10
         }
@@ -1418,7 +1418,7 @@
       "unit_label": "designed carries",
       "minimum_full_season": 100,
       "minimum_constant": "LEADERS_MIN_DESIGNED_CARRIES_RUSHING_RATES",
-      "through_date": "2026-11-22",
+      "through_date": "2026-11-23",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -1556,7 +1556,7 @@
       "unit_label": "games played",
       "minimum_full_season": 8,
       "minimum_constant": "LEADERS_MIN_GAMES_YARDS_PER_GAME",
-      "through_date": "2026-11-23",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -1567,7 +1567,7 @@
       "refresh": "pipeline_and_evening",
       "formula": "sum(receiving yards) / games played",
       "candidates": 464,
-      "qualified_count": 366,
+      "qualified_count": 365,
       "excluded_no_value": 0,
       "notes": "1 of 465 pool players have no linked snap-count rows and cannot be ranked.",
       "leaders": [
@@ -1590,8 +1590,8 @@
           "position": "WR",
           "value": 102.1429,
           "sample": 7,
-          "required": 4.7,
-          "team_games_played": 10
+          "required": 5.2,
+          "team_games_played": 11
         },
         {
           "rank": 3,
@@ -1606,17 +1606,6 @@
         },
         {
           "rank": 4,
-          "player_id": "00-0038124",
-          "player": "Christian Watson",
-          "team": "GB",
-          "position": "WR",
-          "value": 91.6,
-          "sample": 10,
-          "required": 4.7,
-          "team_games_played": 10
-        },
-        {
-          "rank": 5,
           "player_id": "00-0036900",
           "player": "Ja'Marr Chase",
           "team": "CIN",
@@ -1625,6 +1614,17 @@
           "sample": 10,
           "required": 4.7,
           "team_games_played": 10
+        },
+        {
+          "rank": 5,
+          "player_id": "00-0038124",
+          "player": "Christian Watson",
+          "team": "GB",
+          "position": "WR",
+          "value": 89.1818,
+          "sample": 11,
+          "required": 5.2,
+          "team_games_played": 11
         },
         {
           "rank": 6,
@@ -1650,23 +1650,23 @@
         },
         {
           "rank": 8,
-          "player_id": "00-0040667",
-          "player": "Matthew Golden",
-          "team": "GB",
-          "position": "WR",
-          "value": 85.3,
-          "sample": 10,
-          "required": 4.7,
-          "team_games_played": 10
-        },
-        {
-          "rank": 9,
           "player_id": "00-0039338",
           "player": "Brock Bowers",
           "team": "LV",
           "position": "TE",
           "value": 84.5,
           "sample": 8,
+          "required": 5.2,
+          "team_games_played": 11
+        },
+        {
+          "rank": 9,
+          "player_id": "00-0040667",
+          "player": "Matthew Golden",
+          "team": "GB",
+          "position": "WR",
+          "value": 81.0909,
+          "sample": 11,
           "required": 5.2,
           "team_games_played": 11
         },
@@ -1694,7 +1694,7 @@
       "unit_label": "season total",
       "minimum_full_season": null,
       "minimum_constant": null,
-      "through_date": "2026-11-23",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -1704,7 +1704,7 @@
       "source": "nflreadr::load_player_stats(summary_level = \"week\")",
       "refresh": "pipeline_and_evening",
       "formula": "sum(receptions)",
-      "candidates": 1838,
+      "candidates": 1840,
       "qualified_count": 441,
       "excluded_no_value": 0,
       "notes": null,
@@ -1762,7 +1762,7 @@
           "value": 70,
           "sample": null,
           "required": null,
-          "team_games_played": 10
+          "team_games_played": 11
         },
         {
           "rank": 6,
@@ -1803,10 +1803,10 @@
           "player": "Matthew Golden",
           "team": "GB",
           "position": "WR",
-          "value": 58,
+          "value": 59,
           "sample": null,
           "required": null,
-          "team_games_played": 10
+          "team_games_played": 11
         },
         {
           "rank": 10,
@@ -1832,7 +1832,7 @@
       "unit_label": "targets",
       "minimum_full_season": 80,
       "minimum_constant": "LEADERS_MIN_TARGETS_RECEIVING_RATES",
-      "through_date": "2026-11-23",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": true,
       "noise_note_text": "Mostly noise at season sample sizes: treat the order as rough.",
@@ -1843,7 +1843,7 @@
       "refresh": "pipeline_and_evening",
       "formula": "sum(epa) / targets",
       "candidates": 465,
-      "qualified_count": 68,
+      "qualified_count": 67,
       "excluded_no_value": 0,
       "notes": null,
       "leaders": [
@@ -1871,23 +1871,23 @@
         },
         {
           "rank": 3,
+          "player_id": "00-0038124",
+          "player": "Christian Watson",
+          "team": "GB",
+          "position": "WR",
+          "value": 0.5351,
+          "sample": 83,
+          "required": 51.8,
+          "team_games_played": 11
+        },
+        {
+          "rank": 4,
           "player_id": "00-0030506",
           "player": "Travis Kelce",
           "team": "KC",
           "position": "TE",
           "value": 0.5227,
           "sample": 57,
-          "required": 47.1,
-          "team_games_played": 10
-        },
-        {
-          "rank": 4,
-          "player_id": "00-0038124",
-          "player": "Christian Watson",
-          "team": "GB",
-          "position": "WR",
-          "value": 0.4889,
-          "sample": 79,
           "required": 47.1,
           "team_games_played": 10
         },
@@ -1970,7 +1970,7 @@
       "unit_label": "targets",
       "minimum_full_season": 80,
       "minimum_constant": "LEADERS_MIN_TARGETS_RECEIVING_RATES",
-      "through_date": "2026-11-23",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -1981,7 +1981,7 @@
       "refresh": "pipeline_and_evening",
       "formula": "receptions / targets",
       "candidates": 465,
-      "qualified_count": 68,
+      "qualified_count": 67,
       "excluded_no_value": 0,
       "notes": null,
       "leaders": [
@@ -2081,8 +2081,8 @@
           "position": "WR",
           "value": 0.7527,
           "sample": 93,
-          "required": 47.1,
-          "team_games_played": 10
+          "required": 51.8,
+          "team_games_played": 11
         },
         {
           "rank": 10,
@@ -2090,10 +2090,10 @@
           "player": "Kyren Williams",
           "team": "LA",
           "position": "RB",
-          "value": 0.7451,
-          "sample": 51,
-          "required": 47.1,
-          "team_games_played": 10
+          "value": 0.75,
+          "sample": 56,
+          "required": 51.8,
+          "team_games_played": 11
         }
       ]
     },
@@ -2108,7 +2108,7 @@
       "unit_label": "season total",
       "minimum_full_season": null,
       "minimum_constant": null,
-      "through_date": "2026-11-23",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -2118,8 +2118,8 @@
       "source": "nflreadr::load_player_stats(summary_level = \"week\")",
       "refresh": "pipeline_and_evening",
       "formula": "sum(def_sacks)",
-      "candidates": 1838,
-      "qualified_count": 361,
+      "candidates": 1840,
+      "qualified_count": 362,
       "excluded_no_value": 0,
       "notes": null,
       "leaders": [
@@ -2246,7 +2246,7 @@
       "unit_label": "season total",
       "minimum_full_season": null,
       "minimum_constant": null,
-      "through_date": "2026-11-23",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -2256,8 +2256,8 @@
       "source": "nflreadr::load_player_stats(summary_level = \"week\")",
       "refresh": "pipeline_and_evening",
       "formula": "sum(def_interceptions)",
-      "candidates": 1838,
-      "qualified_count": 160,
+      "candidates": 1840,
+      "qualified_count": 162,
       "excluded_no_value": 0,
       "notes": null,
       "leaders": [
@@ -2270,7 +2270,7 @@
           "value": 6,
           "sample": null,
           "required": null,
-          "team_games_played": 10
+          "team_games_played": 11
         },
         {
           "rank": 2,
@@ -2369,7 +2369,7 @@
           "value": 3,
           "sample": null,
           "required": null,
-          "team_games_played": 10
+          "team_games_played": 11
         }
       ]
     },
@@ -2384,7 +2384,7 @@
       "unit_label": "season total",
       "minimum_full_season": null,
       "minimum_constant": null,
-      "through_date": "2026-11-23",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -2394,8 +2394,8 @@
       "source": "nflreadr::load_player_stats(summary_level = \"week\")",
       "refresh": "pipeline_and_evening",
       "formula": "sum(def_tackles_for_loss)",
-      "candidates": 1838,
-      "qualified_count": 502,
+      "candidates": 1840,
+      "qualified_count": 504,
       "excluded_no_value": 0,
       "notes": null,
       "leaders": [
@@ -2522,7 +2522,7 @@
       "unit_label": "season total",
       "minimum_full_season": null,
       "minimum_constant": null,
-      "through_date": "2026-11-22",
+      "through_date": "2026-11-23",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -2532,8 +2532,8 @@
       "source": "nflreadr::load_pfr_advstats(stat_type = \"def\")",
       "refresh": "pipeline_and_evening",
       "formula": "sum(PFR def_pressures)",
-      "candidates": 829,
-      "qualified_count": 538,
+      "candidates": 830,
+      "qualified_count": 540,
       "excluded_no_value": 0,
       "notes": null,
       "leaders": [
@@ -2660,7 +2660,7 @@
       "unit_label": "season total",
       "minimum_full_season": null,
       "minimum_constant": null,
-      "through_date": "2026-11-23",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -3024,7 +3024,7 @@
       }
     ],
     "diagnostics": {
-      "snap_link_rate": 0.9976
+      "snap_link_rate": 0.9975
     },
     "nulls": "Values that cannot be supported are null with a reason; nothing is imputed or synthesised."
   },

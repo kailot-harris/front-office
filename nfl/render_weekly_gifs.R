@@ -10,8 +10,12 @@
 # "Last successful render" is `last_success_at` in cache/gif_render_status.json (the end of
 # the last run that rendered at least one script). It is deliberately NOT the index's
 # generated_at: for an unchanged file that is the last commit (publish) time, so a publish
-# commit would restart the 6-day clock. Only when the status file is missing (fresh
-# checkout) does it fall back to the newest GIF's mtime in media_dir.
+# commit would restart the 6-day clock. It is also capped by the newest rendered
+# cache/gif_*.gif mtime (the file the exporter's age limit reads), so a status time that no
+# render backs up cannot keep the stage "not due" while the cache GIFs age out. When the
+# status file is missing (fresh checkout) only that cache mtime is used, never a GIF in
+# media_dir: a pull or checkout rewrites those files and gives them the checkout time.
+# A skipped run never turns that fallback into last_success_at.
 #
 # Each script runs in its own R process (they setwd() and define globals) with a 10-minute
 # timeout. On Windows Rterm.exe is started directly through processx (no Rscript.exe
@@ -66,23 +70,30 @@ gif_scripts_due <- function(newest_gif_time, now = Sys.time(), days = GIF_REREND
   as.numeric(difftime(now, max(t), units = "days")) >= days
 }
 
-# Newest GIF mtime in media_dir (fallback only: see header).
-newest_gif_time <- function(media_dir) {
-  gifs <- list.files(media_dir, pattern = "\\.gif$", full.names = TRUE, ignore.case = TRUE)
+# Newest GIF mtime in a directory (by default only the gif_*.gif files tools/gif_*.R write).
+newest_gif_time <- function(dir, pattern = "^gif_.*\\.gif$") {
+  gifs <- list.files(dir, pattern = pattern, full.names = TRUE, ignore.case = TRUE)
   if (!length(gifs)) return(as.POSIXct(NA))
   max(file.mtime(gifs))
 }
 
-# Time the scripts last rendered successfully: the status file's last_success_at, else
-# (status file missing) the newest GIF mtime. NA when neither exists (-> due).
-last_gif_render_time <- function(status_path, media_dir) {
-  if (file.exists(status_path)) {
-    st <- tryCatch(jsonlite::fromJSON(status_path), error = function(e) NULL)
-    ts <- st$last_success_at
-    if (is.null(ts) || !nzchar(ts)) return(as.POSIXct(NA))
-    return(as.POSIXct(ts, format = "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"))
-  }
-  newest_gif_time(media_dir)
+# last_success_at from the status file; NA when the file or the field is missing.
+status_last_success <- function(status_path) {
+  if (!file.exists(status_path)) return(as.POSIXct(NA))
+  st <- tryCatch(jsonlite::fromJSON(status_path), error = function(e) NULL)
+  ts <- st$last_success_at
+  if (is.null(ts) || !nzchar(ts)) return(as.POSIXct(NA))
+  as.POSIXct(ts, format = "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+}
+
+# Time the scripts last rendered successfully (see header): the earlier of the status file's
+# last_success_at and the newest rendered cache GIF; whichever exists when only one does.
+# NA when neither exists (-> due).
+last_gif_render_time <- function(status_path, cache_dir = dirname(status_path)) {
+  t <- c(status_last_success(status_path), newest_gif_time(cache_dir))
+  t <- t[!is.na(t)]
+  if (!length(t)) return(as.POSIXct(NA))
+  min(t)
 }
 
 # Run one script in its own R process. Returns its exit status, 124 on timeout.
@@ -126,7 +137,10 @@ run_render_weekly_gifs <- function(media_dir = WEB_ANIM_DIR, scripts = list_gif_
   force <- identical(Sys.getenv("FO_FORCE_GIF_RENDER"), "1")
   result <- list(rendered = character(0), failed = character(0), skipped_reason = NULL)
   fmt <- "%Y-%m-%dT%H:%M:%SZ"
-  last_render <- last_gif_render_time(status_path, media_dir)
+  # media_dir is not read for the due check (see header); kept for existing callers.
+  last_render <- last_gif_render_time(status_path, dirname(status_path))
+  # Only a real render (or the previous status) is ever recorded as last_success_at.
+  recorded_success <- status_last_success(status_path)
   write_status <- function(res, success_at) {
     jsonlite::write_json(list(run_at = format(now, fmt, tz = "UTC"),
                               last_success_at = if (is.na(success_at)) NULL else format(success_at, fmt, tz = "UTC"),
@@ -151,7 +165,7 @@ run_render_weekly_gifs <- function(media_dir = WEB_ANIM_DIR, scripts = list_gif_
   if (!is.null(result$skipped_reason)) {
     .gif_log("info", sprintf(">>> [SKIP] weekly GIF render: %s", result$skipped_reason))
     write_outcome(result)
-    write_status(result, last_render)
+    write_status(result, recorded_success)
     return(result)
   }
 
@@ -196,7 +210,7 @@ run_render_weekly_gifs <- function(media_dir = WEB_ANIM_DIR, scripts = list_gif_
   if (length(result$failed) && !length(result$rendered)) {
     .gif_log("error", ">>> [FAIL] weekly GIF render: every script failed; status file not rewritten")
   } else {
-    write_status(result, if (length(result$rendered)) now else last_render)
+    write_status(result, if (length(result$rendered)) now else recorded_success)
   }
   .gif_log("info", sprintf("weekly GIF render: %d rendered, %d failed", length(result$rendered), length(result$failed)))
   result

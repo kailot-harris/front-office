@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "sport": "nfl",
-  "generated_at": "2026-11-25T09:30:28Z",
-  "slate_date": "2026-11-25",
+  "generated_at": "2026-11-26T17:59:04Z",
+  "slate_date": "2026-11-26",
   "season_state": "regular",
   "next_milestone": {
     "label": "Final regular-season games",
@@ -10,26 +10,62 @@
   },
   "today": [
     {
+      "game_id": "2026_12_CHI_DET",
+      "start_time_utc": "2026-11-26T18:00:00Z",
+      "home": "DET",
+      "away": "CHI",
+      "status": "scheduled",
+      "home_win_prob": 0.569,
+      "away_win_prob": 0.431,
+      "prediction_status": "available"
+    },
+    {
+      "game_id": "2026_12_PHI_DAL",
+      "start_time_utc": "2026-11-26T21:30:00Z",
+      "home": "DAL",
+      "away": "PHI",
+      "status": "scheduled",
+      "home_win_prob": 0.681,
+      "away_win_prob": 0.319,
+      "prediction_status": "available"
+    },
+    {
+      "game_id": "2026_12_KC_BUF",
+      "start_time_utc": "2026-11-27T01:20:00Z",
+      "home": "BUF",
+      "away": "KC",
+      "status": "scheduled",
+      "home_win_prob": 0.672,
+      "away_win_prob": 0.328,
+      "prediction_status": "available"
+    }
+  ],
+  "yesterday": [
+    {
       "game_id": "2026_12_GB_LA",
       "start_time_utc": "2026-11-26T01:00:00Z",
       "home": "LA",
       "away": "GB",
-      "status": "scheduled",
+      "status": "final",
       "home_win_prob": 0.694,
       "away_win_prob": 0.306,
-      "prediction_status": "available"
+      "prediction_status": "available",
+      "home_score": 26,
+      "away_score": 13,
+      "final": true,
+      "predicted_winner": "LA",
+      "hit": true
     }
   ],
-  "yesterday": [],
   "record": {
     "season": {
-      "hits": 100,
-      "games": 160,
+      "hits": 101,
+      "games": 161,
       "excluded": 3
     },
     "last_7": {
-      "hits": 9,
-      "games": 13,
+      "hits": 10,
+      "games": 14,
       "excluded": 0
     }
   },
@@ -44,9 +80,9 @@
     {
       "lo": 0.6,
       "hi": 0.7,
-      "predicted_mean": 0.639,
-      "actual_rate": 0.574,
-      "games": 61
+      "predicted_mean": 0.64,
+      "actual_rate": 0.581,
+      "games": 62
     },
     {
       "lo": 0.7,
@@ -74,37 +110,37 @@
     "metric": "power_rating",
     "windows": {
       "1": {
-        "compared_to": "2026-11-20",
+        "compared_to": "2026-11-25",
         "items": [
           {
-            "team": "KC",
-            "previous": 1.88,
-            "current": 10.24,
-            "delta": 8.36
+            "team": "GB",
+            "previous": -2.87,
+            "current": -5.08,
+            "delta": -2.2
           },
           {
-            "team": "MIN",
-            "previous": 4.92,
-            "current": -1.96,
-            "delta": -6.88
+            "team": "DAL",
+            "previous": -1.09,
+            "current": -1,
+            "delta": 0.09
           },
           {
-            "team": "CAR",
-            "previous": -9.24,
-            "current": -3.16,
-            "delta": 6.08
+            "team": "ARI",
+            "previous": -18.75,
+            "current": -18.66,
+            "delta": 0.09
           },
           {
-            "team": "CIN",
-            "previous": 14.61,
-            "current": 9.22,
-            "delta": -5.39
+            "team": "BAL",
+            "previous": -8.36,
+            "current": -8.28,
+            "delta": 0.09
           },
           {
-            "team": "TEN",
-            "previous": -6.29,
-            "current": -10.92,
-            "delta": -4.63
+            "team": "LV",
+            "previous": -11.25,
+            "current": -11.16,
+            "delta": 0.09
           }
         ]
       },
