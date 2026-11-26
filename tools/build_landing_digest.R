@@ -4,11 +4,19 @@
 #
 # Refs kailot-harris/WNBA_analytics#224 (slot A writer), #225 (slot B/C patch),
 # #226 (record + calibration), #227 (ratings history + movers). Contract:
-# kailot-harris/front-office#200, spec section 1.
+# kailot-harris/front-office#200, spec section 1; game-end updates and
+# roll-over: kailot-harris/front-office#240.
 #
 # Writes web/public/data/landing_digest.json for the front-office landing page:
 #   schema_version, sport, generated_at, slate_date (US Eastern), season_state,
-#   next_milestone, today[], yesterday[], record, calibration, movers.
+#   next_milestone, today[], yesterday[], record, calibration, movers, and
+#   (slot B/C roll-over only) today_pending.
+#   today[] and yesterday[] rows share one shape: game_id, game_date,
+#   start_time_utc, home, away, status, home_win_prob, away_win_prob,
+#   prediction_status, home_score, away_score (integers when final, else null),
+#   final, predicted_winner, hit (null when not final or not gradable).
+#   today_pending: true only after a slot B/C roll-over to a new Eastern date for
+#   which the payload has no rows yet; absent otherwise (front-office#240).
 #
 # Sources (all real pipeline output, nothing synthesized):
 #   * web/public/data/matchups_slates.json - the per-game spine (schedule, final
@@ -123,10 +131,34 @@ ld_grade <- function(home_win_prob, home, away, home_score, away_score, status) 
   list(predicted_winner = pw, hit = hit, outcome = if (hit) "hit" else "miss")
 }
 
+#' Carry start_time_utc and non-final status from previous digest rows (list of
+#' game objects) onto a normalized frame with a `status` column, matched by
+#' game_id (front-office#240). The payload wins wherever it is definitive: a
+#' payload start time is kept, and final / postponed / cancelled from the payload
+#' are never overridden. A previous "final" is never carried (scores come only
+#' from the payload). Nothing is invented: a value absent from both stays NA.
+ld_carry_previous <- function(g, prev) {
+  if (!nrow(g) || !length(prev)) return(g)
+  ids <- vapply(prev, function(x) .ld_chr(x$game_id), character(1))
+  for (i in seq_len(nrow(g))) {
+    j <- match(g$game_id[i], ids)
+    if (is.na(j)) next
+    p <- prev[[j]]
+    pst <- .ld_chr(p$start_time_utc)
+    if (is.na(g$start_time_utc[i]) && !is.na(pst)) g$start_time_utc[i] <- pst
+    pstat <- .ld_chr(p$status)
+    if (g$status[i] %in% c("scheduled", "not_played") && !is.na(pstat) && !identical(pstat, "final"))
+      g$status[i] <- pstat
+  }
+  g
+}
+
 #' Vectorized grading over a normalized game frame (adds status, predicted_winner,
-#' hit, outcome).
-ld_grade_games <- function(g, slate_date) {
+#' hit, outcome). `carry`: previous digest rows whose start times and non-final
+#' statuses are carried over (see ld_carry_previous).
+ld_grade_games <- function(g, slate_date, carry = NULL) {
   g$status <- ld_game_status(g, slate_date)
+  g <- ld_carry_previous(g, carry)
   gr <- lapply(seq_len(nrow(g)), function(i)
     ld_grade(g$home_win_prob[i], g$home[i], g$away[i], g$home_score[i], g$away_score[i], g$status[i]))
   g$predicted_winner <- vapply(gr, function(x) as.character(x$predicted_winner), character(1))
@@ -153,11 +185,16 @@ ld_grade_games <- function(g, slate_date) {
     prediction_status = if (has_p) "available" else "not_yet_run"
   )
   if (with_result) {
-    o$home_score <- .ld_na_null(r$home_score)
-    o$away_score <- .ld_na_null(r$away_score)
-    o$final <- identical(r$status, "final")
-    o$predicted_winner <- .ld_na_null(r$predicted_winner)
-    o$hit <- .ld_na_null(r$hit)
+    # c() keeps NULL entries, so every result key is present (JSON null when
+    # unknown) and the row shape does not depend on the game's state.
+    fin <- identical(r$status, "final")
+    o <- c(o, list(
+      home_score = if (fin) .ld_na_null(r$home_score) else NULL,
+      away_score = if (fin) .ld_na_null(r$away_score) else NULL,
+      final = fin,
+      predicted_winner = .ld_na_null(r$predicted_winner),
+      hit = if (fin) .ld_na_null(r$hit) else NULL
+    ))
   }
   o
 }
@@ -374,7 +411,7 @@ build_landing_digest <- function(now = Sys.time(),
     slate_date = format(slate),
     season_state = if (is.na(state)) NULL else state,
     next_milestone = ld_next_milestone(state, g, slate, monitor),
-    today = I(ld_day_games(g, slate, with_result = FALSE)),
+    today = I(ld_day_games(g, slate, with_result = TRUE)),
     yesterday = I(rb$yesterday),
     record = rb$record,
     calibration = I(rb$calibration),
@@ -402,19 +439,65 @@ ld_write_digest <- function(d, path = LD_DIGEST_PATH) {
   TRUE
 }
 
-#' Slot B/C patch (#225): recompute yesterday, record and calibration from the
-#' (freshly patched) matchup rows, keeping the digest's own slate_date. Leaves
-#' today, season_state, next_milestone and movers untouched.
-ld_patch_digest <- function(matchup_rows, digest_path = LD_DIGEST_PATH, now = Sys.time()) {
+#' TRUE when the lifecycle registry lists the digest as season_final (frozen at
+#' season end; publish_web.R assertion L fails on any byte change to it). Reads
+#' the registry through config.R's lifecycle helpers when they are loaded (the
+#' refresh sources config.R), else reads the registry entry directly. An
+#' unreadable registry counts as frozen, so the digest is never rewritten on a
+#' guess. NULL / absent registry = not frozen.
+ld_digest_frozen <- function(digest_path = LD_DIGEST_PATH, registry_path = NULL) {
+  if (is.null(registry_path) || !file.exists(registry_path)) return(FALSE)
+  f <- basename(digest_path)
+  lc <- tryCatch({
+    if (exists("wnba_data_lifecycle", mode = "function") &&
+        exists("wnba_read_lifecycle_registry", mode = "function")) {
+      wnba_data_lifecycle(f, registry = wnba_read_lifecycle_registry(registry_path))[[f]]
+    } else {
+      jsonlite::fromJSON(registry_path, simplifyVector = FALSE)$files[[f]]
+    }
+  }, error = function(e) {
+    message("landing_digest: lifecycle registry unreadable, leaving the digest untouched: ", conditionMessage(e))
+    list(lifecycle = "season_final")
+  })
+  identical(.ld_chr(lc$lifecycle), "season_final")
+}
+
+#' Slot B/C patch (#225, front-office#240): re-derive the results-dependent
+#' blocks from the (freshly patched) matchup rows.
+#'   * Frozen digest (season_final in the lifecycle registry): untouched, FALSE.
+#'   * Same Eastern day as slate_date: today is rebuilt for slate_date (results,
+#'     final flag, hit), plus yesterday, record and calibration.
+#'   * Eastern date past slate_date: roll forward to that date - slate_date,
+#'     yesterday, record, calibration and today move; today_pending = true when
+#'     the payload has no rows for the new date.
+#' Start times and non-final statuses are carried from the previous today /
+#' yesterday rows by game_id. season_state, next_milestone, movers and any other
+#' key are carried unchanged (slot A refreshes them). today_pending is absent in
+#' every case except a roll-over with no rows. Writes only on a content change.
+ld_patch_digest <- function(matchup_rows, digest_path = LD_DIGEST_PATH, now = Sys.time(),
+                            registry_path = NULL) {
   if (!file.exists(digest_path)) return(FALSE)
+  if (ld_digest_frozen(digest_path, registry_path)) return(FALSE)
   d <- jsonlite::fromJSON(digest_path, simplifyVector = FALSE)
   slate <- suppressWarnings(as.Date(.ld_chr(d$slate_date)))
   if (is.na(slate)) return(FALSE)
-  rb <- ld_results_blocks(matchup_rows, slate)
-  d$yesterday <- I(rb$yesterday)
-  d$record <- rb$record
-  d$calibration <- I(rb$calibration)
-  d$today <- I(d$today)
+  run_date <- ld_slate_date(now)
+  rederive_today <- !is.na(run_date) && run_date >= slate
+  rolled <- rederive_today && run_date > slate
+  eff <- if (rederive_today) run_date else slate
+  g <- ld_grade_games(ld_normalize_games(matchup_rows), eff, carry = c(d$today, d$yesterday))
+  d$slate_date <- format(eff)
+  d$yesterday <- I(ld_day_games(g, eff - 1L, with_result = TRUE))
+  d$record <- ld_record(g, eff)
+  d$calibration <- I(ld_calibration(g))
+  if (rederive_today) {
+    today <- ld_day_games(g, eff, with_result = TRUE)
+    d$today <- I(today)
+    d$today_pending <- if (rolled && !length(today)) TRUE else NULL
+  } else {
+    d$today <- I(d$today)
+    d$today_pending <- NULL
+  }
   for (k in names(d$movers$windows)) d$movers$windows[[k]]$items <- I(d$movers$windows[[k]]$items)
   d$generated_at <- .ld_utc_now(now)
   ld_write_digest(d, digest_path)
