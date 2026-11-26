@@ -202,3 +202,21 @@ into a subfolder, and do not re-flatten the rest of the layout below:
 - `tools/` — one-off utility/analysis scripts not part of `run_full_pipeline.R`'s DAG. Each
   `setwd()`s to the absolute project root before `source()`-ing dependencies by bare filename,
   so they run correctly regardless of invocation location.
+
+## Merging pull requests (required checks are not enforced by GitHub)
+
+GitHub cannot require passing checks on this private repository on the
+current plan, so nothing stops a merge while CI is still running or red.
+On 2026-11-25 NBA_analytics#263 was merged 14 seconds after its CI started;
+both jobs then failed and that repo's main stayed red until a follow-up fix.
+
+- Merge only with `tools/merge_when_green.sh <pr> <reviewed-head-sha>`. It
+  waits for every check, refuses on any failed or cancelled check, on a PR
+  with no checks, or if the head moved, and then squash-merges with
+  `--match-head-commit`. `--dry-run` shows what it would do.
+- Never merge with a bare `gh pr merge`, with `--admin`, or from the GitHub
+  web UI while a check is pending or failing.
+- A failing check that looks unrelated to the PR still blocks the merge. Fix
+  main (or the check) in its own PR first, then update this PR from main.
+- Pass the full 40-character head SHA you reviewed. If the head moves, review
+  the new commits before merging.
