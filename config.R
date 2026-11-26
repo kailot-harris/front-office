@@ -436,6 +436,9 @@ WEB_JSON_CBA_CAP_SHEET               <- file.path(WEB_DATA_DIR, "cba_cap_sheet.j
 # name are the week-of-season buckets build_matchups_dataset.R derives; there is no
 # per-day slate in this repo.
 WEB_JSON_MATCHUPS_SLATES             <- file.path(WEB_DATA_DIR, "matchups_slates.json")
+# League leaders panel on /players (WNBA_analytics#268), written by build_player_leaders.R
+# and patched with new box scores by tools/refresh_live_results.R.
+WEB_JSON_PLAYER_LEADERS              <- file.path(WEB_DATA_DIR, "player_leaders.json")
 
 WEB_DATA_FILES <- c(
   WEB_JSON_PROJECTIONS_SEASON_TEAMS,
@@ -452,8 +455,51 @@ WEB_DATA_FILES <- c(
   WEB_JSON_DEFENSIVE_METRICS,
   WEB_JSON_PLAYER_DNA_PROFILES,
   WEB_JSON_CLUTCH_LEVERAGE_METRICS,
-  WEB_JSON_MATCHUPS_SLATES
+  WEB_JSON_MATCHUPS_SLATES,
+  WEB_JSON_PLAYER_LEADERS
 )
+
+# ------------------------------------------------------------------------------------------
+# League leaders qualifying minimums (WNBA_analytics#268)
+# ------------------------------------------------------------------------------------------
+# Owner-approved qualifying minimums after reviewing the WNBA leader reliability study
+# (WNBA_analytics#267, PR #271); the study measured reliability only and did not choose them.
+# Each is the FULL-SEASON (44-game) bar and scales linearly with the player's current team's
+# games played: required = minimum * team_games_played / LEADERS_FULL_SEASON_GAMES.
+# Do not edit a minimum without a new owner decision. The RAPM leaderboard rule in
+# rapm_engine.R (RAPM_LEADERBOARD_MIN_POSS_PER_SIDE) is separate and unchanged.
+LEADERS_STUDY_SOURCE_COMMIT <- "70a56bb4863b62e26d7e68aef54997fce02b059e"
+LEADERS_FULL_SEASON_GAMES   <- 44L
+# Counting stats, by games played.
+LEADERS_MIN_GAMES_PTS  <- 6L
+LEADERS_MIN_GAMES_REB  <- 6L
+LEADERS_MIN_GAMES_AST  <- 6L
+LEADERS_MIN_GAMES_OREB <- 10L
+LEADERS_MIN_GAMES_FG3M <- 10L
+LEADERS_MIN_GAMES_BLK  <- 10L
+LEADERS_MIN_GAMES_TOV  <- 10L
+# Turnovers per game also need minutes, so low-minute players with 0 turnovers
+# don't lead the card: 450 minutes, scaled.
+LEADERS_MIN_MINUTES_TOV_PER_GAME <- 450L
+LEADERS_MIN_GAMES_STL  <- 15L
+# Shooting, by attempts of that shot type.
+LEADERS_MIN_FGA_FG_PCT   <- 150L
+LEADERS_MIN_FG3A_FG3_PCT <- 80L
+LEADERS_MIN_FTA_FT_PCT   <- 100L
+# Rates, by minutes.
+LEADERS_MIN_MINUTES_USG_PCT <- 150L
+LEADERS_MIN_MINUTES_AST_PCT <- 150L
+LEADERS_MIN_MINUTES_ORB_PCT <- 200L
+LEADERS_MIN_MINUTES_DRB_PCT <- 200L
+LEADERS_MIN_MINUTES_TOV_PCT <- 450L
+LEADERS_MIN_MINUTES_EFG_PCT <- 450L
+LEADERS_MIN_MINUTES_TS_PCT  <- 450L
+# RAPM (offensive, defensive, total), by possessions on EACH side.
+LEADERS_MIN_POSS_PER_SIDE_RAPM <- 1000L
+# The RAPM cards use their own current-season fit, written here by
+# build_player_leaders.R. The ensemble's cache/rapm_ratings.rds (fit by
+# rapm_engine.R) is separate and unchanged.
+LEADERS_RAPM_CACHE_FILE <- "rapm_ratings_leaders.rds"
 
 # ------------------------------------------------------------------------------------------
 # Offseason Dynamics Monitor Artifacts (Issue #121 / Blueprint Â§6 & Â§7)

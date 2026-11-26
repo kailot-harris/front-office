@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "sport": "wnba",
-  "generated_at": "2026-11-25T19:59:47Z",
-  "schedule_through_date": "2026-10-31",
+  "generated_at": "2026-11-26T06:16:47Z",
+  "schedule_through_date": null,
   "datasets": [
     {
       "file": "cba_cap_sheet.json",
@@ -75,7 +75,6 @@
       "coverage_note": null,
       "builder": "run_full_pipeline.R",
       "static": false,
-      "lag_days": 0,
       "lifecycle": "season_final",
       "season": 2026,
       "final_through_date": "2026-10-31",
@@ -92,7 +91,6 @@
       "coverage_note": null,
       "builder": "run_full_pipeline.R",
       "static": false,
-      "lag_days": 0,
       "lifecycle": "season_final",
       "season": 2026,
       "final_through_date": "2026-10-31",
@@ -125,7 +123,6 @@
       "coverage_note": null,
       "builder": "run_full_pipeline.R",
       "static": false,
-      "lag_days": 0,
       "lifecycle": "season_final",
       "season": 2026,
       "final_through_date": "2026-10-31",
@@ -200,6 +197,18 @@
       "frozen_at": "2026-11-24T05:20:02Z"
     },
     {
+      "file": "player_leaders.json",
+      "generated_at": "2026-11-26T06:16:46Z",
+      "stamp_source": "payload:generated_at",
+      "content_sha256": "d700a87d587d10e8ac263ecf39afd2302ba5b7d2d47ae1efa2f2d87657c07e22",
+      "through_date": "2026-09-24",
+      "through_date_source": "payload:through_date",
+      "coverage_note": null,
+      "builder": "run_full_pipeline.R",
+      "static": false,
+      "lifecycle": "live"
+    },
+    {
       "file": "playoff_bracket_2026.json",
       "generated_at": "2026-11-06T19:49:32Z",
       "stamp_source": "payload:generated_at",
@@ -209,7 +218,6 @@
       "coverage_note": null,
       "builder": "run_full_pipeline.R",
       "static": false,
-      "lag_days": 0,
       "lifecycle": "season_final",
       "season": 2026,
       "final_through_date": "2026-10-31",

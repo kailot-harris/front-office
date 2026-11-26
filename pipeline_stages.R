@@ -613,6 +613,23 @@ PIPELINE_STAGES <- list(
     output      = NULL,
     inputs      = c(WEB_JSON_MATCHUPS_SLATES, file.path(CACHE_DIR, "projected_wnba_standings.rds")),
     group       = NULL
+  ),
+
+  # ---------------------------------------------------------------------------------------
+  # 19. League leaders panel (WNBA_analytics#268). Reads the current-season player and
+  # team box-score caches, fits current-season regular-season RAPM into
+  # cache/rapm_ratings_leaders.rds, and writes web/public/data/player_leaders.json.
+  # Minimums live in config.R (LEADERS_*).
+  # ---------------------------------------------------------------------------------------
+  player_leaders = list(
+    id          = "player_leaders",
+    script      = "build_player_leaders.R",
+    description = "Build League Leaders Panel (scaled owner minimums)",
+    call_fn     = NULL,
+    entry_fn    = "build_player_leaders",
+    output      = WEB_JSON_PLAYER_LEADERS,
+    inputs      = c(CACHE_PLAYER_BOX, CACHE_TEAM_BOX),
+    group       = NULL
   )
 )
 

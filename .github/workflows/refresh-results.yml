@@ -75,13 +75,13 @@ jobs:
           # --porcelain scoped to the two files the script owns, not `git diff`:
           # diff only sees tracked files, and scoping the path means an
           # unrelated dirty file can never be swept into a data commit.
-          if [ -z "$(git status --porcelain -- web/public/data/matchups_slates.json web/public/data/landing_digest.json)" ]; then
+          if [ -z "$(git status --porcelain -- web/public/data/matchups_slates.json web/public/data/landing_digest.json web/public/data/player_leaders.json)" ]; then
             echo "No newly finished games; nothing to commit."
             exit 0
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add web/public/data/matchups_slates.json web/public/data/landing_digest.json
+          git add web/public/data/matchups_slates.json web/public/data/landing_digest.json web/public/data/player_leaders.json
           git commit -m "chore(data): refresh finished game results
 
           Written by .github/workflows/refresh-results.yml from ESPN's public
