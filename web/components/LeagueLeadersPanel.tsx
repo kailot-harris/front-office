@@ -123,7 +123,7 @@ function LeaderCardView({ card, position }: { card: LeaderCard; position: Leader
           )}
         </>
       )}
-      <p className="text-[11px] text-slate-500 mt-auto">
+      <p className="text-[11px] text-slate-400 mt-auto">
         Minimum: {card.minimum_full_season.toLocaleString('en-US')} {card.unit_label} over a full season, scaled
       </p>
     </section>
@@ -221,7 +221,7 @@ export function LeagueLeadersPanel({ data }: { data: PlayerLeadersPayload | null
             </tbody>
           </table>
           <p>{m.nulls}</p>
-          <p className="text-slate-500">
+          <p className="text-slate-400">
             Minimums from <code>config.R</code> and the MLB leader reliability study, source commit{' '}
             <code>{m.study_source_commit.slice(0, 12)}</code>.
           </p>
