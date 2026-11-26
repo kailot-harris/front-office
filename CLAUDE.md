@@ -79,3 +79,21 @@ other and from the scheduled task.
 - After the FIRST removal incident, stop all removals and audit every worktree
   (`cleanup_worktrees.py incident --note "..."`); do not repair and continue.
 - In this repo, `powershell -NoProfile -ExecutionPolicy Bypass -File tools/remove_worktree.ps1 -Path <worktree> [-WhatIf]` enforces this (#163): it refuses the primary checkout, unregistered paths and any worktree that still holds a link (listing each), and only then runs `git worktree remove`.
+
+## Merging pull requests (required checks are not enforced by GitHub)
+
+GitHub cannot require passing checks on this private repository on the
+current plan, so nothing stops a merge while CI is still running or red.
+On 2026-11-25 NBA_analytics#263 was merged 14 seconds after its CI started;
+both jobs then failed and that repo's main stayed red until a follow-up fix.
+
+- Merge only with `tools/merge_when_green.sh <pr> <reviewed-head-sha>`. It
+  waits for every check, refuses on any failed or cancelled check, on a PR
+  with no checks, or if the head moved, and then squash-merges with
+  `--match-head-commit`. `--dry-run` shows what it would do.
+- Never merge with a bare `gh pr merge`, with `--admin`, or from the GitHub
+  web UI while a check is pending or failing.
+- A failing check that looks unrelated to the PR still blocks the merge. Fix
+  main (or the check) in its own PR first, then update this PR from main.
+- Pass the full 40-character head SHA you reviewed. If the head moves, review
+  the new commits before merging.
