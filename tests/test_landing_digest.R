@@ -57,6 +57,14 @@ ok("LD-14 today lists both games; unrun model gives null probs + not_yet_run",
    length(d$today) == 2 && identical(d$today[[2]]$prediction_status, "not_yet_run") &&
      is.null(d$today[[2]]$home_win_prob))
 ok("LD-15 start_time_utc converts Eastern kickoff to UTC", identical(d$today[[1]]$start_time_utc, "2026-11-20T18:00:00Z"))
+ok("LD-15b a missing or empty gametime gives NA, never an invented kickoff",
+   identical(ld_start_time_utc(c("2026-11-20", "2026-11-20", "2026-11-20"), c(NA, "", "20:15")),
+             c(NA_character_, NA_character_, "2026-11-21T01:15:00Z")))
+m_tbd <- m; m_tbd$gametime[m_tbd$game_id == "g7"] <- NA
+d_tbd <- build_landing_digest(m_tbd, NULL, NULL, now, 2026L)
+t_tbd <- setNames(d_tbd$today, vapply(d_tbd$today, `[[`, "", "game_id"))
+ok("LD-15c a game with no kickoff time is still listed, with a null start_time_utc",
+   "g7" %in% names(t_tbd) && is.null(t_tbd$g7$start_time_utc))
 y <- setNames(d$yesterday, vapply(d$yesterday, `[[`, "", "game_id"))
 ok("LD-16 yesterday: final graded hit; postponed has hit null and final false",
    isTRUE(y$g5$hit) && identical(y$g5$predicted_winner, "HOM") && is.null(y$g6$hit) && identical(y$g6$final, FALSE))

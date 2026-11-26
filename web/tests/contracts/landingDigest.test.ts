@@ -21,7 +21,7 @@ const prob = z.number().min(0).max(1).nullable();
 
 const base = {
   game_id: z.string().min(1),
-  start_time_utc: isoUtc,
+  start_time_utc: isoUtc.nullable(),
   home: z.string().min(1),
   away: z.string().min(1),
   status: z.enum(['scheduled', 'in_progress', 'final', 'postponed', 'cancelled']),

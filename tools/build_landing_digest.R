@@ -75,9 +75,12 @@ ld_iso <- function(t) format(t, "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
 ld_slate_date <- function(now = Sys.time()) as.Date(format(now, "%Y-%m-%d", tz = LANDING_TZ))
 
 # Kickoff in UTC from nflverse's gameday + gametime, which are US Eastern.
+# A missing gametime gives NA (null in the digest, shown as "Time TBD"); a
+# kickoff time is never invented.
 ld_start_time_utc <- function(gameday, gametime) {
-  gt <- ifelse(is.na(gametime) | !nzchar(gametime), "00:00", gametime)
+  gt <- ifelse(is.na(gametime), "", gametime)
   t <- as.POSIXct(paste(gameday, gt), format = "%Y-%m-%d %H:%M", tz = LANDING_TZ)
+  t[!nzchar(gt)] <- NA
   out <- ld_iso(t)
   out[is.na(t)] <- NA_character_
   out
