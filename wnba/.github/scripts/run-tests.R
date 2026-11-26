@@ -40,10 +40,13 @@ RUN <- c(
 #   WNBA#250: off-season lifecycle scoping of publish_web.R F/I + assertion L,
 #             and tools/freeze_season.R freeze/thaw.
 #   Publish push step: fetch, rebase onto origin, retry once (throwaway git repos).
+#   front-office#240: landing digest updates after each game ends (slot B/C
+#             refresh re-derives today, rolls over, honours the season freeze).
 RUN_TESTS_DIR <- c(
   "tests/unit/test_offseason_lifecycle_gate.R",
   "tests/unit/test_season_lifecycle_freeze.R",
-  "tests/unit/test_publish_push_rebase.R"
+  "tests/unit/test_publish_push_rebase.R",
+  "tests/unit/test_landing_digest_game_end.R"
 )
 
 # Deliberately not run, and why. Every entry here is a measured reason, not a

@@ -167,7 +167,8 @@ test_that("slot B/C refresh patches yesterday, record and calibration on a fixtu
   fake <- function(dates) data.frame(game_id = c("101", "102"), is_final = TRUE,
                                      home_score = c(90L, 70L), away_score = c(80L, 75L))
   res <- refresh_live_results(dates = "2026-07-09", payload_path = mp, fetcher = fake,
-                              today = as.Date("2026-07-10"), digest_path = dp)
+                              today = as.Date("2026-07-10"), digest_path = dp,
+                              now = as.POSIXct("2026-07-10 16:00:00", tz = "UTC"), lifecycle_registry = NULL)
   expect_equal(res$n_changed, 2L)
   expect_equal(res$digest_file, dp)
   out <- fromJSON(dp, simplifyVector = FALSE)
@@ -181,7 +182,8 @@ test_that("slot B/C refresh patches yesterday, record and calibration on a fixtu
   expect_length(out$today, 0)
   # second run with nothing new: digest unchanged (no stamp churn)
   res2 <- refresh_live_results(dates = "2026-07-09", payload_path = mp, fetcher = fake,
-                               today = as.Date("2026-07-10"), digest_path = dp)
+                               today = as.Date("2026-07-10"), digest_path = dp,
+                               now = as.POSIXct("2026-07-10 16:00:00", tz = "UTC"), lifecycle_registry = NULL)
   expect_null(res2$digest_file)
 })
 

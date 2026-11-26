@@ -278,8 +278,13 @@ write_json_if_changed <- function(x, path) {
 #' @param payload_path Path to matchups_slates.json.
 #' @param fetcher Injectable ESPN reader, for tests.
 #' @param today Date treated as "now", for tests.
-#' @param digest_path landing_digest.json; its yesterday, record and calibration
-#'   are re-derived from the (patched) matchup rows on every run (WNBA#225).
+#' @param digest_path landing_digest.json; its today, yesterday, record and
+#'   calibration are re-derived from the (patched) matchup rows on every run, and
+#'   it rolls forward once the Eastern date passes its slate_date (WNBA#225,
+#'   front-office#240). Left untouched while it is season_final in the registry.
+#' @param now Time used for the digest's Eastern date (roll-over), for tests.
+#' @param lifecycle_registry Season lifecycle registry checked before the digest
+#'   patch; NULL skips the check.
 #' @return list(n_changed, dates, file, digest_file)
 refresh_live_results <- function(dates = NULL,
                                  lookback_days = RLR_DEFAULT_LOOKBACK_DAYS,
@@ -287,11 +292,14 @@ refresh_live_results <- function(dates = NULL,
                                  fetcher = espn_fetch_dates,
                                  today = Sys.Date(),
                                  digest_path = LD_DIGEST_PATH,
+                                 now = Sys.time(),
+                                 lifecycle_registry = WEB_DATA_LIFECYCLE_REGISTRY,
                                  summary_fetcher = NULL,
                                  leaders_path = file.path(dirname(payload_path), basename(WEB_JSON_PLAYER_LEADERS))) {
   res <- .rlr_refresh_matchups(dates, lookback_days, payload_path, fetcher, today)
   rows <- jsonlite::fromJSON(payload_path, simplifyVector = TRUE)$matchups
-  res$digest_file <- if (isTRUE(ld_patch_digest(rows, digest_path))) digest_path else NULL
+  res$digest_file <- if (isTRUE(ld_patch_digest(rows, digest_path, now = now,
+                                                  registry_path = lifecycle_registry))) digest_path else NULL
   res$leaders <- .rlr_refresh_leaders(leaders_path, rows, summary_fetcher)
   res
 }
