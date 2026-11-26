@@ -46,7 +46,7 @@ e <- man$datasets[["momentum_methodology.json"]]
 ok("MM-05 data_manifest.json lists it static, with no max_lag_days",
    !is.null(e) && isTRUE(e$static) && nzchar(e$static_reason %||% "") && is.null(e$max_lag_days))
 ok("MM-06 manifest content_sha256 matches the file on disk",
-   !is.null(e) && identical(e$content_sha256, unname(as.character(tools::sha256sum(mm_path)))))
+   !is.null(e) && identical(e$content_sha256, dm_sha256(mm_path)))
 tmpd <- tempfile("mm_manifest_"); dir.create(tmpd)
 writeLines('{"schema_version":1}', file.path(tmpd, "momentum_methodology.json"))
 bm <- build_data_manifest(data_dir = tmpd, schedule_through_date = NA_character_, previous = NULL)

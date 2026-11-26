@@ -167,4 +167,16 @@ ok("array payload stamp is the newest item's generated_at",
 ok("object payload stamp is unchanged by the array rule",
    identical(dm_embedded_stamp(list(generated_at = "2026-11-16T05:00:00Z"))$field, "generated_at"))
 
+# A Windows checkout (core.autocrlf) holds CRLF and CI holds LF: the recorded
+# hash must not depend on which one wrote the manifest.
+lf <- tempfile("dm_lf_"); crlf <- tempfile("dm_crlf_")
+writeBin(charToRaw("{\n  \"a\": 1\n}\n"), lf)
+writeBin(charToRaw("{\r\n  \"a\": 1\r\n}\r\n"), crlf)
+ok("content hash is the same for LF and CRLF copies of one file", identical(dm_sha256(lf), dm_sha256(crlf)))
+ok("content hash of an LF file equals its plain sha256", identical(dm_sha256(lf), unname(tools::sha256sum(lf))))
+writeBin(charToRaw("a\rb\n"), crlf)
+ok("a lone CR is kept, not stripped", !identical(dm_sha256(crlf), dm_sha256(lf)) &&
+     identical(dm_sha256(crlf), unname(tools::sha256sum(crlf))))
+unlink(c(lf, crlf))
+
 quit(status = if (failures) 1L else 0L)
