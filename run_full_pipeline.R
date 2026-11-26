@@ -361,7 +361,7 @@ run_stage("accuracy_governance.R", "Compute Forecast Accuracy Governance & Calib
 # scheduled tools/gif_*.R scripts (each in its own Rscript, 10-min timeout) and
 # their history builders first (GIF_HISTORY_BUILDERS; the playoff-odds backfill has its own
 # PLAYOFF_ODDS_HISTORY_TIMEOUT_SEC, 3600 s, since a full rebuild can take ~35 min) when in season and
-# the last successful render (last_success_at in cache/gif_render_status.json; newest GIF mtime only as fallback when that file is missing) is GIF_RERENDER_DAYS+ days old (FO_FORCE_GIF_RENDER=1 forces it).
+# the last successful render (last_success_at in cache/gif_render_status.json, capped by the newest rendered cache/gif_*.gif mtime, which is the only input when that file is missing) is GIF_RERENDER_DAYS+ days old (FO_FORCE_GIF_RENDER=1 forces it).
 # Must run immediately before the export below, which copies cache/ GIFs into
 # web/public/animations and rebuilds visual_media_index.json. Its status file is rewritten on
 # every run except a total failure, so strict_output reports "every script failed" as FAIL.
