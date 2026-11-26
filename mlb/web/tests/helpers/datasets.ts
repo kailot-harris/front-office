@@ -72,6 +72,7 @@ export const EXPECTED_DATA_FILES = [
   'clutch_leverage_metrics.json',
   'cbt_payroll_sheet.json',
   'matchups_index.json',
+  'player_leaders.json',
   'world_series.json',
   'landing_digest.json',
   // Read by the Gallery pages at build time and the landing slideshow (front-office#210).

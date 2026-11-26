@@ -31,6 +31,31 @@ suppressPackageStartupMessages(library(jsonlite))
 source(file.path("tools", "world_series_summary.R"))
 source(file.path("tools", "export_landing_digest.R"))
 
+# League leaders patcher (MLB-Analytics#163). build_player_leaders.R is jsonlite
+# and base R only; sourced for its definitions (autorun suppressed). Fail-safe:
+# if unavailable, score patching runs as before.
+.rlr_leaders_env <- local({
+  old <- Sys.getenv("MLB_SKIP_STAGE_AUTORUN", unset = NA)
+  Sys.setenv(MLB_SKIP_STAGE_AUTORUN = "1")
+  on.exit(if (is.na(old)) Sys.unsetenv("MLB_SKIP_STAGE_AUTORUN") else Sys.setenv(MLB_SKIP_STAGE_AUTORUN = old))
+  env <- new.env(parent = globalenv())
+  ok <- tryCatch({ sys.source("build_player_leaders.R", envir = env); TRUE },
+                 error = function(e) {
+                   message(sprintf("refresh_live_results: leaders patcher unavailable (%s); scores only.",
+                                   conditionMessage(e)))
+                   FALSE
+                 })
+  if (ok) env else NULL
+})
+
+.rlr_refresh_leaders <- function(leaders_path, games, boxscore_fetcher = NULL) {
+  if (is.null(.rlr_leaders_env)) return(list(status = "patcher_unavailable", n_games = 0L, file = NULL))
+  fetch <- boxscore_fetcher %||% .rlr_leaders_env$pl_mlb_fetch_boxscore
+  tryCatch(.rlr_leaders_env$pl_refresh_leaders(leaders_path, games, fetch_boxscore = fetch),
+           error = function(e) list(status = sprintf("error: %s", conditionMessage(e)),
+                                    n_games = 0L, file = NULL))
+}
+
 MLB_SCHEDULE_API <- "https://statsapi.mlb.com/api/v1/schedule"
 
 # Statuses that mean "this game is over and the score is final". Mirrors the
@@ -216,7 +241,9 @@ refresh_landing_digest <- function(data_dir, results, log, now = Sys.time()) {
 refresh_live_results <- function(season = 2026,
                                  data_dir = file.path("web", "public", "data"),
                                  url_reader = NULL,
-                                 today = Sys.Date()) {
+                                 today = Sys.Date(),
+                                 leaders_path = file.path(data_dir, "player_leaders.json"),
+                                 boxscore_fetcher = NULL) {
   index_file <- file.path(data_dir, "matchups_index.json")
   weeks_dir <- file.path(data_dir, "matchups")
   if (!file.exists(index_file)) {
@@ -277,7 +304,19 @@ refresh_live_results <- function(season = 2026,
     changed_files <- c(changed_files, file.path(data_dir, LD_FILE))
   }
 
-  list(n_changed = n_changed, files = changed_files, world_series = ws)
+  leader_games <- data.frame(
+    game_id      = as.character(combined$game_pk),
+    game_date    = combined$game_date,
+    game_type    = combined$game_type,
+    is_completed = combined$is_completed,
+    stringsAsFactors = FALSE
+  )
+  lr <- .rlr_refresh_leaders(leaders_path, leader_games, boxscore_fetcher = boxscore_fetcher)
+  if (identical(lr$status, "updated") && !is.null(lr$file)) {
+    changed_files <- c(changed_files, lr$file)
+  }
+
+  list(n_changed = n_changed, files = changed_files, world_series = ws, leaders = lr)
 }
 
 # Entry point for the scheduled workflow: Rscript tools/refresh_live_results.R [season]

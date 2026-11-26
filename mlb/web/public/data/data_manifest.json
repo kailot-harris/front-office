@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "sport": "mlb",
-  "generated_at": "2026-11-25T12:00:48Z",
-  "schedule_through_date": "2026-10-24",
+  "generated_at": "2026-11-26T06:24:16Z",
+  "schedule_through_date": null,
   "datasets": [
     {
       "file": "cbt_payroll_sheet.json",
@@ -76,7 +76,7 @@
       "file": "offseason_monitor.json",
       "generated_at": "2026-11-25T12:00:33Z",
       "stamp_source": "payload:lastPublished",
-      "content_sha256": "b9b971e89e22bf3c34799c509c07672c2d3fe681579d3af196604b72e20b5dd8",
+      "content_sha256": "0946e328751fef30865b9fc50bc620ed2b92bd28f96724da44d6083fadb00d6e",
       "through_date": null,
       "through_date_source": "not_game_dated",
       "coverage_note": "off-season transaction monitor; dates are transactions/milestones, not games",
@@ -101,6 +101,19 @@
       "final_through_date": "2026-10-24",
       "frozen_sha256": "6df9e7d17dad0059971d71c28a00f14963464d20d7edb9e3d1f8703fc31da6ba",
       "frozen_at": "2026-11-24T14:03:01Z"
+    },
+    {
+      "file": "player_leaders.json",
+      "generated_at": "2026-11-26T06:23:50Z",
+      "stamp_source": "payload:generated_at",
+      "content_sha256": "8f39b237130018bcc598814cae2d5bd8b129133db072b8cf195cd8f6ab0028f8",
+      "through_date": "2026-09-27",
+      "through_date_source": "payload:through_date",
+      "coverage_note": null,
+      "static": false,
+      "static_reason": null,
+      "builder": "tools/write_data_manifest.R",
+      "lifecycle": "live"
     },
     {
       "file": "playoff_series_matchups.json",
