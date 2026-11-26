@@ -1,36 +1,36 @@
 {
   "schema_version": "1.0",
   "game_id": "401910759",
-  "generated_at": "2026-11-25T14:02:52Z",
+  "generated_at": "2026-11-26T14:04:10Z",
   "data": {
     "projection_basis": "primary_ensemble",
-    "predicted_margin": 11.15,
-    "predicted_home_win_prob": 0.8251,
-    "sigma_game": 11.9249,
+    "predicted_margin": 10.17,
+    "predicted_home_win_prob": 0.8031,
+    "sigma_game": 11.925,
     "margin_waterfall": [
       {
         "key": "bottom_up",
         "label": "Bottom-up BPM",
-        "points": 3.15,
-        "detail": "35% BPM blend (BOS +8.98 vs ORL -0.01)"
+        "points": 2.69,
+        "detail": "35% BPM blend (BOS +8.93 vs ORL +1.24)"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
-        "points": 1.2,
-        "detail": "25% RAPM blend (BOS +5.07 vs ORL +0.26)"
+        "points": 1.19,
+        "detail": "25% RAPM blend (BOS +5.09 vs ORL +0.34)"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
-        "points": 1.91,
-        "detail": "20% Shot/Fatigue blend (BOS +8.99 vs ORL -0.54)"
+        "points": 1.64,
+        "detail": "20% Shot/Fatigue blend (BOS +9.01 vs ORL +0.79)"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
-        "points": 1.81,
-        "detail": "20% Embeddings blend (BOS +9.02 vs ORL -0.03)"
+        "points": 1.55,
+        "detail": "20% Embeddings blend (BOS +8.98 vs ORL +1.22)"
       },
       {
         "key": "home_court",
@@ -47,7 +47,7 @@
       {
         "key": "rounding",
         "label": "Component rounding",
-        "points": -0.01,
+        "points": 0.01,
         "detail": "2-decimal component rounding residual"
       }
     ],
@@ -68,10 +68,10 @@
         {
           "feature": "diff_roll_tovp",
           "label": "18-Game Turnover Rate Diff",
-          "feature_value": -0.0199,
-          "z_score": -1.1183,
-          "shap_log_odds": 0.30942,
-          "shap_prob_approx": 0.0744
+          "feature_value": -0.0204,
+          "z_score": -1.1476,
+          "shap_log_odds": 0.30924,
+          "shap_prob_approx": 0.0743
         },
         {
           "feature": "diff_roll_pts",
@@ -94,7 +94,7 @@
           "label": "Schedule Fatigue Index Diff",
           "feature_value": -1,
           "z_score": -0.8026,
-          "shap_log_odds": 0.06676,
+          "shap_log_odds": 0.06685,
           "shap_prob_approx": 0.0164
         },
         {
@@ -166,7 +166,7 @@
           "label": "Days Rest Diff",
           "feature_value": 0,
           "z_score": -0.102,
-          "shap_log_odds": -0.00223,
+          "shap_log_odds": -0.00214,
           "shap_prob_approx": -0.0005
         }
       ]

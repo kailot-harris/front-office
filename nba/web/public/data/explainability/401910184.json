@@ -1,36 +1,36 @@
 {
   "schema_version": "1.0",
   "game_id": "401910184",
-  "generated_at": "2026-11-25T14:02:52Z",
+  "generated_at": "2026-11-26T14:04:10Z",
   "data": {
     "projection_basis": "primary_ensemble",
-    "predicted_margin": -2.59,
-    "predicted_home_win_prob": 0.4143,
-    "sigma_game": 11.9582,
+    "predicted_margin": -2.6,
+    "predicted_home_win_prob": 0.4139,
+    "sigma_game": 11.9504,
     "margin_waterfall": [
       {
         "key": "bottom_up",
         "label": "Bottom-up BPM",
         "points": -1.76,
-        "detail": "35% BPM blend (LAL -0.30 vs DEN +4.72)"
+        "detail": "35% BPM blend (LAL -0.35 vs DEN +4.67)"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
         "points": -1.04,
-        "detail": "25% RAPM blend (LAL -1.22 vs DEN +2.93)"
+        "detail": "25% RAPM blend (LAL -1.21 vs DEN +2.95)"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": -1.18,
-        "detail": "20% Shot/Fatigue blend (LAL -4.22 vs DEN +1.66)"
+        "detail": "20% Shot/Fatigue blend (LAL -4.20 vs DEN +1.69)"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
         "points": -1.02,
-        "detail": "20% Embeddings blend (LAL -0.43 vs DEN +4.67)"
+        "detail": "20% Embeddings blend (LAL -0.47 vs DEN +4.63)"
       },
       {
         "key": "home_court",
@@ -43,12 +43,6 @@
         "label": "Schedule & travel",
         "points": 0,
         "detail": "DEN fatigue 0.00 minus LAL fatigue 0.00"
-      },
-      {
-        "key": "rounding",
-        "label": "Component rounding",
-        "points": 0.01,
-        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,

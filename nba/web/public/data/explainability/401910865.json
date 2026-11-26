@@ -1,36 +1,36 @@
 {
   "schema_version": "1.0",
   "game_id": "401910865",
-  "generated_at": "2026-11-25T14:02:52Z",
+  "generated_at": "2026-11-26T14:04:10Z",
   "data": {
     "projection_basis": "primary_ensemble",
-    "predicted_margin": 3.17,
-    "predicted_home_win_prob": 0.6027,
-    "sigma_game": 12.1759,
+    "predicted_margin": 2.18,
+    "predicted_home_win_prob": 0.571,
+    "sigma_game": 12.1764,
     "margin_waterfall": [
       {
         "key": "bottom_up",
         "label": "Bottom-up BPM",
-        "points": 0.62,
-        "detail": "35% BPM blend (IND +1.76 vs ORL -0.01)"
+        "points": 0.16,
+        "detail": "35% BPM blend (IND +1.71 vs ORL +1.24)"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
-        "points": -1.24,
-        "detail": "25% RAPM blend (IND -4.70 vs ORL +0.26)"
+        "points": -1.25,
+        "detail": "25% RAPM blend (IND -4.68 vs ORL +0.34)"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
-        "points": 0.74,
-        "detail": "20% Shot/Fatigue blend (IND +3.16 vs ORL -0.54)"
+        "points": 0.48,
+        "detail": "20% Shot/Fatigue blend (IND +3.19 vs ORL +0.79)"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
-        "points": 0.32,
-        "detail": "20% Embeddings blend (IND +1.59 vs ORL -0.03)"
+        "points": 0.06,
+        "detail": "20% Embeddings blend (IND +1.54 vs ORL +1.22)"
       },
       {
         "key": "home_court",
@@ -62,8 +62,8 @@
         {
           "feature": "diff_roll_tovp",
           "label": "18-Game Turnover Rate Diff",
-          "feature_value": -0.0201,
-          "z_score": -1.1302,
+          "feature_value": -0.0206,
+          "z_score": -1.1596,
           "shap_log_odds": 0.24002,
           "shap_prob_approx": 0.0581
         },

@@ -5,7 +5,18 @@
 # Writes web/public/data/landing_digest.json, the one payload the front-office
 # landing page fetches for this sport:
 #   schema_version, sport, generated_at, slate_date (US Eastern), season_state,
-#   next_milestone, today[], yesterday[], record, calibration, movers.
+#   next_milestone, today[], yesterday[], record, calibration, movers,
+#   excluded_game_ids, and (refresh roll-over only) today_pending.
+#
+# ROW SHAPE (today[] and yesterday[] alike, whichever writer ran)
+#   game_id, game_date, start_time_utc (null when unknown), home, away, status,
+#   home_win_prob, away_win_prob, prediction_status, home_score, away_score
+#   (integers when final, null otherwise), final, predicted_winner, hit (null
+#   when not final or not gradable; see HIT RULE).
+#
+# today_pending: true only when a slot B/C refresh rolled the digest forward to
+# a new Eastern date and the payload has no games for that date yet (the slot A
+# 09:00 ET build fills them). Absent in every other case; slot A never writes it.
 #
 # SOURCES (all real; nothing is invented)
 #   * web/public/data/matchups_slates.json - every game of the season with the
@@ -26,8 +37,15 @@
 #   counted as `excluded`. Games not yet final -> hit null and not counted.
 #
 # Slot A (run_full_pipeline.R) calls build_landing_digest(). Slots B/C
-# (tools/refresh_live_results.R) call ld_patch_digest(), which only rewrites
-# yesterday, record and calibration from the patched matchups payload.
+# (tools/refresh_live_results.R) call ld_patch_digest() after every results
+# sweep (front-office#240):
+#   * same Eastern date as slate_date: rebuild today and yesterday rows,
+#     record and calibration from the patched matchups payload;
+#   * Eastern date after slate_date: roll forward - slate_date becomes the new
+#     date, yesterday/record/calibration are recomputed for it, today holds the
+#     payload's rows for the new date (or [] plus today_pending: true).
+#   season_state, next_milestone, movers and excluded_game_ids are carried
+#   unchanged; slot A refreshes them at 09:00 ET.
 #
 # No odds, spreads or lines: ld_assert_no_betting() refuses to write a payload
 # carrying any such term.
@@ -116,8 +134,9 @@ ld_schedule_lookup <- function(schedule_path) {
 }
 
 #' Digest rows for one date. `lookup` is a data.frame(game_id, start_time_utc,
-#' status) or NULL; with_result adds the yesterday fields.
-ld_rows <- function(m, date, lookup = NULL, with_result = FALSE) {
+#' status) or NULL. Every row carries the result fields (final, scores,
+#' predicted_winner, hit), so today and yesterday rows share one shape.
+ld_rows <- function(m, date, lookup = NULL) {
   if (is.null(m) || !nrow(m)) return(list())
   sel <- which(substr(as.character(m$game_date), 1, 10) == format(as.Date(date)))
   logged <- .ld_is_logged(m)
@@ -125,7 +144,7 @@ ld_rows <- function(m, date, lookup = NULL, with_result = FALSE) {
     gid <- as.character(m$game_id[i])
     k <- if (!is.null(lookup)) match(gid, lookup$game_id) else NA_integer_
     done <- isTRUE(m$is_completed[i])
-    status <- if (done) "final" else if (!is.na(k)) lookup$status[k] else "scheduled"
+    status <- if (done) "final" else if (!is.na(k) && !is.na(lookup$status[k])) lookup$status[k] else "scheduled"
     if (status == "final" && !done) status <- "in_progress"   # payload not yet graded
     has_pred <- logged[i]
     hp <- if (has_pred) round(as.numeric(m$predicted_home_win_prob[i]), 4) else NA_real_
@@ -139,14 +158,12 @@ ld_rows <- function(m, date, lookup = NULL, with_result = FALSE) {
                 home_win_prob = hp,
                 away_win_prob = ap,
                 prediction_status = if (has_pred) "available" else "not_yet_run")
-    if (with_result) {
-      g <- ld_grade(row$home, row$away, hp, m$home_score[i], m$away_score[i], done, status)
-      row$home_score <- if (done) as.integer(m$home_score[i]) else NA_integer_
-      row$away_score <- if (done) as.integer(m$away_score[i]) else NA_integer_
-      row$final <- done
-      row$predicted_winner <- g$predicted_winner
-      row$hit <- g$hit
-    }
+    g <- ld_grade(row$home, row$away, hp, m$home_score[i], m$away_score[i], done, status)
+    row$home_score <- if (done) as.integer(m$home_score[i]) else NA_integer_
+    row$away_score <- if (done) as.integer(m$away_score[i]) else NA_integer_
+    row$final <- done
+    row$predicted_winner <- g$predicted_winner
+    row$hit <- g$hit
     row
   })
 }
@@ -346,7 +363,7 @@ build_landing_digest <- function(matchups_path = file.path("web", "public", "dat
     season_state = ss$state,
     next_milestone = ss$milestone,
     today = ld_rows(m, slate, lookup),
-    yesterday = ld_rows(m, slate - 1L, lookup, with_result = TRUE),
+    yesterday = ld_rows(m, slate - 1L, lookup),
     record = ld_record(m, slate, postponed),
     calibration = ld_calibration(m, slate, postponed),
     movers = ld_movers(h),
@@ -356,31 +373,55 @@ build_landing_digest <- function(matchups_path = file.path("web", "public", "dat
   invisible(list(path = out_path, written = written, digest = digest))
 }
 
-#' Slots B/C: refresh yesterday, record and calibration from the (already
-#' patched) matchups payload. Everything else is carried through unchanged.
-ld_patch_digest <- function(digest, matchups) {
+#' Lookup (game_id, start_time_utc, status) from previously written digest
+#' rows, so a refresh keeps the start times and statuses slot A recorded.
+.ld_rows_lookup <- function(rows) {
+  if (!length(rows)) return(NULL)
+  data.frame(
+    game_id = vapply(rows, function(r) as.character(r$game_id), ""),
+    start_time_utc = vapply(rows, function(r) .ld_chr(r$start_time_utc), ""),
+    status = vapply(rows, function(r) .ld_chr(r$status), ""),
+    stringsAsFactors = FALSE)
+}
+
+#' Slots B/C: re-derive the digest from the (already patched) matchups payload.
+#' Same Eastern date as slate_date -> rebuild today, yesterday, record and
+#' calibration. Later Eastern date -> roll forward to it (front-office#240).
+#' season_state, next_milestone, movers and excluded_game_ids are carried.
+ld_patch_digest <- function(digest, matchups, now = Sys.time()) {
   m <- matchups
   m$game_id <- as.character(m$game_id)
   slate <- as.Date(digest$slate_date)
+  run_date <- ld_eastern_date(now)
   postponed <- unlist(digest$excluded_game_ids %||% list())
-  # carry start times / statuses the slot A build recorded
-  prev <- digest$yesterday %||% list()
-  lookup <- if (length(prev)) data.frame(
-    game_id = vapply(prev, function(r) as.character(r$game_id), ""),
-    start_time_utc = vapply(prev, function(r) .ld_chr(r$start_time_utc), ""),
-    status = vapply(prev, function(r) .ld_chr(r$status), ""),
-    stringsAsFactors = FALSE) else NULL
-  digest$yesterday <- ld_rows(m, slate - 1L, lookup, with_result = TRUE)
+  old_today <- .ld_rows_lookup(digest$today %||% list())
+
+  if (run_date > slate) {
+    # Roll-over: the old today rows are the source of start times / statuses
+    # for the new yesterday (ids match when the new date is slate + 1).
+    slate <- run_date
+    digest$slate_date <- format(slate)
+    digest$today <- ld_rows(m, slate)
+    digest$yesterday <- ld_rows(m, slate - 1L, old_today)
+    digest$today_pending <- if (length(digest$today)) NULL else TRUE
+  } else {
+    digest$yesterday <- ld_rows(m, slate - 1L, .ld_rows_lookup(digest$yesterday %||% list()))
+    if (run_date == slate) {
+      digest$today <- ld_rows(m, slate, old_today)
+      digest$today_pending <- NULL
+    }
+  }
   digest$record <- ld_record(m, slate, postponed)
   digest$calibration <- ld_calibration(m, slate, postponed)
   digest
 }
 
-#' Read, patch, write. Returns TRUE if the file changed.
+#' Read, patch, write. Returns TRUE if the file changed (a run that changes
+#' nothing but generated_at leaves the file untouched).
 ld_patch_digest_file <- function(path, matchups, now = Sys.time()) {
   if (!file.exists(path)) return(FALSE)
   d <- jsonlite::fromJSON(path, simplifyVector = FALSE)
-  d2 <- ld_patch_digest(d, matchups)
+  d2 <- ld_patch_digest(d, matchups, now)
   d2$generated_at <- .ld_utc(now)
   ld_write(d2, path)
 }

@@ -1,36 +1,36 @@
 {
   "schema_version": "1.0",
   "game_id": "401910753",
-  "generated_at": "2026-11-24T14:04:36Z",
+  "generated_at": "2026-11-26T14:04:10Z",
   "data": {
     "projection_basis": "primary_ensemble",
     "predicted_margin": -2.68,
     "predicted_home_win_prob": 0.4147,
-    "sigma_game": 12.4337,
+    "sigma_game": 12.4426,
     "margin_waterfall": [
       {
         "key": "bottom_up",
         "label": "Bottom-up BPM",
         "points": -2.86,
-        "detail": "35% BPM blend (UTA -8.91 vs ATL -0.74)"
+        "detail": "35% BPM blend (UTA -8.96 vs ATL -0.79)"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
         "points": -0.18,
-        "detail": "25% RAPM blend (UTA -0.21 vs ATL +0.52)"
+        "detail": "25% RAPM blend (UTA -0.19 vs ATL +0.54)"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": -2.15,
-        "detail": "20% Shot/Fatigue blend (UTA -9.45 vs ATL +1.29)"
+        "detail": "20% Shot/Fatigue blend (UTA -9.42 vs ATL +1.32)"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
         "points": -1.64,
-        "detail": "20% Embeddings blend (UTA -8.90 vs ATL -0.69)"
+        "detail": "20% Embeddings blend (UTA -8.94 vs ATL -0.74)"
       },
       {
         "key": "home_court",
@@ -142,8 +142,8 @@
         {
           "feature": "diff_roll_blk",
           "label": "18-Game Blocks Diff",
-          "feature_value": 1.1765,
-          "z_score": 0.8286,
+          "feature_value": 1.2353,
+          "z_score": 0.8699,
           "shap_log_odds": 0.0206,
           "shap_prob_approx": 0.0051
         },

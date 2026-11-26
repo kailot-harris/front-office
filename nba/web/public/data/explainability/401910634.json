@@ -1,36 +1,36 @@
 {
   "schema_version": "1.0",
   "game_id": "401910634",
-  "generated_at": "2026-11-25T14:02:52Z",
+  "generated_at": "2026-11-26T14:04:10Z",
   "data": {
     "projection_basis": "primary_ensemble",
-    "predicted_margin": 2.57,
-    "predicted_home_win_prob": 0.5806,
-    "sigma_game": 12.6398,
+    "predicted_margin": 2.58,
+    "predicted_home_win_prob": 0.5808,
+    "sigma_game": 12.6517,
     "margin_waterfall": [
       {
         "key": "bottom_up",
         "label": "Bottom-up BPM",
         "points": 0,
-        "detail": "35% BPM blend (NOP -8.90 vs UTA -8.91)"
+        "detail": "35% BPM blend (NOP -8.95 vs UTA -8.96)"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
         "points": -0.84,
-        "detail": "25% RAPM blend (NOP -3.55 vs UTA -0.21)"
+        "detail": "25% RAPM blend (NOP -3.53 vs UTA -0.19)"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": 0.94,
-        "detail": "20% Shot/Fatigue blend (NOP -4.75 vs UTA -9.45)"
+        "detail": "20% Shot/Fatigue blend (NOP -4.73 vs UTA -9.42)"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
         "points": 0.02,
-        "detail": "20% Embeddings blend (NOP -8.82 vs UTA -8.90)"
+        "detail": "20% Embeddings blend (NOP -8.86 vs UTA -8.94)"
       },
       {
         "key": "home_court",
@@ -43,6 +43,12 @@
         "label": "Schedule & travel",
         "points": 0.05,
         "detail": "UTA fatigue 0.92 minus NOP fatigue 0.87"
+      },
+      {
+        "key": "rounding",
+        "label": "Component rounding",
+        "points": 0.01,
+        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,
@@ -78,8 +84,8 @@
         {
           "feature": "diff_roll_dreb",
           "label": "18-Game Defensive Rebound Diff",
-          "feature_value": -2.3333,
-          "z_score": -0.7646,
+          "feature_value": -2.2778,
+          "z_score": -0.7464,
           "shap_log_odds": -0.17552,
           "shap_prob_approx": -0.0436
         },

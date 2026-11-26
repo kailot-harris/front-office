@@ -1,36 +1,36 @@
 {
   "schema_version": "1.0",
   "game_id": "401910104",
-  "generated_at": "2026-11-24T14:04:36Z",
+  "generated_at": "2026-11-26T14:04:10Z",
   "data": {
     "projection_basis": "primary_ensemble",
-    "predicted_margin": -1.08,
-    "predicted_home_win_prob": 0.4648,
-    "sigma_game": 12.2107,
+    "predicted_margin": -1.35,
+    "predicted_home_win_prob": 0.4559,
+    "sigma_game": 12.1968,
     "margin_waterfall": [
       {
         "key": "bottom_up",
         "label": "Bottom-up BPM",
         "points": -2.9,
-        "detail": "35% BPM blend (CHA -5.45 vs TOR +2.84)"
+        "detail": "35% BPM blend (CHA -5.50 vs TOR +2.79)"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
         "points": -0.33,
-        "detail": "25% RAPM blend (CHA +1.82 vs TOR +3.14)"
+        "detail": "25% RAPM blend (CHA +1.83 vs TOR +3.16)"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
-        "points": -1.07,
-        "detail": "20% Shot/Fatigue blend (CHA -1.21 vs TOR +4.14)"
+        "points": -1.33,
+        "detail": "20% Shot/Fatigue blend (CHA -2.50 vs TOR +4.17)"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
         "points": -1.63,
-        "detail": "20% Embeddings blend (CHA -5.35 vs TOR +2.80)"
+        "detail": "20% Embeddings blend (CHA -5.40 vs TOR +2.76)"
       },
       {
         "key": "home_court",
@@ -43,6 +43,12 @@
         "label": "Schedule & travel",
         "points": 2.45,
         "detail": "TOR fatigue 2.58 minus CHA fatigue 0.13"
+      },
+      {
+        "key": "rounding",
+        "label": "Component rounding",
+        "points": -0.01,
+        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,
@@ -54,66 +60,58 @@
       "train_seasons_label": "2018-19..2025-26",
       "window_games": 18,
       "away_prior_games_n": 17,
-      "home_prior_games_n": 16,
+      "home_prior_games_n": 17,
       "base_value_log_odds": 0.23286,
-      "total_log_odds": -0.30371,
-      "predicted_home_win_prob": 0.4247,
+      "total_log_odds": -0.36168,
+      "predicted_home_win_prob": 0.4106,
       "factors": [
         {
           "feature": "diff_roll_tovp",
           "label": "18-Game Turnover Rate Diff",
-          "feature_value": 0.0472,
-          "z_score": 2.6156,
-          "shap_log_odds": -0.63425,
-          "shap_prob_approx": -0.157
+          "feature_value": 0.0439,
+          "z_score": 2.4319,
+          "shap_log_odds": -0.66901,
+          "shap_prob_approx": -0.1653
         },
         {
           "feature": "diff_roll_ts",
           "label": "18-Game True Shooting Diff",
-          "feature_value": -0.0285,
-          "z_score": -0.8596,
-          "shap_log_odds": -0.44916,
-          "shap_prob_approx": -0.1118
+          "feature_value": -0.0281,
+          "z_score": -0.847,
+          "shap_log_odds": -0.47187,
+          "shap_prob_approx": -0.1174
         },
         {
           "feature": "diff_roll_dreb",
           "label": "18-Game Defensive Rebound Diff",
-          "feature_value": 3.6654,
-          "z_score": 1.2008,
-          "shap_log_odds": 0.37727,
-          "shap_prob_approx": 0.09
+          "feature_value": 3.5294,
+          "z_score": 1.1562,
+          "shap_log_odds": 0.37986,
+          "shap_prob_approx": 0.0906
         },
         {
           "feature": "diff_roll_pts",
           "label": "18-Game Scoring Diff (PPG)",
-          "feature_value": -10.9044,
-          "z_score": -1.5021,
-          "shap_log_odds": 0.22242,
-          "shap_prob_approx": 0.0539
+          "feature_value": -10.6471,
+          "z_score": -1.4661,
+          "shap_log_odds": 0.21957,
+          "shap_prob_approx": 0.0533
         },
         {
           "feature": "diff_roll_stl",
           "label": "18-Game Steals Diff",
-          "feature_value": -2.4081,
-          "z_score": -1.4783,
-          "shap_log_odds": -0.2174,
+          "feature_value": -2.4118,
+          "z_score": -1.4806,
+          "shap_log_odds": -0.21741,
           "shap_prob_approx": -0.0541
         },
         {
           "feature": "diff_roll_ast",
           "label": "18-Game Assists Diff",
-          "feature_value": -5.8235,
-          "z_score": -1.7365,
-          "shap_log_odds": 0.09959,
-          "shap_prob_approx": 0.0244
-        },
-        {
-          "feature": "diff_roll_oreb",
-          "label": "18-Game Offensive Rebound Diff",
-          "feature_value": 2.0699,
-          "z_score": 0.9072,
-          "shap_log_odds": 0.05467,
-          "shap_prob_approx": 0.0134
+          "feature_value": -5.9412,
+          "z_score": -1.7718,
+          "shap_log_odds": 0.10848,
+          "shap_prob_approx": 0.0266
         },
         {
           "feature": "diff_fatigue_index",
@@ -124,12 +122,20 @@
           "shap_prob_approx": 0.0114
         },
         {
+          "feature": "diff_roll_oreb",
+          "label": "18-Game Offensive Rebound Diff",
+          "feature_value": 2.2353,
+          "z_score": 0.9794,
+          "shap_log_odds": 0.04595,
+          "shap_prob_approx": 0.0113
+        },
+        {
           "feature": "diff_roll_efg",
           "label": "18-Game eFG% Diff",
-          "feature_value": -0.0375,
-          "z_score": -1.0737,
-          "shap_log_odds": -0.03822,
-          "shap_prob_approx": -0.0094
+          "feature_value": -0.0381,
+          "z_score": -1.0932,
+          "shap_log_odds": -0.03828,
+          "shap_prob_approx": -0.0095
         },
         {
           "feature": "style_similarity",
@@ -142,10 +148,10 @@
         {
           "feature": "diff_roll_blk",
           "label": "18-Game Blocks Diff",
-          "feature_value": 0.0331,
-          "z_score": 0.0261,
-          "shap_log_odds": 0.01346,
-          "shap_prob_approx": 0.0033
+          "feature_value": -0.0588,
+          "z_score": -0.0385,
+          "shap_log_odds": 0.01311,
+          "shap_prob_approx": 0.0032
         },
         {
           "feature": "diff_is_b2b",

@@ -1,36 +1,36 @@
 {
   "schema_version": "1.0",
   "game_id": "401910639",
-  "generated_at": "2026-11-25T14:02:52Z",
+  "generated_at": "2026-11-26T14:04:10Z",
   "data": {
     "projection_basis": "primary_ensemble",
-    "predicted_margin": 4.42,
-    "predicted_home_win_prob": 0.6449,
-    "sigma_game": 11.8968,
+    "predicted_margin": 5.41,
+    "predicted_home_win_prob": 0.6754,
+    "sigma_game": 11.896,
     "margin_waterfall": [
       {
         "key": "bottom_up",
         "label": "Bottom-up BPM",
-        "points": 0.1,
-        "detail": "35% BPM blend (ORL -0.01 vs LAL -0.30)"
+        "points": 0.56,
+        "detail": "35% BPM blend (ORL +1.24 vs LAL -0.35)"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
-        "points": 0.37,
-        "detail": "25% RAPM blend (ORL +0.26 vs LAL -1.22)"
+        "points": 0.39,
+        "detail": "25% RAPM blend (ORL +0.34 vs LAL -1.21)"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
-        "points": 0.74,
-        "detail": "20% Shot/Fatigue blend (ORL -0.54 vs LAL -4.22)"
+        "points": 1,
+        "detail": "20% Shot/Fatigue blend (ORL +0.79 vs LAL -4.20)"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
-        "points": 0.08,
-        "detail": "20% Embeddings blend (ORL -0.03 vs LAL -0.43)"
+        "points": 0.34,
+        "detail": "20% Embeddings blend (ORL +1.22 vs LAL -0.47)"
       },
       {
         "key": "home_court",
@@ -43,6 +43,12 @@
         "label": "Schedule & travel",
         "points": 0.73,
         "detail": "LAL fatigue 0.73 minus ORL fatigue 0.00"
+      },
+      {
+        "key": "rounding",
+        "label": "Component rounding",
+        "points": -0.01,
+        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,
@@ -72,7 +78,7 @@
           "label": "18-Game Defensive Rebound Diff",
           "feature_value": 2.1993,
           "z_score": 0.7205,
-          "shap_log_odds": 0.32317,
+          "shap_log_odds": 0.32342,
           "shap_prob_approx": 0.0776
         },
         {
@@ -80,8 +86,8 @@
           "label": "18-Game Steals Diff",
           "feature_value": -2.9641,
           "z_score": -1.8206,
-          "shap_log_odds": -0.19386,
-          "shap_prob_approx": -0.0482
+          "shap_log_odds": -0.19458,
+          "shap_prob_approx": -0.0484
         },
         {
           "feature": "diff_roll_pts",
@@ -110,10 +116,10 @@
         {
           "feature": "diff_roll_tovp",
           "label": "18-Game Turnover Rate Diff",
-          "feature_value": 0.0006,
-          "z_score": 0.0201,
-          "shap_log_odds": 0.03852,
-          "shap_prob_approx": 0.0095
+          "feature_value": 0.0011,
+          "z_score": 0.0495,
+          "shap_log_odds": 0.03899,
+          "shap_prob_approx": 0.0096
         },
         {
           "feature": "diff_fatigue_index",

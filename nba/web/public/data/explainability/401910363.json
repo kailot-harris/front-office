@@ -1,36 +1,36 @@
 {
   "schema_version": "1.0",
   "game_id": "401910363",
-  "generated_at": "2026-11-25T14:02:52Z",
+  "generated_at": "2026-11-26T14:04:10Z",
   "data": {
     "projection_basis": "primary_ensemble",
-    "predicted_margin": 6.13,
-    "predicted_home_win_prob": 0.6973,
-    "sigma_game": 11.868,
+    "predicted_margin": 5.15,
+    "predicted_home_win_prob": 0.6678,
+    "sigma_game": 11.8669,
     "margin_waterfall": [
       {
         "key": "bottom_up",
         "label": "Bottom-up BPM",
-        "points": 1.66,
-        "detail": "35% BPM blend (DEN +4.72 vs ORL -0.01)"
+        "points": 1.2,
+        "detail": "35% BPM blend (DEN +4.67 vs ORL +1.24)"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
-        "points": 0.67,
-        "detail": "25% RAPM blend (DEN +2.93 vs ORL +0.26)"
+        "points": 0.65,
+        "detail": "25% RAPM blend (DEN +2.95 vs ORL +0.34)"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
-        "points": 0.44,
-        "detail": "20% Shot/Fatigue blend (DEN +1.66 vs ORL -0.54)"
+        "points": 0.18,
+        "detail": "20% Shot/Fatigue blend (DEN +1.69 vs ORL +0.79)"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
-        "points": 0.94,
-        "detail": "20% Embeddings blend (DEN +4.67 vs ORL -0.03)"
+        "points": 0.68,
+        "detail": "20% Embeddings blend (DEN +4.63 vs ORL +1.22)"
       },
       {
         "key": "home_court",
@@ -47,7 +47,7 @@
       {
         "key": "rounding",
         "label": "Component rounding",
-        "points": -0.01,
+        "points": 0.01,
         "detail": "2-decimal component rounding residual"
       }
     ],
@@ -68,10 +68,10 @@
         {
           "feature": "diff_roll_tovp",
           "label": "18-Game Turnover Rate Diff",
-          "feature_value": -0.0192,
-          "z_score": -1.0815,
-          "shap_log_odds": 0.35613,
-          "shap_prob_approx": 0.0852
+          "feature_value": -0.0197,
+          "z_score": -1.1109,
+          "shap_log_odds": 0.35861,
+          "shap_prob_approx": 0.0857
         },
         {
           "feature": "diff_is_b2b",
@@ -86,7 +86,7 @@
           "label": "18-Game True Shooting Diff",
           "feature_value": 0.0229,
           "z_score": 0.7177,
-          "shap_log_odds": 0.15951,
+          "shap_log_odds": 0.15972,
           "shap_prob_approx": 0.0389
         },
         {
@@ -110,8 +110,8 @@
           "label": "Schedule Fatigue Index Diff",
           "feature_value": 1.5,
           "z_score": 1.3565,
-          "shap_log_odds": -0.07035,
-          "shap_prob_approx": -0.0174
+          "shap_log_odds": -0.07289,
+          "shap_prob_approx": -0.018
         },
         {
           "feature": "style_similarity",
@@ -134,8 +134,8 @@
           "label": "18-Game eFG% Diff",
           "feature_value": 0.0105,
           "z_score": 0.3199,
-          "shap_log_odds": -0.0406,
-          "shap_prob_approx": -0.01
+          "shap_log_odds": -0.04076,
+          "shap_prob_approx": -0.0101
         },
         {
           "feature": "diff_roll_pts",
@@ -166,7 +166,7 @@
           "label": "Days Rest Diff",
           "feature_value": -1,
           "z_score": -1.1336,
-          "shap_log_odds": -0.00699,
+          "shap_log_odds": -0.00697,
           "shap_prob_approx": -0.0017
         }
       ]

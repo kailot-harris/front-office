@@ -1,36 +1,36 @@
 {
   "schema_version": "1.0",
   "game_id": "401910117",
-  "generated_at": "2026-11-25T14:02:52Z",
+  "generated_at": "2026-11-26T14:04:10Z",
   "data": {
     "projection_basis": "primary_ensemble",
-    "predicted_margin": 17.88,
-    "predicted_home_win_prob": 0.9329,
-    "sigma_game": 11.9379,
+    "predicted_margin": 17.89,
+    "predicted_home_win_prob": 0.933,
+    "sigma_game": 11.9367,
     "margin_waterfall": [
       {
         "key": "bottom_up",
         "label": "Bottom-up BPM",
         "points": 5.95,
-        "detail": "35% BPM blend (BOS +8.98 vs WAS -8.01)"
+        "detail": "35% BPM blend (BOS +8.93 vs WAS -8.06)"
       },
       {
         "key": "rapm",
         "label": "Regularized APM",
         "points": 2.98,
-        "detail": "25% RAPM blend (BOS +5.07 vs WAS -6.85)"
+        "detail": "25% RAPM blend (BOS +5.09 vs WAS -6.83)"
       },
       {
         "key": "shot_fatigue",
         "label": "Shot quality & fatigue",
         "points": 3.14,
-        "detail": "20% Shot/Fatigue blend (BOS +8.99 vs WAS -6.72)"
+        "detail": "20% Shot/Fatigue blend (BOS +9.01 vs WAS -6.70)"
       },
       {
         "key": "embeddings",
         "label": "Player embeddings",
         "points": 3.42,
-        "detail": "20% Embeddings blend (BOS +9.02 vs WAS -8.07)"
+        "detail": "20% Embeddings blend (BOS +8.98 vs WAS -8.12)"
       },
       {
         "key": "home_court",
@@ -43,12 +43,6 @@
         "label": "Schedule & travel",
         "points": 0,
         "detail": "WAS fatigue 0.00 minus BOS fatigue 0.00"
-      },
-      {
-        "key": "rounding",
-        "label": "Component rounding",
-        "points": -0.01,
-        "detail": "2-decimal component rounding residual"
       }
     ],
     "schedule_context_available": true,
