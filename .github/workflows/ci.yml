@@ -75,7 +75,7 @@ jobs:
   fabrication-guard:
     name: Fabrication guard (front-office)
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 10
+    timeout-minutes: 45  # includes time queued for the shared runner's host CI lock
     steps:
       - uses: actions/checkout@v4
         with:
