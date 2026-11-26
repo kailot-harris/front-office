@@ -6,7 +6,23 @@
 #
 #   schema_version, sport, generated_at, slate_date (US Eastern),
 #   season_state, next_milestone, today[], yesterday[], record, calibration,
-#   movers {metric, windows {"1","7","21"}}
+#   movers {metric, windows {"1","7","21"}}, today_pending (refresh only)
+#
+# today[] and yesterday[] rows share one shape (front-office#240): game_id,
+# start_time_utc, home, away, status, home_win_prob, away_win_prob,
+# prediction_status, home_score, away_score, final, predicted_winner, hit.
+# Scores and hit are null until the game is final (hit also when not gradable).
+#
+# WHO WRITES WHAT:
+#   * Slot A (this script, 09:00 ET) builds every field from scratch and never
+#     writes today_pending.
+#   * Slots B/C (tools/refresh_live_results.R -> patch_landing_digest) re-derive
+#     today, yesterday, record and calibration from the patched payload. When
+#     the Eastern date has moved past slate_date they roll the digest forward
+#     to the new date; if the payload has no games on it, today is [] and
+#     today_pending is true (the landing page then says the slate posts after
+#     the morning update). season_state, next_milestone, movers and any other
+#     slot A field are carried unchanged.
 #
 # WHERE THE NUMBERS COME FROM - nothing here is predicted, only read:
 #   * Games, kickoff times, scores and win probabilities come from the
@@ -136,28 +152,50 @@ ld_games_table <- function(m) {
 
 .ld_num <- function(x) if (is.na(x)) NULL else x
 
+# One digest game row with its result. today and yesterday rows share this
+# shape (front-office#240), so the row does not depend on which writer ran.
+# Built with list(), so a NULL value stays as a key and serialises as null.
 ld_today_rows <- function(g) {
-  lapply(seq_len(nrow(g)), function(i) list(
-    game_id = g$game_id[i], start_time_utc = g$start_time_utc[i],
-    home = g$home[i], away = g$away[i], status = g$status[i],
-    home_win_prob = .ld_num(g$home_win_prob[i]), away_win_prob = .ld_num(g$away_win_prob[i]),
-    prediction_status = g$prediction_status[i]))
-}
-
-ld_yesterday_rows <- function(g) {
   lapply(seq_len(nrow(g)), function(i) {
-    r <- ld_today_rows(g[i, , drop = FALSE])[[1]]
     final <- identical(g$status[i], "final")
     hs <- g$home_score[i]; as_ <- g$away_score[i]
     p <- g$home_win_prob[i]
-    r$home_score <- if (final) .ld_num(hs) else NULL
-    r$away_score <- if (final) .ld_num(as_) else NULL
-    r$final <- final
-    r$predicted_winner <- if (is.na(p) || isTRUE(all.equal(p, 0.5))) NULL else if (p > 0.5) g$home[i] else g$away[i]
     h <- ld_hit(p, hs, as_, g$status[i])
-    r$hit <- if (is.na(h)) NULL else h
-    r
+    list(
+      game_id = g$game_id[i], start_time_utc = .ld_num(g$start_time_utc[i]),
+      home = g$home[i], away = g$away[i], status = g$status[i],
+      home_win_prob = .ld_num(g$home_win_prob[i]), away_win_prob = .ld_num(g$away_win_prob[i]),
+      prediction_status = g$prediction_status[i],
+      home_score = if (final) .ld_num(hs) else NULL,
+      away_score = if (final) .ld_num(as_) else NULL,
+      final = final,
+      predicted_winner = if (is.na(p) || isTRUE(all.equal(p, 0.5))) NULL else if (p > 0.5) g$home[i] else g$away[i],
+      hit = if (is.na(h)) NULL else h)
   })
+}
+
+ld_yesterday_rows <- function(g) ld_today_rows(g)
+
+# Carry start_time_utc and a non-final status from a previous digest's rows
+# onto freshly derived games, matched by game_id. A final or a postponed /
+# cancelled status read from the payload wins; nothing is invented.
+.ld_carry_rows <- function(x, prev_rows) {
+  if (!nrow(x) || !length(prev_rows)) return(x)
+  ids <- vapply(prev_rows, function(r) {
+    v <- r$game_id
+    if (is.null(v) || length(v) != 1) NA_character_ else as.character(v)
+  }, "")
+  for (i in seq_len(nrow(x))) {
+    k <- match(x$game_id[i], ids)
+    if (is.na(k)) next
+    p <- prev_rows[[k]]
+    st <- p$start_time_utc
+    if (is.character(st) && length(st) == 1 && !is.na(st)) x$start_time_utc[i] <- st
+    ps <- p$status
+    if (identical(x$status[i], "scheduled") && is.character(ps) && length(ps) == 1 &&
+        !is.na(ps) && !identical(ps, "final")) x$status[i] <- ps
+  }
+  x
 }
 
 .ld_rows_on <- function(g, date) {
@@ -355,15 +393,38 @@ build_landing_digest <- function(matchups, schedule = NULL, history = NULL,
   )
 }
 
-#' Slot B/C patch: re-grade `yesterday`, `record` and `calibration` against the
-#' (freshly patched) matchup rows, keeping the digest's own slate_date. today,
-#' movers, season_state and next_milestone are slot A's and stay untouched.
+#' Slot B/C patch (front-office#240): re-derive the game rows from the
+#' (freshly patched) matchup rows.
+#'   * Same day (Eastern date of `now` == slate_date): today, yesterday, record
+#'     and calibration for slate_date; today_pending is removed.
+#'   * Roll-over (Eastern date after slate_date): slate_date moves to the new
+#'     date; yesterday is the day before it, carrying start times and statuses
+#'     from the old today rows; record and calibration run through the day
+#'     before; today holds the new date's games, or is [] with
+#'     today_pending = true when the payload has none.
+#'   * Eastern date before slate_date: only yesterday, record and calibration.
+#' season_state, next_milestone and movers are slot A's and stay untouched.
 #' generated_at moves only when the content actually changed.
 patch_landing_digest <- function(digest, matchups, now = Sys.time()) {
-  slate <- as.Date(digest$slate_date)
+  old_slate <- as.Date(digest$slate_date)
+  run_date <- ld_slate_date(now)
   g <- ld_games_table(matchups)
   new <- digest
-  new$yesterday <- ld_yesterday_rows(.ld_rows_on(g, slate - 1))
+  if (run_date > old_slate) {
+    slate <- run_date
+    new$slate_date <- format(slate)
+    new$yesterday <- ld_yesterday_rows(.ld_carry_rows(.ld_rows_on(g, slate - 1), digest$today))
+    td <- .ld_rows_on(g, slate)
+    new$today <- ld_today_rows(td)
+    new$today_pending <- if (nrow(td)) NULL else TRUE
+  } else {
+    slate <- old_slate
+    new$yesterday <- ld_yesterday_rows(.ld_carry_rows(.ld_rows_on(g, slate - 1), digest$yesterday))
+    if (run_date == old_slate) {
+      new$today <- ld_today_rows(.ld_carry_rows(.ld_rows_on(g, slate), digest$today))
+      new$today_pending <- NULL
+    }
+  }
   new$record <- ld_record(g, slate)
   new$calibration <- ld_calibration(g, slate)
   same <- identical(ld_json_text(new), ld_json_text(digest))

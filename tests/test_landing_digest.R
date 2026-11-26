@@ -60,7 +60,18 @@ ok("LD-15 start_time_utc converts Eastern kickoff to UTC", identical(d$today[[1]
 y <- setNames(d$yesterday, vapply(d$yesterday, `[[`, "", "game_id"))
 ok("LD-16 yesterday: final graded hit; postponed has hit null and final false",
    isTRUE(y$g5$hit) && identical(y$g5$predicted_winner, "HOM") && is.null(y$g6$hit) && identical(y$g6$final, FALSE))
+ok("LD-16b slot A today rows carry the result fields (front-office#240), null until final",
+   all(vapply(d$today, function(r) all(c("final", "home_score", "away_score", "predicted_winner", "hit") %in% names(r)), TRUE)) &&
+     identical(d$today[[1]]$final, FALSE) && is.null(d$today[[1]]$home_score) && is.null(d$today[[1]]$hit) &&
+     identical(d$today[[1]]$predicted_winner, "HOM") && is.null(d$today[[2]]$predicted_winner))
+ok("LD-16c today and yesterday rows share one shape", identical(names(d$today[[1]]), names(d$yesterday[[1]])))
 txt <- ld_json_text(d)
+ok("LD-16d slot A never writes today_pending; null result fields serialise as null",
+   !("today_pending" %in% names(d)) && !grepl("today_pending", txt, fixed = TRUE) &&
+     grepl('"home_score": null', txt, fixed = TRUE) && grepl('"hit": null', txt, fixed = TRUE))
+d_empty <- build_landing_digest(m, NULL, NULL, as.POSIXct("2026-11-23 17:00:00", tz = "UTC"), 2026L)
+ok("LD-16e slot A on a date with no games: today [] and still no today_pending",
+   length(d_empty$today) == 0 && !("today_pending" %in% names(d_empty)))
 ok("LD-17 serialised digest keeps empty movers items as [] and has no betting terms",
    grepl('"items": []', txt, fixed = TRUE) && !grepl("odds|spread|moneyline|over/under", tolower(txt)))
 

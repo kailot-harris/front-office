@@ -478,6 +478,7 @@ write_json_if_changed <- function(x, path) {
 #' @param matchups_path Path to matchups_current_week.json.
 #' @param diagnostics_path Path to model_diagnostics.json.
 #' @param csv_reader Injectable reader, for tests.
+#' @param now Run time; its US Eastern date decides a landing digest roll-over.
 #' @return list(n_changed, n_deferred, files, metrics)
 refresh_live_results <- function(season = CURRENT_SEASON,
                                  matchups_path = WEB_JSON_MATCHUPS_CURRENT_WEEK,
@@ -485,7 +486,8 @@ refresh_live_results <- function(season = CURRENT_SEASON,
                                  csv_reader = NULL,
                                  digest_path = file.path(dirname(matchups_path), "landing_digest.json"),
                                  leaders_path = file.path(dirname(matchups_path), "player_leaders.json"),
-                                 leaders_fetch = NULL) {
+                                 leaders_fetch = NULL,
+                                 now = Sys.time()) {
   if (!file.exists(matchups_path)) {
     stop(sprintf("refresh_live_results(): no payload at %s - run export_web_datasets.R first.",
                  matchups_path))
@@ -522,13 +524,15 @@ refresh_live_results <- function(season = CURRENT_SEASON,
     }
   }
 
-  # Landing digest (NFL_analytics#183): re-grade yesterday, record and
-  # calibration from the same patched rows. Runs even when no game changed, so
-  # a digest written before an earlier top-up still converges. Its slate_date,
-  # today, movers and season state are slot A's and are left alone.
+  # Landing digest (NFL_analytics#183, front-office#240): re-derive today,
+  # yesterday, record and calibration from the same patched rows, and roll the
+  # digest forward once the Eastern date passes its slate_date. Runs even when
+  # no game changed, so a digest written before an earlier top-up still
+  # converges and the roll-over happens on the first run after midnight ET.
+  # movers and season state are slot A's and are left alone.
   if (file.exists(digest_path) && exists("patch_landing_digest", mode = "function")) {
     digest <- jsonlite::fromJSON(digest_path, simplifyVector = FALSE)
-    pd <- patch_landing_digest(digest, payload$matchups)
+    pd <- patch_landing_digest(digest, payload$matchups, now)
     if (pd$changed) {
       ld_write_digest(pd$digest, digest_path)
       changed_files <- c(changed_files, digest_path)
