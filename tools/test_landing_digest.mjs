@@ -68,11 +68,52 @@ test('freshness summarizes a manifest', () => {
   assert.equal(D.freshness(null), null);
 });
 
+test('todayRow shows score and hit/miss for a final game', () => {
+  const g = { home: 'HOM', away: 'AWY', home_win_prob: 0.4, away_win_prob: 0.6, start_time_utc: '2026-11-25T00:00:00Z',
+    status: 'final', final: true, home_score: 99, away_score: 101, predicted_winner: 'AWY', hit: true };
+  assert.deepEqual(D.todayRow(g), { primary: 'AWY 101, HOM 99', secondary: 'Model: AWY 60%', right: 'Hit', rightClass: 'dg-hit' });
+  assert.deepEqual(D.todayRow({ ...g, hit: false }).rightClass, 'dg-miss');
+  assert.equal(D.todayRow({ ...g, hit: null }).right, 'Not graded');
+  // Same rendering as a Yesterday row.
+  assert.deepEqual(D.todayRow(g), D.resultRow(g));
+});
+
+test('todayRow keeps start time and prediction for non-final and old-shape rows', () => {
+  const old = { home: 'PHI', away: 'MIA', start_time_utc: '2026-11-25T22:00:00Z', status: 'scheduled',
+    home_win_prob: 0.539, away_win_prob: 0.461, prediction_status: 'available' };
+  const r = D.todayRow(old);
+  assert.equal(r.primary, 'MIA at PHI');
+  assert.equal(r.secondary, D.formatStart(old.start_time_utc));
+  assert.equal(r.right, 'PHI 54%');
+  assert.equal(r.rightClass, '');
+  const notFinal = { ...old, final: false, home_score: null, away_score: null, predicted_winner: 'PHI', hit: null };
+  assert.deepEqual(D.todayRow(notFinal), r);
+  // final without numeric scores falls back to the scheduled display.
+  assert.equal(D.todayRow({ ...old, final: true, home_score: null, away_score: null }).primary, 'MIA at PHI');
+  assert.equal(D.todayRow({ home: 'A', away: 'B' }).rightClass, 'dg-muted');
+});
+
+test('todayEmptyLine handles today_pending, off-season and old shape', () => {
+  assert.equal(D.todayEmptyLine({ today: [], today_pending: true, season_state: 'regular' }),
+    'Today’s games and predictions post after the morning update');
+  assert.equal(D.todayEmptyLine({ today: [], season_state: 'regular' }), 'No games today');
+  assert.equal(D.todayEmptyLine({ today: [], season_state: 'offseason' }), 'Off-season');
+  assert.match(D.todayEmptyLine({ today: [], season_state: 'regular', next_milestone: { label: 'Playoffs', date: '2027-04-18' } }),
+    /^No games today\. Next: Playoffs /);
+});
+
+test('scoreText', () => {
+  assert.equal(D.scoreText({ home: 'H', away: 'A', home_score: 3, away_score: 0 }), 'A 0, H 3');
+  assert.equal(D.scoreText({ home: 'H', away: 'A', home_score: null, away_score: null }), 'A at H');
+});
+
 test('real sport fixtures parse and summarize', () => {
   for (const s of D.SPORTS) {
     const dg = fixture(s, 'landing_digest');
     assert.equal(dg.sport.toLowerCase(), s);
     for (const g of [...dg.today, ...dg.yesterday]) assert.equal(typeof D.predictionText(g), 'string');
+    for (const g of dg.today) assert.equal(typeof D.todayRow(g).primary, 'string');
+    assert.equal(typeof D.todayEmptyLine(dg), 'string');
     assert.ok(D.freshness(fixture(s, 'data_manifest')).through);
   }
 });

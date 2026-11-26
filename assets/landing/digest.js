@@ -69,6 +69,50 @@
     return 'Not graded';
   }
 
+  // "AWY 101, HOM 99" when the score is known, else "AWY at HOM".
+  function scoreText(game) {
+    return typeof game.home_score === 'number' && typeof game.away_score === 'number'
+      ? game.away + ' ' + game.away_score + ', ' + game.home + ' ' + game.home_score
+      : game.away + ' at ' + game.home;
+  }
+
+  // Row content for a finished game: score, the model's prediction, and hit/miss.
+  function resultRow(game) {
+    var fav = favorite(game);
+    return {
+      primary: scoreText(game),
+      secondary: fav ? 'Model: ' + fav.team + ' ' + pct(fav.p) : predictionText(game),
+      right: hitText(game),
+      rightClass: game.hit === true ? 'dg-hit' : game.hit === false ? 'dg-miss' : 'dg-muted'
+    };
+  }
+
+  // Row content for a Today game. A final game with both scores shows its result like
+  // Yesterday does; anything else (including digests without the `final` field) shows
+  // the start time and the prediction.
+  function todayRow(game) {
+    if (game.final === true && typeof game.home_score === 'number' && typeof game.away_score === 'number') {
+      return resultRow(game);
+    }
+    return {
+      primary: game.away + ' at ' + game.home,
+      secondary: formatStart(game.start_time_utc),
+      right: predictionText(game),
+      rightClass: favorite(game) ? '' : 'dg-muted'
+    };
+  }
+
+  // The muted line shown when a sport has no Today rows.
+  function todayEmptyLine(digest) {
+    if (digest.today_pending === true) return 'Today’s games and predictions post after the morning update';
+    var text = digest.season_state === 'offseason' ? 'Off-season' : 'No games today';
+    if (digest.next_milestone && digest.next_milestone.label) {
+      text += '. Next: ' + digest.next_milestone.label +
+        (digest.next_milestone.date ? ' ' + formatDate(digest.next_milestone.date) : '');
+    }
+    return text;
+  }
+
   function recordText(record) {
     if (!record || !record.season || !record.season.games) return '';
     var s = record.season, l = record.last_7 || { hits: 0, games: 0, excluded: 0 };
@@ -99,7 +143,8 @@
   var api = {
     SPORTS: SPORTS, easternDate: easternDate, isStale: isStale, formatStart: formatStart,
     favorite: favorite, predictionText: predictionText, hitText: hitText, recordText: recordText,
-    defaultSport: defaultSport, freshness: freshness
+    defaultSport: defaultSport, freshness: freshness, scoreText: scoreText, resultRow: resultRow,
+    todayRow: todayRow, todayEmptyLine: todayEmptyLine
   };
   root.FODigest = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
@@ -161,17 +206,12 @@
       if (d.today && d.today.length) {
         var ul = el('ul', { className: 'dg-list' });
         d.today.forEach(function (g) {
-          ul.appendChild(gameRow(g.away + ' at ' + g.home, formatStart(g.start_time_utc), predictionText(g),
-            favorite(g) ? '' : 'dg-muted'));
+          var r = todayRow(g);
+          ul.appendChild(gameRow(r.primary, r.secondary, r.right, r.rightClass));
         });
         group.appendChild(ul);
       } else {
-        var line = d.season_state === 'offseason' ? 'Off-season' : 'No games today';
-        if (d.next_milestone && d.next_milestone.label) {
-          line += '. Next: ' + d.next_milestone.label +
-            (d.next_milestone.date ? ' ' + formatDate(d.next_milestone.date) : '');
-        }
-        group.appendChild(el('p', { className: 'dg-muted dg-line', text: line }));
+        group.appendChild(el('p', { className: 'dg-muted dg-line', text: todayEmptyLine(d) }));
       }
       box.appendChild(group);
     });
@@ -190,13 +230,8 @@
       if (games.length) {
         var ul = el('ul', { className: 'dg-list' });
         games.forEach(function (g) {
-          var score = typeof g.home_score === 'number'
-            ? g.away + ' ' + g.away_score + ', ' + g.home + ' ' + g.home_score
-            : g.away + ' at ' + g.home;
-          var fav = favorite(g);
-          var sub = fav ? 'Model: ' + fav.team + ' ' + pct(fav.p) : predictionText(g);
-          var h = hitText(g);
-          ul.appendChild(gameRow(score, sub, h, g.hit === true ? 'dg-hit' : g.hit === false ? 'dg-miss' : 'dg-muted'));
+          var r = resultRow(g);
+          ul.appendChild(gameRow(r.primary, r.secondary, r.right, r.rightClass));
         });
         group.appendChild(ul);
       } else {

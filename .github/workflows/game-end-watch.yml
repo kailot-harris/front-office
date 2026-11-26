@@ -1,0 +1,62 @@
+name: Game-end watch
+
+# front-office#240: refresh results soon after games end instead of waiting for
+# the next refresh slot. tools/game_end_watch.mjs reads the live NBA, NFL and
+# WNBA landing digests (MLB is not watched; see WATCHED_SPORTS in the script)
+# and only acts when a game should have ended but is not final:
+#   1. dispatch that sport repo's refresh-results.yml and wait for it (20 min cap)
+#   2. if the sport repo's main moved, dispatch this repo's sync-sports.yml once,
+#      which pulls the subtrees and dispatches deploy.yml when it commits.
+# A game stops being retried 6 hours after its expected end; the scheduled
+# refresh slots stay the backstop. When nothing is pending, a run only fetches
+# three JSON files.
+#
+# Tokens:
+#   SUBTREE_TOKEN  secret; calls to the sport repos. Needs Actions read/write
+#                  and Contents read on NBA_analytics, NFL_analytics and
+#                  WNBA_analytics. A 403 or 404 fails the run with a hint.
+#   GITHUB_TOKEN   dispatches sync-sports.yml here. A workflow_dispatch made
+#                  with GITHUB_TOKEN does start the workflow (only pushes are
+#                  suppressed), and sync-sports.yml dispatches deploy.yml the
+#                  same way.
+#
+# GitHub-hosted only: never register a self-hosted runner on this public repo
+# (see tools/ci-runner/README.md).
+
+on:
+  schedule:
+    # GitHub may start scheduled runs late; the 6-hour retry window absorbs that.
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Select candidates and print what would be dispatched, without dispatching
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+  actions: write # dispatch sync-sports.yml
+
+concurrency:
+  group: game-end-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Watch for finished games
+        env:
+          SUBTREE_TOKEN: ${{ secrets.SUBTREE_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run && '--dry-run' || '' }}
+        run: node tools/game_end_watch.mjs $DRY_RUN

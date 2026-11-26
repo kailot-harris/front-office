@@ -86,6 +86,16 @@ front-office/
 
 The league repositories are private; their published code is mirrored in the `nfl/`, `nba/`, `wnba/` and `mlb/` folders here.
 
+### Keeping results current
+
+Each league repository refreshes its own results (`refresh-results.yml`) at scheduled refresh slots. Pushing there publishes nothing by itself: `.github/workflows/sync-sports.yml` pulls the league folders into this repository and then dispatches `deploy.yml`.
+
+Between slots, `.github/workflows/game-end-watch.yml` runs every 15 minutes and checks the live NBA, NFL and WNBA landing digests (MLB is not watched because its digest is built differently). When a game is past its expected length (NBA 165 min, NFL 210 min, WNBA 150 min) but not marked final, it dispatches that league's `refresh-results.yml`, waits up to 20 minutes for it, and if the league's `main` moved, dispatches `sync-sports.yml` once for those leagues. A game is retried for at most 6 hours after its expected end; the scheduled slots remain the backstop.
+
+- **Token:** calls to the league repositories use the `SUBTREE_TOKEN` secret, which needs Actions read/write and Contents read on each watched league repository. A 403 or 404 fails the run with a message saying so (a fine-grained token that does not include the repository returns 404). The `sync-sports.yml` dispatch uses this repository's `GITHUB_TOKEN`.
+- **Dry run:** `node tools/game_end_watch.mjs --dry-run` fetches the live digests and prints, per league, the games it found and what it would dispatch, without dispatching anything. From the Actions tab, run "Game-end watch" with `dry_run` checked.
+- **Tests:** `node tools/test_game_end_watch.mjs`.
+
 ### Running it locally
 
 You'll need **Node.js 22** and **R 4.5 or newer**. No API keys are required.
