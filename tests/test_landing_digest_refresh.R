@@ -32,7 +32,8 @@ writeLines(jsonlite::toJSON(before, auto_unbox = TRUE, null = "null", na = "null
 
 fake <- function(dates) data.frame(game_id = c("1", "2"), is_final = TRUE,
                                    home_score = c(110L, 99L), away_score = c(100L, 101L))
-r <- refresh_live_results(dates = "2026-11-19", payload_path = mp, fetcher = fake, today = as.Date("2026-11-20"))
+r <- refresh_live_results(dates = "2026-11-19", payload_path = mp, fetcher = fake, today = as.Date("2026-11-20"),
+                          now = as.POSIXct("2026-11-20 20:00:00", tz = "UTC"))
 check(r$n_changed == 2 && identical(normalizePath(r$digest), normalizePath(dp)), "refresh reports the digest as rewritten")
 x <- jsonlite::fromJSON(dp, simplifyVector = FALSE)
 y <- setNames(x$yesterday, vapply(x$yesterday, `[[`, "", "game_id"))
@@ -40,7 +41,9 @@ check(isTRUE(y[["1"]]$final) && y[["1"]]$home_score == 110 && isTRUE(y[["1"]]$hi
 check(isTRUE(y[["2"]]$hit) && y[["2"]]$predicted_winner == "GSW", "away pick graded")
 check(x$record$season$games == 3 && x$record$season$hits == 3 && x$record$last_7$games == 3, "record recomputed")
 check(sum(vapply(x$calibration, `[[`, 0L, "games")) == 3, "calibration recomputed")
-check(identical(x$today[[1]]$game_id, "keep-me") && x$slate_date == "2026-11-20", "today and slate_date carried through")
-r2 <- refresh_live_results(dates = "2026-11-19", payload_path = mp, fetcher = fake, today = as.Date("2026-11-20"))
+check(length(x$today) == 0 && x$slate_date == "2026-11-20" && is.null(x$today_pending),
+      "same-day refresh keeps slate_date and re-derives today from the payload")
+r2 <- refresh_live_results(dates = "2026-11-19", payload_path = mp, fetcher = fake, today = as.Date("2026-11-20"),
+                          now = as.POSIXct("2026-11-20 20:00:00", tz = "UTC"))
 check(r2$n_changed == 0, "re-run is a no-op")
 finish()

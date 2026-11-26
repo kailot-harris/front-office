@@ -312,6 +312,7 @@ write_json_if_changed <- function(x, path) {
 #' @param fetcher Injectable ESPN reader, for tests. Takes dates, returns a
 #'   data.frame shaped like espn_fetch_dates().
 #' @param today Date treated as "now", for tests.
+#' @param now Time treated as "now" by the landing digest patch, for tests.
 #' @return list(n_changed, dates, file)
 refresh_live_results <- function(dates = NULL,
                                  lookback_days = RLR_DEFAULT_LOOKBACK_DAYS,
@@ -320,7 +321,8 @@ refresh_live_results <- function(dates = NULL,
                                  today = Sys.Date(),
                                  digest_path = file.path(dirname(payload_path), LD_FILE_NAME),
                                  leaders_path = file.path(dirname(payload_path), basename(WEB_JSON_PLAYER_LEADERS)),
-                                 summary_fetcher = NULL) {
+                                 summary_fetcher = NULL,
+                                 now = Sys.time()) {
   if (!file.exists(payload_path)) {
     stop(sprintf("refresh_live_results(): no payload at %s - run the pipeline first.",
                  payload_path))
@@ -331,7 +333,13 @@ refresh_live_results <- function(dates = NULL,
 
   # Leaders run on the rows as they stand after any score patching, including
   # games an earlier run already marked final (NBA_analytics#254).
+  # The landing digest is re-derived on every run, not only when scores
+  # changed: games marked final by an earlier run still have to reach today[],
+  # and after midnight ET the digest rolls forward to the new date
+  # (front-office#240). Absent digest -> nothing to patch.
   with_leaders <- function(res, rows) {
+    digest_written <- ld_patch_digest_file(digest_path, rows, now)
+    res$digest <- if (isTRUE(digest_written)) digest_path else NULL
     res$leaders <- .rlr_refresh_leaders(leaders_path, rows, summary_fetcher)
     res
   }
@@ -355,12 +363,8 @@ refresh_live_results <- function(dates = NULL,
   payload$generated_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
 
   written <- write_json_if_changed(payload, payload_path)
-  # Slots B/C: re-grade the landing digest's yesterday, record and calibration
-  # from the same patched rows (NBA#211). Absent digest -> nothing to patch.
-  digest_written <- ld_patch_digest_file(digest_path, payload$matchups)
   with_leaders(list(n_changed = patched$n_changed, dates = dates,
-                    file = if (written) payload_path else NULL,
-                    digest = if (isTRUE(digest_written)) digest_path else NULL),
+                    file = if (written) payload_path else NULL),
                payload$matchups)
 }
 
@@ -392,6 +396,7 @@ local({
   } else {
     cat(sprintf("Files rewritten: %s\n", basename(res$file)))
   }
+  cat(sprintf("Landing digest: %s\n", if (is.null(res$digest)) "unchanged" else "rewritten"))
   if (!is.null(res$leaders)) {
     cat(sprintf("League leaders: %s (%d game(s) added)%s\n", res$leaders$status, res$leaders$n_games,
                 if (is.null(res$leaders$file)) "" else sprintf(", rewrote %s", basename(res$leaders$file))))
