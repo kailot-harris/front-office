@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "sport": "nba",
-  "generated_at": "2026-11-27T05:07:51Z",
+  "generated_at": "2026-11-27T05:11:10Z",
   "slate_date": "2026-11-27",
   "season_state": "regular",
   "next_milestone": {
@@ -12,7 +12,7 @@
     {
       "game_id": "401909326",
       "game_date": "2026-11-27",
-      "start_time_utc": null,
+      "start_time_utc": "2026-11-28T00:00:00Z",
       "home": "NYK",
       "away": "MIA",
       "status": "scheduled",
@@ -28,7 +28,7 @@
     {
       "game_id": "401909327",
       "game_date": "2026-11-27",
-      "start_time_utc": null,
+      "start_time_utc": "2026-11-28T00:30:00Z",
       "home": "DET",
       "away": "MIL",
       "status": "scheduled",
@@ -44,7 +44,7 @@
     {
       "game_id": "401909328",
       "game_date": "2026-11-27",
-      "start_time_utc": null,
+      "start_time_utc": "2026-11-28T00:30:00Z",
       "home": "IND",
       "away": "PHI",
       "status": "scheduled",
@@ -60,7 +60,7 @@
     {
       "game_id": "401909329",
       "game_date": "2026-11-27",
-      "start_time_utc": null,
+      "start_time_utc": "2026-11-28T00:30:00Z",
       "home": "TOR",
       "away": "BKN",
       "status": "scheduled",
@@ -76,7 +76,7 @@
     {
       "game_id": "401909330",
       "game_date": "2026-11-27",
-      "start_time_utc": null,
+      "start_time_utc": "2026-11-28T01:00:00Z",
       "home": "BOS",
       "away": "ATL",
       "status": "scheduled",
@@ -92,7 +92,7 @@
     {
       "game_id": "401909331",
       "game_date": "2026-11-27",
-      "start_time_utc": null,
+      "start_time_utc": "2026-11-28T01:30:00Z",
       "home": "MIN",
       "away": "MEM",
       "status": "scheduled",
@@ -108,7 +108,7 @@
     {
       "game_id": "401909332",
       "game_date": "2026-11-27",
-      "start_time_utc": null,
+      "start_time_utc": "2026-11-28T02:00:00Z",
       "home": "PHX",
       "away": "DAL",
       "status": "scheduled",
@@ -124,7 +124,7 @@
     {
       "game_id": "401909333",
       "game_date": "2026-11-27",
-      "start_time_utc": null,
+      "start_time_utc": "2026-11-28T02:30:00Z",
       "home": "SAS",
       "away": "LAL",
       "status": "scheduled",
@@ -140,7 +140,7 @@
     {
       "game_id": "401909334",
       "game_date": "2026-11-27",
-      "start_time_utc": null,
+      "start_time_utc": "2026-11-28T02:30:00Z",
       "home": "UTA",
       "away": "DEN",
       "status": "scheduled",
@@ -156,7 +156,7 @@
     {
       "game_id": "401909335",
       "game_date": "2026-11-27",
-      "start_time_utc": null,
+      "start_time_utc": "2026-11-28T02:30:00Z",
       "home": "LAC",
       "away": "NOP",
       "status": "scheduled",
@@ -172,7 +172,7 @@
     {
       "game_id": "401909336",
       "game_date": "2026-11-27",
-      "start_time_utc": null,
+      "start_time_utc": "2026-11-28T02:30:00Z",
       "home": "POR",
       "away": "GSW",
       "status": "scheduled",
@@ -238,46 +238,77 @@
   ],
   "movers": {
     "metric": "ensemble_net_rating",
-    "as_of": "2026-11-26",
+    "as_of": "2026-11-27",
     "windows": {
       "1": {
-        "compared_to": "2026-11-25",
+        "compared_to": "2026-11-26",
         "items": [
           {
-            "team": "ORL",
-            "previous": -0.05,
-            "current": 0.92,
-            "delta": 0.97
+            "team": "ATL",
+            "previous": -0.03,
+            "current": -0.03,
+            "delta": 0
           },
           {
-            "team": "GSW",
-            "previous": 4.89,
-            "current": 4.52,
-            "delta": -0.37
+            "team": "BKN",
+            "previous": -6.64,
+            "current": -6.64,
+            "delta": 0
           },
           {
-            "team": "MIA",
-            "previous": 2.52,
-            "current": 2.85,
-            "delta": 0.33
+            "team": "BOS",
+            "previous": 8,
+            "current": 8,
+            "delta": 0
           },
           {
             "team": "CHA",
-            "previous": -2.76,
+            "previous": -3.05,
             "current": -3.05,
-            "delta": -0.29
+            "delta": 0
           },
           {
             "team": "CHI",
-            "previous": -3.65,
+            "previous": -3.86,
             "current": -3.86,
-            "delta": -0.21
+            "delta": 0
           }
         ]
       },
       "7": {
-        "compared_to": null,
-        "items": []
+        "compared_to": "2026-11-20",
+        "items": [
+          {
+            "team": "MEM",
+            "previous": -1.79,
+            "current": -2.87,
+            "delta": -1.08
+          },
+          {
+            "team": "MIN",
+            "previous": 1.27,
+            "current": 0.25,
+            "delta": -1.02
+          },
+          {
+            "team": "DAL",
+            "previous": -2.56,
+            "current": -3.32,
+            "delta": -0.76
+          },
+          {
+            "team": "HOU",
+            "previous": 5.67,
+            "current": 4.93,
+            "delta": -0.74
+          },
+          {
+            "team": "LAC",
+            "previous": -5.85,
+            "current": -5.23,
+            "delta": 0.62
+          }
+        ]
       },
       "21": {
         "compared_to": null,

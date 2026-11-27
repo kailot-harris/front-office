@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "sport": "nba",
-  "generated_at": "2026-11-26T14:05:48Z",
+  "generated_at": "2026-11-27T05:12:08Z",
   "schedule_through_date": "2026-11-25",
   "datasets": {
     "cba_cap_sheet.json": {
-      "generated_at": "2026-11-26T14:03:07Z",
+      "generated_at": "2026-11-27T05:09:43Z",
       "through_date": null,
       "through_date_source": "not_game_dated",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "f9aacdc8b307c21d70fe743a10fe632d9ff1a22758df36c81a5ca63d87d273ea",
+      "content_sha256": "6b0334d48f27bb331d4e76a7727023a448da918d14808448b3315cd09089f694",
       "coverage_note": "Cap/payroll snapshot; content carries no game date.",
       "source_season": "2026-27",
       "builder": "build_cba_cap_dataset.R",
@@ -19,11 +19,11 @@
       "lifecycle": "live"
     },
     "clutch_leverage_metrics.json": {
-      "generated_at": "2026-11-26T14:03:15Z",
+      "generated_at": "2026-11-27T05:09:50Z",
       "through_date": "2026-11-25",
       "through_date_source": "payload:throughDate",
       "stamp_source": "payload:generatedAt",
-      "content_sha256": "f62b6024d5b6571b21cd93e43507a97feab6e42dcf50ff3c079e6281b0e82519",
+      "content_sha256": "994c962b5329a99c0277c49abb13bb04c5b6431427f3d55d9be5dfc55784f106",
       "coverage_note": null,
       "source_season": "2026-27",
       "builder": "build_clutch_dataset.R",
@@ -33,11 +33,11 @@
       "lifecycle": "live"
     },
     "coaching_metrics.json": {
-      "generated_at": "2026-11-26T14:02:57Z",
+      "generated_at": "2026-11-27T05:09:34Z",
       "through_date": null,
       "through_date_source": "not_game_dated",
       "stamp_source": "payload:[].provenance.generatedAt",
-      "content_sha256": "8722c421e373d2ea266b1a3059f5fe723ea4d3f3063c35c2708d04e01afbd6f7",
+      "content_sha256": "b2dfb6458349d46e51671a3f97c97e25615c35ec1e451164a75c7fd38b940253",
       "coverage_note": "Per-staff ratings; content carries no game date.",
       "source_season": "2026-27",
       "builder": "build_coaching_dataset.R",
@@ -47,11 +47,11 @@
       "lifecycle": "live"
     },
     "defensive_metrics.json": {
-      "generated_at": "2026-11-26T14:03:09Z",
+      "generated_at": "2026-11-27T05:09:44Z",
       "through_date": "2026-11-25",
       "through_date_source": "payload:throughDate",
       "stamp_source": "payload:generatedAt",
-      "content_sha256": "eeb2c122163481802bbb9d5bcbfa18877357f59f30bb49084e759e86bb8ecef9",
+      "content_sha256": "27262a9954976bbe386363a3bf3315a2238c699f4b62bdb6929122eb28e3a497",
       "coverage_note": null,
       "source_season": "2026-27",
       "builder": "build_defense_dataset.R",
@@ -61,12 +61,12 @@
       "lifecycle": "live"
     },
     "landing_digest.json": {
-      "generated_at": "2026-11-26T14:04:47Z",
-      "through_date": "2026-11-25",
-      "through_date_source": "payload:yesterday[final].game_date",
+      "generated_at": "2026-11-27T05:11:10Z",
+      "through_date": null,
+      "through_date_source": "not_game_dated",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "d929da77e0d7a8fe4a645c87e52958228bce8decf561c7311e430efe326421f0",
-      "coverage_note": null,
+      "content_sha256": "19556b9875c606f4f78e52b4a243801cee0b9ff795a5bbd45d26495aeae6b3fc",
+      "coverage_note": "extractor payload:yesterday[final].game_date found no game date in the payload",
       "source_season": "2026-27",
       "builder": "build_landing_digest.R",
       "max_lag_days": 2,
@@ -89,11 +89,11 @@
       "lifecycle": "live"
     },
     "matchups_slates.json": {
-      "generated_at": "2026-11-26T14:04:29Z",
+      "generated_at": "2026-11-27T05:10:51Z",
       "through_date": "2026-11-25",
       "through_date_source": "payload:matchups[is_completed].game_date",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "4bf408a4e385986adc6f147f48fc21b8c2a5a9cd1ad3f32a9177cb68fe242db1",
+      "content_sha256": "eb93384c3d24f48eb08852b4ff6e81c058b488badbfbdc1b66f577f9b063cf62",
       "coverage_note": null,
       "source_season": "2026-27",
       "builder": "build_matchups_dataset.R",
@@ -103,11 +103,11 @@
       "lifecycle": "live"
     },
     "momentum_board.json": {
-      "generated_at": "2026-11-26T14:04:43Z",
+      "generated_at": "2026-11-27T05:11:05Z",
       "through_date": "2026-11-25",
       "through_date_source": "payload:through_date",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "c9209ed767577385f1b5ffd0652de831462bb4e2e80e46abe9264bd007347132",
+      "content_sha256": "40477a90a21c8bb6fe95995379111c450a10c294be00b728ff11265e19bf9959",
       "coverage_note": null,
       "source_season": "2026-27",
       "builder": "build_momentum_dataset.R",
@@ -145,11 +145,11 @@
       "lifecycle": "live"
     },
     "offseason_teams.json": {
-      "generated_at": "2026-11-26T14:05:48Z",
+      "generated_at": "2026-11-27T05:12:08Z",
       "through_date": null,
       "through_date_source": "static",
       "stamp_source": "manifest:content_hash",
-      "content_sha256": "c072df3cfe4df1fe1c0289e6dad14d9276d9c33a454562cdeea142e2562d6278",
+      "content_sha256": "75bbd7f99b9ca6e1acb9acada55af8a0b2933b0870bb651d954688c34ac4c1ca",
       "coverage_note": null,
       "source_season": "2026-27",
       "builder": "build_offseason_dataset.R",
@@ -173,11 +173,11 @@
       "lifecycle": "live"
     },
     "player_dna_profiles.json": {
-      "generated_at": "2026-11-26T14:03:10Z",
+      "generated_at": "2026-11-27T05:09:46Z",
       "through_date": "2026-11-25",
       "through_date_source": "payload:throughDate",
       "stamp_source": "payload:generatedAt",
-      "content_sha256": "de3e2e4b5cb591e3897da882ed0a67a641c9e97991038d6034c02f2ae696c4da",
+      "content_sha256": "739973ea92cd4b7f7d7a66701103688cd6ace4460f58f50515cba6938ed4888f",
       "coverage_note": null,
       "source_season": "2026-27",
       "builder": "build_player_dna_dataset.R",
@@ -187,11 +187,11 @@
       "lifecycle": "live"
     },
     "player_leaders.json": {
-      "generated_at": "2026-11-26T14:04:47Z",
+      "generated_at": "2026-11-27T05:11:10Z",
       "through_date": "2026-11-25",
       "through_date_source": "payload:through_date",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "9c7a981de5e3369980c8d72f9ff1602221864a636dc96ef5bab6fac2889fa66a",
+      "content_sha256": "a13c55f733537f90ec8b04ebaafe50e7bcddb6be29dd9d578cf2b585f574ee0e",
       "coverage_note": null,
       "source_season": "2026-27",
       "builder": "build_player_leaders.R",
@@ -201,11 +201,11 @@
       "lifecycle": "live"
     },
     "playoff_series_matchups.json": {
-      "generated_at": "2026-11-26T14:03:22Z",
+      "generated_at": "2026-11-27T05:09:57Z",
       "through_date": null,
       "through_date_source": "not_game_dated",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "e3ba872d008e3b7ba0e1f2a2eb85ea7cf09c6964ba6183fa3d59c159e2052f30",
+      "content_sha256": "91051e04df8456f5995730ef75aa74a181356d6c1d97dcc0b2f17c8ad76a9278",
       "coverage_note": "Series simulation catalog; content carries no game date.",
       "source_season": "2026-27",
       "builder": "playoff_simulator.R",
@@ -215,11 +215,11 @@
       "lifecycle": "live"
     },
     "projections_diagnostics.json": {
-      "generated_at": "2026-11-26T14:03:23Z",
+      "generated_at": "2026-11-27T05:09:58Z",
       "through_date": null,
       "through_date_source": "not_game_dated",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "ba364e88868621c5643b7f3af9636708b72bdecc8cdedb11a620ff2d6bcc6c57",
+      "content_sha256": "8eba31b576b30d94dc6c3872945417d895ba58a2383c4d4de6f2c38e34c971eb",
       "coverage_note": "Aggregate accuracy metrics (resolved-game counts, no per-game dates); exposing a coverage date needs a builder change.",
       "source_season": "2026-27",
       "builder": "accuracy_governance.R",
@@ -229,11 +229,11 @@
       "lifecycle": "live"
     },
     "projections_models_metadata.json": {
-      "generated_at": "2026-11-26T14:02:56Z",
+      "generated_at": "2026-11-27T05:09:33Z",
       "through_date": null,
       "through_date_source": "not_game_dated",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "f0f3bdf64491693cd2a2a61734e2695dea1508697ab8fd14e0ff155939bf44cf",
+      "content_sha256": "ce3f03997cc55d69f8967244f99063943c09821336b5befa9b11b3b94252a87e",
       "coverage_note": "Model metadata catalog; content carries no game date.",
       "source_season": "2026-27",
       "builder": "season_simulator.R",
@@ -243,11 +243,11 @@
       "lifecycle": "live"
     },
     "projections_season_players.json": {
-      "generated_at": "2026-11-26T14:05:48Z",
+      "generated_at": "2026-11-27T05:12:08Z",
       "through_date": null,
       "through_date_source": "not_game_dated",
       "stamp_source": "manifest:content_hash",
-      "content_sha256": "8301a8efb13d36abc4f7c0db4dd8931d5b8fda6681c817b1f8198a7d0a7d5fd7",
+      "content_sha256": "d3f1c0377c835a6ebbd9f0e0a47b46f3ca5e944a3dc66c0cd823f5410b904eee",
       "coverage_note": "Season-long player projections; content carries no game date or stamp.",
       "source_season": "2026-27",
       "builder": "season_simulator.R",
@@ -257,11 +257,11 @@
       "lifecycle": "live"
     },
     "projections_season_teams.json": {
-      "generated_at": "2026-11-26T14:05:48Z",
+      "generated_at": "2026-11-27T05:12:08Z",
       "through_date": null,
       "through_date_source": "not_game_dated",
       "stamp_source": "manifest:content_hash",
-      "content_sha256": "fd2370ada3af6cba72a75439ed1056021c2f8c728e727682acaed079fab06410",
+      "content_sha256": "e3547386ecc6ee1e45cc0567a6e8c1c3672c2ec19f80937bb68592026be7b4d7",
       "coverage_note": "Season-long team projections; content carries no game date or stamp.",
       "source_season": "2026-27",
       "builder": "season_simulator.R",
@@ -285,11 +285,11 @@
       "lifecycle": "live"
     },
     "shots_metadata.json": {
-      "generated_at": "2026-11-26T14:03:17Z",
+      "generated_at": "2026-11-27T05:09:52Z",
       "through_date": "2026-11-25",
       "through_date_source": "payload:through_date",
       "stamp_source": "payload:generated_at",
-      "content_sha256": "d9f35bf064dcb852537cd6a7e0956d7aeecfad42d887f5fd9c3b3dbc7f788cef",
+      "content_sha256": "125e66d9d5ed15578599b12e04b930c813ba9ea2c20d27765f0ef8ba4e2abcb1",
       "coverage_note": null,
       "source_season": "2026-27",
       "builder": "build_shot_chart_dataset.R",
@@ -299,11 +299,11 @@
       "lifecycle": "live"
     },
     "visual_media_index.json": {
-      "generated_at": "2026-11-26T14:04:53Z",
+      "generated_at": "2026-11-27T05:11:16Z",
       "through_date": null,
       "through_date_source": "not_game_dated",
       "stamp_source": "payload:[].generated_at",
-      "content_sha256": "347218ecd73535b4a75f8439e00c084295e0beeed85f5bd881f830aaddd4c4e3",
+      "content_sha256": "0cd704285125074d25418258e866c3e75cb616ab8141b35462503230856879c9",
       "coverage_note": "Media inventory (per-item build stamps); content carries no game date.",
       "source_season": "2026-27",
       "builder": "export_visual_media_index.R",
