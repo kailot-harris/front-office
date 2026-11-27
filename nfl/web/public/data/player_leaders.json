@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-27T05:07:47Z",
+  "generated_at": "2026-11-27T09:30:55Z",
   "season": "2026",
   "season_type": "REG",
   "through_date": "2026-11-26",
@@ -186,8 +186,8 @@
       "source": "nflreadr::load_player_stats(summary_level = \"week\")",
       "refresh": "pipeline_and_evening",
       "formula": "sum(passing TDs)",
-      "candidates": 1842,
-      "qualified_count": 50,
+      "candidates": 1845,
+      "qualified_count": 51,
       "excluded_no_value": 0,
       "notes": null,
       "leaders": [
@@ -208,10 +208,10 @@
           "player": "Dak Prescott",
           "team": "DAL",
           "position": "QB",
-          "value": 25,
+          "value": 27,
           "sample": null,
           "required": null,
-          "team_games_played": 11
+          "team_games_played": 12
         },
         {
           "rank": 3,
@@ -255,7 +255,7 @@
           "value": 22,
           "sample": null,
           "required": null,
-          "team_games_played": 10
+          "team_games_played": 11
         },
         {
           "rank": 4,
@@ -364,39 +364,17 @@
         },
         {
           "rank": 4,
-          "player_id": "00-0034857",
-          "player": "Josh Allen",
-          "team": "BUF",
-          "position": "QB",
-          "value": 0.2076,
-          "sample": 343,
-          "required": 147.1,
-          "team_games_played": 10
-        },
-        {
-          "rank": 5,
-          "player_id": "00-0033873",
-          "player": "Patrick Mahomes",
-          "team": "KC",
-          "position": "QB",
-          "value": 0.1968,
-          "sample": 366,
-          "required": 147.1,
-          "team_games_played": 10
-        },
-        {
-          "rank": 6,
           "player_id": "00-0033077",
           "player": "Dak Prescott",
           "team": "DAL",
           "position": "QB",
-          "value": 0.1964,
-          "sample": 458,
-          "required": 161.8,
-          "team_games_played": 11
+          "value": 0.2096,
+          "sample": 491,
+          "required": 176.5,
+          "team_games_played": 12
         },
         {
-          "rank": 7,
+          "rank": 5,
           "player_id": "00-0033106",
           "player": "Jared Goff",
           "team": "DET",
@@ -407,7 +385,18 @@
           "team_games_played": 11
         },
         {
-          "rank": 8,
+          "rank": 6,
+          "player_id": "00-0033873",
+          "player": "Patrick Mahomes",
+          "team": "KC",
+          "position": "QB",
+          "value": 0.1829,
+          "sample": 397,
+          "required": 161.8,
+          "team_games_played": 11
+        },
+        {
+          "rank": 7,
           "player_id": "00-0039851",
           "player": "Drake Maye",
           "team": "NE",
@@ -416,6 +405,17 @@
           "sample": 323,
           "required": 147.1,
           "team_games_played": 10
+        },
+        {
+          "rank": 8,
+          "player_id": "00-0034857",
+          "player": "Josh Allen",
+          "team": "BUF",
+          "position": "QB",
+          "value": 0.1664,
+          "sample": 369,
+          "required": 161.8,
+          "team_games_played": 11
         },
         {
           "rank": 9,
@@ -546,17 +546,6 @@
         },
         {
           "rank": 8,
-          "player_id": "00-0033873",
-          "player": "Patrick Mahomes",
-          "team": "KC",
-          "position": "QB",
-          "value": 2.5952,
-          "sample": 366,
-          "required": 147.1,
-          "team_games_played": 10
-        },
-        {
-          "rank": 9,
           "player_id": "00-0035228",
           "player": "Kyler Murray",
           "team": "MIN",
@@ -567,15 +556,26 @@
           "team_games_played": 10
         },
         {
-          "rank": 10,
-          "player_id": "00-0034857",
-          "player": "Josh Allen",
-          "team": "BUF",
+          "rank": 9,
+          "player_id": "00-0033873",
+          "player": "Patrick Mahomes",
+          "team": "KC",
           "position": "QB",
-          "value": 1.6703,
-          "sample": 343,
-          "required": 147.1,
-          "team_games_played": 10
+          "value": 1.7206,
+          "sample": 397,
+          "required": 161.8,
+          "team_games_played": 11
+        },
+        {
+          "rank": 10,
+          "player_id": "00-0033077",
+          "player": "Dak Prescott",
+          "team": "DAL",
+          "position": "QB",
+          "value": 1.5652,
+          "sample": 491,
+          "required": 176.5,
+          "team_games_played": 12
         }
       ]
     },
@@ -629,17 +629,6 @@
         },
         {
           "rank": 3,
-          "player_id": "00-0033873",
-          "player": "Patrick Mahomes",
-          "team": "KC",
-          "position": "QB",
-          "value": 0.5191,
-          "sample": 366,
-          "required": 147.1,
-          "team_games_played": 10
-        },
-        {
-          "rank": 4,
           "player_id": "00-0036971",
           "player": "Trevor Lawrence",
           "team": "JAX",
@@ -650,7 +639,7 @@
           "team_games_played": 10
         },
         {
-          "rank": 5,
+          "rank": 4,
           "player_id": "00-0033106",
           "player": "Jared Goff",
           "team": "DET",
@@ -661,13 +650,24 @@
           "team_games_played": 11
         },
         {
-          "rank": 6,
+          "rank": 5,
           "player_id": "00-0033077",
           "player": "Dak Prescott",
           "team": "DAL",
           "position": "QB",
-          "value": 0.5087,
-          "sample": 458,
+          "value": 0.5071,
+          "sample": 491,
+          "required": 176.5,
+          "team_games_played": 12
+        },
+        {
+          "rank": 6,
+          "player_id": "00-0033873",
+          "player": "Patrick Mahomes",
+          "team": "KC",
+          "position": "QB",
+          "value": 0.5063,
+          "sample": 397,
           "required": 161.8,
           "team_games_played": 11
         },
@@ -706,12 +706,12 @@
         },
         {
           "rank": 10,
-          "player_id": "00-0034857",
-          "player": "Josh Allen",
-          "team": "BUF",
+          "player_id": "00-0029604",
+          "player": "Kirk Cousins",
+          "team": "MIN",
           "position": "QB",
-          "value": 0.484,
-          "sample": 343,
+          "value": 0.4839,
+          "sample": 403,
           "required": 147.1,
           "team_games_played": 10
         }
@@ -745,17 +745,6 @@
       "leaders": [
         {
           "rank": 1,
-          "player_id": "00-0033077",
-          "player": "Dak Prescott",
-          "team": "DAL",
-          "position": "QB",
-          "value": 0.0328,
-          "sample": 458,
-          "required": 161.8,
-          "team_games_played": 11
-        },
-        {
-          "rank": 2,
           "player_id": "00-0039732",
           "player": "Bo Nix",
           "team": "DEN",
@@ -766,15 +755,26 @@
           "team_games_played": 10
         },
         {
-          "rank": 3,
+          "rank": 2,
           "player_id": "00-0033873",
           "player": "Patrick Mahomes",
           "team": "KC",
           "position": "QB",
-          "value": 0.0355,
-          "sample": 366,
-          "required": 147.1,
-          "team_games_played": 10
+          "value": 0.0353,
+          "sample": 397,
+          "required": 161.8,
+          "team_games_played": 11
+        },
+        {
+          "rank": 3,
+          "player_id": "00-0033077",
+          "player": "Dak Prescott",
+          "team": "DAL",
+          "position": "QB",
+          "value": 0.0367,
+          "sample": 491,
+          "required": 176.5,
+          "team_games_played": 12
         },
         {
           "rank": 4,
@@ -905,23 +905,23 @@
         },
         {
           "rank": 3,
+          "player_id": "00-0033873",
+          "player": "Patrick Mahomes",
+          "team": "KC",
+          "position": "QB",
+          "value": 0.011,
+          "sample": 397,
+          "required": 161.8,
+          "team_games_played": 11
+        },
+        {
+          "rank": 4,
           "player_id": "00-0039163",
           "player": "C.J. Stroud",
           "team": "HOU",
           "position": "QB",
           "value": 0.0117,
           "sample": 377,
-          "required": 147.1,
-          "team_games_played": 10
-        },
-        {
-          "rank": 4,
-          "player_id": "00-0033873",
-          "player": "Patrick Mahomes",
-          "team": "KC",
-          "position": "QB",
-          "value": 0.0119,
-          "sample": 366,
           "required": 147.1,
           "team_games_played": 10
         },
@@ -949,17 +949,6 @@
         },
         {
           "rank": 7,
-          "player_id": "00-0033077",
-          "player": "Dak Prescott",
-          "team": "DAL",
-          "position": "QB",
-          "value": 0.0143,
-          "sample": 458,
-          "required": 161.8,
-          "team_games_played": 11
-        },
-        {
-          "rank": 8,
           "player_id": "00-0039923",
           "player": "J.J. McCarthy",
           "team": "NYG",
@@ -970,7 +959,7 @@
           "team_games_played": 10
         },
         {
-          "rank": 9,
+          "rank": 8,
           "player_id": "00-0039732",
           "player": "Bo Nix",
           "team": "DEN",
@@ -979,6 +968,17 @@
           "sample": 343,
           "required": 147.1,
           "team_games_played": 10
+        },
+        {
+          "rank": 9,
+          "player_id": "00-0033077",
+          "player": "Dak Prescott",
+          "team": "DAL",
+          "position": "QB",
+          "value": 0.0156,
+          "sample": 491,
+          "required": 176.5,
+          "team_games_played": 12
         },
         {
           "rank": 10,
@@ -1198,11 +1198,22 @@
           "position": "RB",
           "value": 0.0881,
           "sample": 159,
-          "required": 58.8,
-          "team_games_played": 10
+          "required": 64.7,
+          "team_games_played": 11
         },
         {
           "rank": 5,
+          "player_id": "00-0037248",
+          "player": "James Cook",
+          "team": "BUF",
+          "position": "RB",
+          "value": 0.0797,
+          "sample": 241,
+          "required": 64.7,
+          "team_games_played": 11
+        },
+        {
+          "rank": 6,
           "player_id": "00-0036555",
           "player": "Chuba Hubbard",
           "team": "CAR",
@@ -1213,7 +1224,7 @@
           "team_games_played": 10
         },
         {
-          "rank": 6,
+          "rank": 7,
           "player_id": "00-0038611",
           "player": "Chris Rodriguez Jr.",
           "team": "JAX",
@@ -1224,24 +1235,13 @@
           "team_games_played": 10
         },
         {
-          "rank": 7,
+          "rank": 8,
           "player_id": "00-0041496",
           "player": "Jonah Coleman",
           "team": "DEN",
           "position": "RB",
           "value": 0.0766,
           "sample": 71,
-          "required": 58.8,
-          "team_games_played": 10
-        },
-        {
-          "rank": 8,
-          "player_id": "00-0037248",
-          "player": "James Cook",
-          "team": "BUF",
-          "position": "RB",
-          "value": 0.0757,
-          "sample": 209,
           "required": 58.8,
           "team_games_played": 10
         },
@@ -1258,12 +1258,12 @@
         },
         {
           "rank": 10,
-          "player_id": "00-0041013",
-          "player": "Emmett Johnson",
-          "team": "KC",
+          "player_id": "00-0037228",
+          "player": "Jaylen Warren",
+          "team": "PIT",
           "position": "RB",
-          "value": 0.0503,
-          "sample": 71,
+          "value": 0.0385,
+          "sample": 135,
           "required": 58.8,
           "team_games_played": 10
         }
@@ -1369,39 +1369,39 @@
           "position": "RB",
           "value": 0.4906,
           "sample": 159,
-          "required": 58.8,
-          "team_games_played": 10
+          "required": 64.7,
+          "team_games_played": 11
         },
         {
           "rank": 8,
+          "player_id": "00-0041013",
+          "player": "Emmett Johnson",
+          "team": "KC",
+          "position": "RB",
+          "value": 0.4886,
+          "sample": 88,
+          "required": 64.7,
+          "team_games_played": 11
+        },
+        {
+          "rank": 9,
           "player_id": "00-0037248",
           "player": "James Cook",
           "team": "BUF",
           "position": "RB",
-          "value": 0.4737,
-          "sample": 209,
-          "required": 58.8,
-          "team_games_played": 10
+          "value": 0.4855,
+          "sample": 241,
+          "required": 64.7,
+          "team_games_played": 11
         },
         {
-          "rank": 9,
+          "rank": 10,
           "player_id": "00-0036919",
           "player": "Kenny Gainwell",
           "team": "TB",
           "position": "RB",
           "value": 0.4627,
           "sample": 67,
-          "required": 58.8,
-          "team_games_played": 10
-        },
-        {
-          "rank": 10,
-          "player_id": "00-0036555",
-          "player": "Chuba Hubbard",
-          "team": "CAR",
-          "position": "RB",
-          "value": 0.4574,
-          "sample": 188,
           "required": 58.8,
           "team_games_played": 10
         }
@@ -1566,10 +1566,10 @@
       "source": "nflreadr::load_player_stats(summary_level = \"week\") + load_snap_counts()",
       "refresh": "pipeline_and_evening",
       "formula": "sum(receiving yards) / games played",
-      "candidates": 467,
+      "candidates": 468,
       "qualified_count": 366,
       "excluded_no_value": 0,
-      "notes": "1 of 468 pool players have no linked snap-count rows and cannot be ranked.",
+      "notes": "1 of 469 pool players have no linked snap-count rows and cannot be ranked.",
       "leaders": [
         {
           "rank": 1,
@@ -1704,8 +1704,8 @@
       "source": "nflreadr::load_player_stats(summary_level = \"week\")",
       "refresh": "pipeline_and_evening",
       "formula": "sum(receptions)",
-      "candidates": 1842,
-      "qualified_count": 443,
+      "candidates": 1845,
+      "qualified_count": 444,
       "excluded_no_value": 0,
       "notes": null,
       "leaders": [
@@ -1715,10 +1715,10 @@
           "player": "CeeDee Lamb",
           "team": "DAL",
           "position": "WR",
-          "value": 88,
+          "value": 95,
           "sample": null,
           "required": null,
-          "team_games_played": 11
+          "team_games_played": 12
         },
         {
           "rank": 2,
@@ -1799,22 +1799,22 @@
         },
         {
           "rank": 9,
+          "player_id": "00-0037247",
+          "player": "George Pickens",
+          "team": "DAL",
+          "position": "WR",
+          "value": 62,
+          "sample": null,
+          "required": null,
+          "team_games_played": 12
+        },
+        {
+          "rank": 10,
           "player_id": "00-0040667",
           "player": "Matthew Golden",
           "team": "GB",
           "position": "WR",
           "value": 59,
-          "sample": null,
-          "required": null,
-          "team_games_played": 11
-        },
-        {
-          "rank": 10,
-          "player_id": "00-0037247",
-          "player": "George Pickens",
-          "team": "DAL",
-          "position": "WR",
-          "value": 57,
           "sample": null,
           "required": null,
           "team_games_played": 11
@@ -1842,8 +1842,8 @@
       "source": "nflreadr::load_pbp()",
       "refresh": "pipeline_and_evening",
       "formula": "sum(epa) / targets",
-      "candidates": 468,
-      "qualified_count": 67,
+      "candidates": 469,
+      "qualified_count": 66,
       "excluded_no_value": 0,
       "notes": null,
       "leaders": [
@@ -1886,10 +1886,10 @@
           "player": "Travis Kelce",
           "team": "KC",
           "position": "TE",
-          "value": 0.5227,
-          "sample": 57,
-          "required": 47.1,
-          "team_games_played": 10
+          "value": 0.5001,
+          "sample": 64,
+          "required": 51.8,
+          "team_games_played": 11
         },
         {
           "rank": 5,
@@ -1948,14 +1948,14 @@
         },
         {
           "rank": 10,
-          "player_id": "00-0037247",
-          "player": "George Pickens",
-          "team": "DAL",
+          "player_id": "00-0038621",
+          "player": "DeMario Douglas",
+          "team": "NE",
           "position": "WR",
-          "value": 0.3749,
-          "sample": 90,
-          "required": 51.8,
-          "team_games_played": 11
+          "value": 0.3732,
+          "sample": 49,
+          "required": 47.1,
+          "team_games_played": 10
         }
       ]
     },
@@ -1980,8 +1980,8 @@
       "source": "nflreadr::load_pbp()",
       "refresh": "pipeline_and_evening",
       "formula": "receptions / targets",
-      "candidates": 468,
-      "qualified_count": 67,
+      "candidates": 469,
+      "qualified_count": 66,
       "excluded_no_value": 0,
       "notes": null,
       "leaders": [
@@ -2118,8 +2118,8 @@
       "source": "nflreadr::load_player_stats(summary_level = \"week\")",
       "refresh": "pipeline_and_evening",
       "formula": "sum(def_sacks)",
-      "candidates": 1842,
-      "qualified_count": 362,
+      "candidates": 1845,
+      "qualified_count": 368,
       "excluded_no_value": 0,
       "notes": null,
       "leaders": [
@@ -2140,10 +2140,10 @@
           "player": "Greg Rousseau",
           "team": "BUF",
           "position": "LB",
-          "value": 10,
+          "value": 11,
           "sample": null,
           "required": null,
-          "team_games_played": 10
+          "team_games_played": 11
         },
         {
           "rank": 3,
@@ -2179,7 +2179,18 @@
           "team_games_played": 11
         },
         {
-          "rank": 6,
+          "rank": 5,
+          "player_id": "00-0035718",
+          "player": "Quinnen Williams",
+          "team": "DAL",
+          "position": "DT",
+          "value": 9,
+          "sample": null,
+          "required": null,
+          "team_games_played": 12
+        },
+        {
+          "rank": 7,
           "player_id": "00-0035272",
           "player": "Andrew Van Ginkel",
           "team": "MIN",
@@ -2190,7 +2201,7 @@
           "team_games_played": 10
         },
         {
-          "rank": 6,
+          "rank": 7,
           "player_id": "00-0035402",
           "player": "Carl Granderson",
           "team": "NO",
@@ -2201,7 +2212,7 @@
           "team_games_played": 10
         },
         {
-          "rank": 8,
+          "rank": 9,
           "player_id": "00-0036321",
           "player": "Chase Young",
           "team": "NO",
@@ -2212,22 +2223,11 @@
           "team_games_played": 10
         },
         {
-          "rank": 8,
+          "rank": 9,
           "player_id": "00-0039924",
           "player": "Dallas Turner",
           "team": "MIN",
           "position": "LB",
-          "value": 8,
-          "sample": null,
-          "required": null,
-          "team_games_played": 10
-        },
-        {
-          "rank": 8,
-          "player_id": "00-0037192",
-          "player": "George Karlaftis",
-          "team": "KC",
-          "position": "DE",
           "value": 8,
           "sample": null,
           "required": null,
@@ -2256,8 +2256,8 @@
       "source": "nflreadr::load_player_stats(summary_level = \"week\")",
       "refresh": "pipeline_and_evening",
       "formula": "sum(def_interceptions)",
-      "candidates": 1842,
-      "qualified_count": 162,
+      "candidates": 1845,
+      "qualified_count": 164,
       "excluded_no_value": 0,
       "notes": null,
       "leaders": [
@@ -2281,7 +2281,7 @@
           "value": 5,
           "sample": null,
           "required": null,
-          "team_games_played": 10
+          "team_games_played": 11
         },
         {
           "rank": 3,
@@ -2394,8 +2394,8 @@
       "source": "nflreadr::load_player_stats(summary_level = \"week\")",
       "refresh": "pipeline_and_evening",
       "formula": "sum(def_tackles_for_loss)",
-      "candidates": 1842,
-      "qualified_count": 505,
+      "candidates": 1845,
+      "qualified_count": 509,
       "excluded_no_value": 0,
       "notes": null,
       "leaders": [
@@ -2405,10 +2405,10 @@
           "player": "Quinnen Williams",
           "team": "DAL",
           "position": "DT",
-          "value": 18,
+          "value": 19,
           "sample": null,
           "required": null,
-          "team_games_played": 11
+          "team_games_played": 12
         },
         {
           "rank": 2,
@@ -2423,6 +2423,17 @@
         },
         {
           "rank": 3,
+          "player_id": "00-0036914",
+          "player": "Greg Rousseau",
+          "team": "BUF",
+          "position": "LB",
+          "value": 13,
+          "sample": null,
+          "required": null,
+          "team_games_played": 11
+        },
+        {
+          "rank": 3,
           "player_id": "00-0035643",
           "player": "Jeffery Simmons",
           "team": "CHI",
@@ -2433,7 +2444,7 @@
           "team_games_played": 11
         },
         {
-          "rank": 4,
+          "rank": 5,
           "player_id": "00-0041026",
           "player": "David Bailey",
           "team": "NYJ",
@@ -2444,7 +2455,7 @@
           "team_games_played": 11
         },
         {
-          "rank": 4,
+          "rank": 5,
           "player_id": "00-0037192",
           "player": "George Karlaftis",
           "team": "KC",
@@ -2452,18 +2463,7 @@
           "value": 12,
           "sample": null,
           "required": null,
-          "team_games_played": 10
-        },
-        {
-          "rank": 4,
-          "player_id": "00-0036914",
-          "player": "Greg Rousseau",
-          "team": "BUF",
-          "position": "LB",
-          "value": 12,
-          "sample": null,
-          "required": null,
-          "team_games_played": 10
+          "team_games_played": 11
         },
         {
           "rank": 7,
@@ -2660,7 +2660,7 @@
       "unit_label": "season total",
       "minimum_full_season": null,
       "minimum_constant": null,
-      "through_date": "2026-11-25",
+      "through_date": "2026-11-26",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -2670,8 +2670,8 @@
       "source": "nflreadr::load_pbp()",
       "refresh": "pipeline_only",
       "formula": "sum(qb_epa on his dropbacks as passer) + sum(epa on his designed carries) + sum(epa on his targets)",
-      "candidates": 557,
-      "qualified_count": 557,
+      "candidates": 560,
+      "qualified_count": 560,
       "excluded_no_value": 0,
       "notes": null,
       "leaders": [
@@ -2703,24 +2703,13 @@
           "player": "Dak Prescott",
           "team": "DAL",
           "position": "QB",
-          "value": 92.46,
+          "value": 105.4059,
           "sample": null,
           "required": null,
-          "team_games_played": 11
+          "team_games_played": 12
         },
         {
           "rank": 4,
-          "player_id": "00-0034857",
-          "player": "Josh Allen",
-          "team": "BUF",
-          "position": "QB",
-          "value": 81.1563,
-          "sample": null,
-          "required": null,
-          "team_games_played": 10
-        },
-        {
-          "rank": 5,
           "player_id": "00-0036971",
           "player": "Trevor Lawrence",
           "team": "JAX",
@@ -2731,26 +2720,37 @@
           "team_games_played": 10
         },
         {
-          "rank": 6,
+          "rank": 5,
           "player_id": "00-0033106",
           "player": "Jared Goff",
           "team": "DET",
           "position": "QB",
-          "value": 73.6969,
+          "value": 74.3529,
           "sample": null,
           "required": null,
-          "team_games_played": 10
+          "team_games_played": 11
         },
         {
-          "rank": 7,
+          "rank": 6,
           "player_id": "00-0033873",
           "player": "Patrick Mahomes",
           "team": "KC",
           "position": "QB",
-          "value": 72.7931,
+          "value": 72.5836,
           "sample": null,
           "required": null,
-          "team_games_played": 10
+          "team_games_played": 11
+        },
+        {
+          "rank": 7,
+          "player_id": "00-0034857",
+          "player": "Josh Allen",
+          "team": "BUF",
+          "position": "QB",
+          "value": 71.1469,
+          "sample": null,
+          "required": null,
+          "team_games_played": 11
         },
         {
           "rank": 8,
@@ -3035,7 +3035,6 @@
     "players": "nflreadr::load_players() for the pfr -> gsis link (09:00 pipeline)",
     "pfr_rush": "nflreadr::load_pfr_advstats(stat_type = \"rush\") (09:00 pipeline)",
     "pfr_def": "nflreadr::load_pfr_advstats(stat_type = \"def\") (09:00 pipeline)",
-    "study": "tools/leader_reliability_study.R at 75998e2d55f705d76f4ee4530829d01f81122894",
-    "evening_refresh": "Non-model cards rebuilt by tools/refresh_live_results.R from the nflverse release files at 2026-11-27T05:07:47Z; total EPA copied from the 09:00 run"
+    "study": "tools/leader_reliability_study.R at 75998e2d55f705d76f4ee4530829d01f81122894"
   }
 }
