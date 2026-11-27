@@ -1,9 +1,9 @@
 {
   "version": "2026-2027.1.0",
-  "lastPublished": "2026-11-25T12:00:33Z",
+  "lastPublished": "2026-11-27T12:00:29Z",
   "currentWeekNumber": 4,
-  "baselineAsOfDate": "2026-11-24T12:00:31Z",
-  "elapsedDaysSinceLastPublish": 1,
+  "baselineAsOfDate": "2026-11-25T12:00:33Z",
+  "elapsedDaysSinceLastPublish": 2,
   "leagueOperatingStatus": "NORMAL",
   "freezeDayCount": null,
   "activePhase": "Pre-Lockout Surge",
@@ -12,7 +12,7 @@
       "weekNumber": 4,
       "weekStartDate": "2026-11-21",
       "weekEndDate": "2026-11-27",
-      "publishDate": "2026-11-25",
+      "publishDate": "2026-11-27",
       "isQuietWeek": false,
       "isFrozenWeek": false,
       "isArchived": false
@@ -48,12 +48,82 @@
   "editions": [
     {
       "weekNumber": 4,
-      "publishDate": "2026-11-25",
+      "weekStartDate": "2026-11-21",
+      "weekEndDate": "2026-11-27",
+      "publishDate": "2026-11-27",
       "isQuietWeek": false,
       "isFrozenWeek": false,
-      "stateOfPlay": "36 confirmed state transitions recorded across 20 club(s) (36 40-man roster moves, 0 minor-league moves). By transaction type: 27 Free Agency, 3 Free agent signing, 3 Waiver Claim, 2 Trade, 1 Designated for Assignment. Notable moves: Freddy Peralta (FA, Free agent signing), Brent Suter (FA, Free agent signing), Caleb Thielbar (FA, Free agent signing).",
-      "totalConfirmedCount": 36,
+      "freezeDayCount": null,
+      "freezeStartDate": null,
+      "stateOfPlay": "42 confirmed state transitions recorded across 21 club(s) (42 40-man roster moves, 0 minor-league moves). By transaction type: 27 Free Agency, 6 Free agent signing, 4 Designated for Assignment, 3 Waiver Claim, 2 Trade. Notable moves: Jack Anderson (NYM, Designated for Assignment), Tyler Black (MIL, Designated for Assignment), Tarik Skubal (FA, Free agent signing).",
+      "totalConfirmedCount": 42,
       "confirmedChanges": [
+        {
+          "date": "2026-11-25",
+          "team": "NYM",
+          "playerName": "Jack Anderson",
+          "playerId": "P_30086",
+          "rosterTier": "MAJOR_40_MAN",
+          "transactionType": "DFA",
+          "priorValue": "FREE_AGENT",
+          "newValue": "DFA",
+          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=121&transactionIds=951130"
+        },
+        {
+          "date": "2026-11-25",
+          "team": "MIL",
+          "playerName": "Tyler Black",
+          "playerId": "B_29949",
+          "rosterTier": "MAJOR_40_MAN",
+          "transactionType": "DFA",
+          "priorValue": "40_MAN",
+          "newValue": "DFA",
+          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=158&transactionIds=951123"
+        },
+        {
+          "date": "2026-11-25",
+          "team": "FA",
+          "playerName": "Tarik Skubal",
+          "playerId": "P_22267",
+          "rosterTier": "MAJOR_40_MAN",
+          "transactionType": "FREE_AGENT_SIGNING",
+          "priorValue": "FREE_AGENT",
+          "newValue": "40_MAN",
+          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=121&transactionIds=951128"
+        },
+        {
+          "date": "2026-11-25",
+          "team": "FA",
+          "playerName": "Antonio Senzatela",
+          "playerId": "P_15488",
+          "rosterTier": "MAJOR_40_MAN",
+          "transactionType": "FREE_AGENT_SIGNING",
+          "priorValue": "FREE_AGENT",
+          "newValue": "40_MAN",
+          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=158&transactionIds=951122"
+        },
+        {
+          "date": "2026-11-25",
+          "team": "NYM",
+          "playerName": "Yunior Tur",
+          "playerId": "P_33026",
+          "rosterTier": "MAJOR_40_MAN",
+          "transactionType": "DFA",
+          "priorValue": "40_MAN",
+          "newValue": "DFA",
+          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=121&transactionIds=951131"
+        },
+        {
+          "date": "2026-11-25",
+          "team": "FA",
+          "playerName": "Kris Bubic",
+          "playerId": "P_21455",
+          "rosterTier": "MAJOR_40_MAN",
+          "transactionType": "FREE_AGENT_SIGNING",
+          "priorValue": "FREE_AGENT",
+          "newValue": "40_MAN",
+          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=114&transactionIds=951121"
+        },
         {
           "date": "2026-11-24",
           "team": "FA",
@@ -493,9 +563,11 @@
           "notes": "Participating in instructional development program."
         }
       ],
-      "sourcesVisited": ["MLB Official Transaction Wire (statsapi.mlb.com)", "30 Club Official Media Portals", "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"],
-      "weekStartDate": "2026-11-21",
-      "weekEndDate": "2026-11-27"
+      "sourcesVisited": [
+        "MLB Official Transaction Wire (statsapi.mlb.com)",
+        "30 Club Official Media Portals",
+        "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"
+      ]
     },
     {
       "weekNumber": 3,
@@ -2039,8 +2111,8 @@
     }
   ],
   "currentStateSummary": {
-    "totalConfirmedTransactions": 36,
-    "totalConfirmedCount": 36,
+    "totalConfirmedTransactions": 42,
+    "totalConfirmedCount": 42,
     "pendingReportedRumors": 0,
     "expiredRumorCount": 0,
     "cbtPayrollLeader": "NYM"
