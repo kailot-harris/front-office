@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-11-26T22:05:59Z",
+  "generated_at": "2026-11-27T05:06:04Z",
   "season": 2026,
   "week": 13,
   "games": [
@@ -9,11 +9,11 @@
       "season": 2026,
       "week": 13,
       "projection_basis": "logged_pregame",
-      "predicted_margin": 3.97,
-      "predicted_home_win_prob": 0.607,
+      "predicted_margin": 4.17,
+      "predicted_home_win_prob": 0.612,
       "waterfall": {
-        "projected_margin": 3.97,
-        "home_win_prob": 0.607,
+        "projected_margin": 4.17,
+        "home_win_prob": 0.612,
         "steps": [
           {
             "key": "step_current_epa",
@@ -30,7 +30,7 @@
           {
             "key": "step_elo_diff",
             "label": "Elo Differential",
-            "points": 0.82,
+            "points": 1.01,
             "description": "Elo rating points differential"
           },
           {
@@ -48,11 +48,11 @@
           {
             "key": "step_rounding",
             "label": "Rounding",
-            "points": 0,
+            "points": 0.01,
             "description": "Decomposition residual"
           }
         ],
-        "rounding": 0,
+        "rounding": 0.01,
         "sigma": 14.6,
         "intercept": 2.24
       },
@@ -72,7 +72,7 @@
           {
             "feature": "diff_prior",
             "label": "Pre-Season Baseline Differential",
-            "value": 14.828,
+            "value": 14.829,
             "shap_value": 0
           },
           {
@@ -96,13 +96,13 @@
           {
             "feature": "gp_avg",
             "label": "Sample Maturity (Avg Games Played)",
-            "value": 10.5,
+            "value": 11,
             "shap_value": 0
           },
           {
             "feature": "gp_min",
             "label": "Minimum Team Games Played",
-            "value": 10,
+            "value": 11,
             "shap_value": 0
           },
           {
@@ -114,13 +114,13 @@
           {
             "feature": "ridge_margin",
             "label": "Primary Ridge Model Projection",
-            "value": 3.973,
+            "value": 4.168,
             "shap_value": 0
           },
           {
             "feature": "elo_margin",
             "label": "Primary Elo Model Projection",
-            "value": 1.643,
+            "value": 2.017,
             "shap_value": 0
           },
           {
@@ -138,10 +138,10 @@
         ],
         "agreement": "agree",
         "out_of_sample_record": {
-          "n_games": 165,
-          "accuracy": 59.4,
-          "brier": 0.2218,
-          "logloss": 0.633
+          "n_games": 167,
+          "accuracy": 59.3,
+          "brier": 0.2219,
+          "logloss": 0.6331
         }
       },
       "entering_baselines": [
@@ -263,7 +263,7 @@
         {
           "key": "step_elo_diff",
           "label": "Elo Differential",
-          "points": 0.82,
+          "points": 1.01,
           "description": "Elo rating points differential"
         },
         {
@@ -281,7 +281,7 @@
         {
           "key": "step_rounding",
           "label": "Rounding",
-          "points": 0,
+          "points": 0.01,
           "description": "Decomposition residual"
         }
       ]
@@ -291,16 +291,16 @@
       "season": 2026,
       "week": 13,
       "projection_basis": "logged_pregame",
-      "predicted_margin": -6.12,
-      "predicted_home_win_prob": 0.337,
+      "predicted_margin": -5.72,
+      "predicted_home_win_prob": 0.348,
       "waterfall": {
-        "projected_margin": -6.12,
-        "home_win_prob": 0.337,
+        "projected_margin": -5.72,
+        "home_win_prob": 0.348,
         "steps": [
           {
             "key": "step_current_epa",
             "label": "Current-Season EPA",
-            "points": -4.01,
+            "points": -3.61,
             "description": "Current season rolling EPA net differential"
           },
           {
@@ -348,7 +348,7 @@
           {
             "feature": "diff_raw",
             "label": "Overall EPA/Play Differential",
-            "value": -26.938,
+            "value": -24.238,
             "shap_value": 0
           },
           {
@@ -396,7 +396,7 @@
           {
             "feature": "ridge_margin",
             "label": "Primary Ridge Model Projection",
-            "value": -6.123,
+            "value": -5.721,
             "shap_value": 0
           },
           {
@@ -420,10 +420,10 @@
         ],
         "agreement": "differ",
         "out_of_sample_record": {
-          "n_games": 165,
-          "accuracy": 59.4,
-          "brier": 0.2218,
-          "logloss": 0.633
+          "n_games": 167,
+          "accuracy": 59.3,
+          "brier": 0.2219,
+          "logloss": 0.6331
         }
       },
       "entering_baselines": [
@@ -434,47 +434,47 @@
           "entering_baseline": 0.084,
           "realized_value": null,
           "delta": null,
-          "prior_games_n": 10,
+          "prior_games_n": 11,
           "is_low_sample": false
         },
         {
           "metric_key": "success_rate",
           "metric_label": "Success Rate",
           "team_abbr": "DET",
-          "entering_baseline": 50.745,
+          "entering_baseline": 50.484,
           "realized_value": null,
           "delta": null,
-          "prior_games_n": 10,
+          "prior_games_n": 11,
           "is_low_sample": false
         },
         {
           "metric_key": "dropback_epa",
           "metric_label": "Dropback EPA",
           "team_abbr": "DET",
-          "entering_baseline": 0.211,
+          "entering_baseline": 0.197,
           "realized_value": null,
           "delta": null,
-          "prior_games_n": 10,
+          "prior_games_n": 11,
           "is_low_sample": false
         },
         {
           "metric_key": "rush_epa",
           "metric_label": "Rush EPA",
           "team_abbr": "DET",
-          "entering_baseline": -0.029,
+          "entering_baseline": -0.016,
           "realized_value": null,
           "delta": null,
-          "prior_games_n": 10,
+          "prior_games_n": 11,
           "is_low_sample": false
         },
         {
           "metric_key": "cpoe",
           "metric_label": "CPOE",
           "team_abbr": "DET",
-          "entering_baseline": 1.236,
+          "entering_baseline": 1.289,
           "realized_value": null,
           "delta": null,
-          "prior_games_n": 10,
+          "prior_games_n": 11,
           "is_low_sample": false
         },
         {
@@ -533,7 +533,7 @@
         {
           "key": "step_current_epa",
           "label": "Current-Season EPA",
-          "points": -4.01,
+          "points": -3.61,
           "description": "Current season rolling EPA net differential"
         },
         {
@@ -573,16 +573,16 @@
       "season": 2026,
       "week": 13,
       "projection_basis": "logged_pregame",
-      "predicted_margin": 0.44,
-      "predicted_home_win_prob": 0.512,
+      "predicted_margin": 0.55,
+      "predicted_home_win_prob": 0.515,
       "waterfall": {
-        "projected_margin": 0.44,
-        "home_win_prob": 0.512,
+        "projected_margin": 0.55,
+        "home_win_prob": 0.515,
         "steps": [
           {
             "key": "step_current_epa",
             "label": "Current-Season EPA",
-            "points": -1.9,
+            "points": -1.79,
             "description": "Current season rolling EPA net differential"
           },
           {
@@ -612,11 +612,11 @@
           {
             "key": "step_rounding",
             "label": "Rounding",
-            "points": -0,
+            "points": 0,
             "description": "Decomposition residual"
           }
         ],
-        "rounding": -0,
+        "rounding": 0,
         "sigma": 14.6,
         "intercept": 2.24
       },
@@ -630,7 +630,7 @@
           {
             "feature": "diff_raw",
             "label": "Overall EPA/Play Differential",
-            "value": -12.779,
+            "value": -12.054,
             "shap_value": 0
           },
           {
@@ -678,7 +678,7 @@
           {
             "feature": "ridge_margin",
             "label": "Primary Ridge Model Projection",
-            "value": 0.444,
+            "value": 0.552,
             "shap_value": 0
           },
           {
@@ -702,10 +702,10 @@
         ],
         "agreement": "agree",
         "out_of_sample_record": {
-          "n_games": 165,
-          "accuracy": 59.4,
-          "brier": 0.2218,
-          "logloss": 0.633
+          "n_games": 167,
+          "accuracy": 59.3,
+          "brier": 0.2219,
+          "logloss": 0.6331
         }
       },
       "entering_baselines": [
@@ -763,50 +763,50 @@
           "metric_key": "epa_per_play",
           "metric_label": "EPA / Play",
           "team_abbr": "CHI",
-          "entering_baseline": 0.002,
+          "entering_baseline": 0.017,
           "realized_value": null,
           "delta": null,
-          "prior_games_n": 10,
+          "prior_games_n": 11,
           "is_low_sample": false
         },
         {
           "metric_key": "success_rate",
           "metric_label": "Success Rate",
           "team_abbr": "CHI",
-          "entering_baseline": 47.197,
+          "entering_baseline": 47.911,
           "realized_value": null,
           "delta": null,
-          "prior_games_n": 10,
+          "prior_games_n": 11,
           "is_low_sample": false
         },
         {
           "metric_key": "dropback_epa",
           "metric_label": "Dropback EPA",
           "team_abbr": "CHI",
-          "entering_baseline": 0.098,
+          "entering_baseline": 0.099,
           "realized_value": null,
           "delta": null,
-          "prior_games_n": 10,
+          "prior_games_n": 11,
           "is_low_sample": false
         },
         {
           "metric_key": "rush_epa",
           "metric_label": "Rush EPA",
           "team_abbr": "CHI",
-          "entering_baseline": -0.067,
+          "entering_baseline": -0.038,
           "realized_value": null,
           "delta": null,
-          "prior_games_n": 10,
+          "prior_games_n": 11,
           "is_low_sample": false
         },
         {
           "metric_key": "cpoe",
           "metric_label": "CPOE",
           "team_abbr": "CHI",
-          "entering_baseline": 4.946,
+          "entering_baseline": 4.355,
           "realized_value": null,
           "delta": null,
-          "prior_games_n": 10,
+          "prior_games_n": 11,
           "is_low_sample": false
         }
       ],
@@ -815,7 +815,7 @@
         {
           "key": "step_current_epa",
           "label": "Current-Season EPA",
-          "points": -1.9,
+          "points": -1.79,
           "description": "Current season rolling EPA net differential"
         },
         {
@@ -845,7 +845,7 @@
         {
           "key": "step_rounding",
           "label": "Rounding",
-          "points": -0,
+          "points": 0,
           "description": "Decomposition residual"
         }
       ]
@@ -984,10 +984,10 @@
         ],
         "agreement": "differ",
         "out_of_sample_record": {
-          "n_games": 165,
-          "accuracy": 59.4,
-          "brier": 0.2218,
-          "logloss": 0.633
+          "n_games": 167,
+          "accuracy": 59.3,
+          "brier": 0.2219,
+          "logloss": 0.6331
         }
       },
       "entering_baselines": [
@@ -1266,10 +1266,10 @@
         ],
         "agreement": "differ",
         "out_of_sample_record": {
-          "n_games": 165,
-          "accuracy": 59.4,
-          "brier": 0.2218,
-          "logloss": 0.633
+          "n_games": 167,
+          "accuracy": 59.3,
+          "brier": 0.2219,
+          "logloss": 0.6331
         }
       },
       "entering_baselines": [
@@ -1548,10 +1548,10 @@
         ],
         "agreement": "differ",
         "out_of_sample_record": {
-          "n_games": 165,
-          "accuracy": 59.4,
-          "brier": 0.2218,
-          "logloss": 0.633
+          "n_games": 167,
+          "accuracy": 59.3,
+          "brier": 0.2219,
+          "logloss": 0.6331
         }
       },
       "entering_baselines": [
@@ -1758,7 +1758,7 @@
           {
             "feature": "diff_raw",
             "label": "Overall EPA/Play Differential",
-            "value": 21.687,
+            "value": 21.688,
             "shap_value": 0
           },
           {
@@ -1830,10 +1830,10 @@
         ],
         "agreement": "agree",
         "out_of_sample_record": {
-          "n_games": 165,
-          "accuracy": 59.4,
-          "brier": 0.2218,
-          "logloss": 0.633
+          "n_games": 167,
+          "accuracy": 59.3,
+          "brier": 0.2219,
+          "logloss": 0.6331
         }
       },
       "entering_baselines": [
@@ -2112,10 +2112,10 @@
         ],
         "agreement": "differ",
         "out_of_sample_record": {
-          "n_games": 165,
-          "accuracy": 59.4,
-          "brier": 0.2218,
-          "logloss": 0.633
+          "n_games": 167,
+          "accuracy": 59.3,
+          "brier": 0.2219,
+          "logloss": 0.6331
         }
       },
       "entering_baselines": [
@@ -2265,28 +2265,28 @@
       "season": 2026,
       "week": 13,
       "projection_basis": "logged_pregame",
-      "predicted_margin": -0.43,
-      "predicted_home_win_prob": 0.488,
+      "predicted_margin": -0.74,
+      "predicted_home_win_prob": 0.48,
       "waterfall": {
-        "projected_margin": -0.43,
-        "home_win_prob": 0.488,
+        "projected_margin": -0.74,
+        "home_win_prob": 0.48,
         "steps": [
           {
             "key": "step_current_epa",
             "label": "Current-Season EPA",
-            "points": -1.19,
+            "points": -1.21,
             "description": "Current season rolling EPA net differential"
           },
           {
             "key": "step_prior_epa",
             "label": "Pre-Season Prior",
-            "points": -0.83,
+            "points": -0.84,
             "description": "Prior season baseline regressed to mean"
           },
           {
             "key": "step_elo_diff",
             "label": "Elo Differential",
-            "points": -0.49,
+            "points": -0.77,
             "description": "Elo rating points differential"
           },
           {
@@ -2352,13 +2352,13 @@
           {
             "feature": "gp_avg",
             "label": "Sample Maturity (Avg Games Played)",
-            "value": 10.5,
+            "value": 11,
             "shap_value": 0
           },
           {
             "feature": "gp_min",
             "label": "Minimum Team Games Played",
-            "value": 10,
+            "value": 11,
             "shap_value": 0
           },
           {
@@ -2370,13 +2370,13 @@
           {
             "feature": "ridge_margin",
             "label": "Primary Ridge Model Projection",
-            "value": -0.432,
+            "value": -0.737,
             "shap_value": 0
           },
           {
             "feature": "elo_margin",
             "label": "Primary Elo Model Projection",
-            "value": -0.975,
+            "value": -1.542,
             "shap_value": 0
           },
           {
@@ -2394,10 +2394,10 @@
         ],
         "agreement": "differ",
         "out_of_sample_record": {
-          "n_games": 165,
-          "accuracy": 59.4,
-          "brier": 0.2218,
-          "logloss": 0.633
+          "n_games": 167,
+          "accuracy": 59.3,
+          "brier": 0.2219,
+          "logloss": 0.6331
         }
       },
       "entering_baselines": [
@@ -2507,19 +2507,19 @@
         {
           "key": "step_current_epa",
           "label": "Current-Season EPA",
-          "points": -1.19,
+          "points": -1.21,
           "description": "Current season rolling EPA net differential"
         },
         {
           "key": "step_prior_epa",
           "label": "Pre-Season Prior",
-          "points": -0.83,
+          "points": -0.84,
           "description": "Prior season baseline regressed to mean"
         },
         {
           "key": "step_elo_diff",
           "label": "Elo Differential",
-          "points": -0.49,
+          "points": -0.77,
           "description": "Elo rating points differential"
         },
         {
@@ -2610,7 +2610,7 @@
           {
             "feature": "diff_prior",
             "label": "Pre-Season Baseline Differential",
-            "value": 23.214,
+            "value": 23.215,
             "shap_value": 0
           },
           {
@@ -2676,10 +2676,10 @@
         ],
         "agreement": "agree",
         "out_of_sample_record": {
-          "n_games": 165,
-          "accuracy": 59.4,
-          "brier": 0.2218,
-          "logloss": 0.633
+          "n_games": 167,
+          "accuracy": 59.3,
+          "brier": 0.2219,
+          "logloss": 0.6331
         }
       },
       "entering_baselines": [
@@ -2958,10 +2958,10 @@
         ],
         "agreement": "agree",
         "out_of_sample_record": {
-          "n_games": 165,
-          "accuracy": 59.4,
-          "brier": 0.2218,
-          "logloss": 0.633
+          "n_games": 167,
+          "accuracy": 59.3,
+          "brier": 0.2219,
+          "logloss": 0.6331
         }
       },
       "entering_baselines": [
@@ -3111,16 +3111,16 @@
       "season": 2026,
       "week": 13,
       "projection_basis": "logged_pregame",
-      "predicted_margin": -8.94,
-      "predicted_home_win_prob": 0.27,
+      "predicted_margin": -9.21,
+      "predicted_home_win_prob": 0.264,
       "waterfall": {
-        "projected_margin": -8.94,
-        "home_win_prob": 0.27,
+        "projected_margin": -9.21,
+        "home_win_prob": 0.264,
         "steps": [
           {
             "key": "step_current_epa",
             "label": "Current-Season EPA",
-            "points": -4.86,
+            "points": -4.94,
             "description": "Current season rolling EPA net differential"
           },
           {
@@ -3132,7 +3132,7 @@
           {
             "key": "step_elo_diff",
             "label": "Elo Differential",
-            "points": -4.24,
+            "points": -4.42,
             "description": "Elo rating points differential"
           },
           {
@@ -3150,11 +3150,11 @@
           {
             "key": "step_rounding",
             "label": "Rounding",
-            "points": 0.01,
+            "points": 0,
             "description": "Decomposition residual"
           }
         ],
-        "rounding": 0.01,
+        "rounding": 0,
         "sigma": 14.6,
         "intercept": 2.24
       },
@@ -3198,7 +3198,7 @@
           {
             "feature": "gp_avg",
             "label": "Sample Maturity (Avg Games Played)",
-            "value": 10,
+            "value": 10.5,
             "shap_value": 0
           },
           {
@@ -3216,13 +3216,13 @@
           {
             "feature": "ridge_margin",
             "label": "Primary Ridge Model Projection",
-            "value": -8.938,
+            "value": -9.21,
             "shap_value": 0
           },
           {
             "feature": "elo_margin",
             "label": "Primary Elo Model Projection",
-            "value": -8.47,
+            "value": -8.844,
             "shap_value": 0
           },
           {
@@ -3240,10 +3240,10 @@
         ],
         "agreement": "differ",
         "out_of_sample_record": {
-          "n_games": 165,
-          "accuracy": 59.4,
-          "brier": 0.2218,
-          "logloss": 0.633
+          "n_games": 167,
+          "accuracy": 59.3,
+          "brier": 0.2219,
+          "logloss": 0.6331
         }
       },
       "entering_baselines": [
@@ -3353,7 +3353,7 @@
         {
           "key": "step_current_epa",
           "label": "Current-Season EPA",
-          "points": -4.86,
+          "points": -4.94,
           "description": "Current season rolling EPA net differential"
         },
         {
@@ -3365,7 +3365,7 @@
         {
           "key": "step_elo_diff",
           "label": "Elo Differential",
-          "points": -4.24,
+          "points": -4.42,
           "description": "Elo rating points differential"
         },
         {
@@ -3383,7 +3383,7 @@
         {
           "key": "step_rounding",
           "label": "Rounding",
-          "points": 0.01,
+          "points": 0,
           "description": "Decomposition residual"
         }
       ]
@@ -3522,10 +3522,10 @@
         ],
         "agreement": "differ",
         "out_of_sample_record": {
-          "n_games": 165,
-          "accuracy": 59.4,
-          "brier": 0.2218,
-          "logloss": 0.633
+          "n_games": 167,
+          "accuracy": 59.3,
+          "brier": 0.2219,
+          "logloss": 0.6331
         }
       },
       "entering_baselines": [
@@ -3675,28 +3675,28 @@
       "season": 2026,
       "week": 13,
       "projection_basis": "logged_pregame",
-      "predicted_margin": 8.46,
-      "predicted_home_win_prob": 0.719,
+      "predicted_margin": 8.76,
+      "predicted_home_win_prob": 0.726,
       "waterfall": {
-        "projected_margin": 8.46,
-        "home_win_prob": 0.719,
+        "projected_margin": 8.76,
+        "home_win_prob": 0.726,
         "steps": [
           {
             "key": "step_current_epa",
             "label": "Current-Season EPA",
-            "points": 0.52,
+            "points": 0.53,
             "description": "Current season rolling EPA net differential"
           },
           {
             "key": "step_prior_epa",
             "label": "Pre-Season Prior",
-            "points": 1.71,
+            "points": 1.72,
             "description": "Prior season baseline regressed to mean"
           },
           {
             "key": "step_elo_diff",
             "label": "Elo Differential",
-            "points": 4.15,
+            "points": 4.43,
             "description": "Elo rating points differential"
           },
           {
@@ -3762,7 +3762,7 @@
           {
             "feature": "gp_avg",
             "label": "Sample Maturity (Avg Games Played)",
-            "value": 10.5,
+            "value": 11,
             "shap_value": 0
           },
           {
@@ -3780,13 +3780,13 @@
           {
             "feature": "ridge_margin",
             "label": "Primary Ridge Model Projection",
-            "value": 8.46,
+            "value": 8.755,
             "shap_value": 0
           },
           {
             "feature": "elo_margin",
             "label": "Primary Elo Model Projection",
-            "value": 8.297,
+            "value": 8.863,
             "shap_value": 0
           },
           {
@@ -3804,10 +3804,10 @@
         ],
         "agreement": "agree",
         "out_of_sample_record": {
-          "n_games": 165,
-          "accuracy": 59.4,
-          "brier": 0.2218,
-          "logloss": 0.633
+          "n_games": 167,
+          "accuracy": 59.3,
+          "brier": 0.2219,
+          "logloss": 0.6331
         }
       },
       "entering_baselines": [
@@ -3917,19 +3917,19 @@
         {
           "key": "step_current_epa",
           "label": "Current-Season EPA",
-          "points": 0.52,
+          "points": 0.53,
           "description": "Current season rolling EPA net differential"
         },
         {
           "key": "step_prior_epa",
           "label": "Pre-Season Prior",
-          "points": 1.71,
+          "points": 1.72,
           "description": "Prior season baseline regressed to mean"
         },
         {
           "key": "step_elo_diff",
           "label": "Elo Differential",
-          "points": 4.15,
+          "points": 4.43,
           "description": "Elo rating points differential"
         },
         {

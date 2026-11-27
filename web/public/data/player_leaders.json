@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-27T05:00:24Z",
+  "generated_at": "2026-11-27T05:06:58Z",
   "season": "2026",
   "season_type": "REG",
-  "through_date": "2026-11-26",
+  "through_date": "2026-11-25",
   "groups": [
     {
       "key": "passing",
@@ -176,7 +176,7 @@
       "unit_label": "season total",
       "minimum_full_season": null,
       "minimum_constant": null,
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -186,7 +186,7 @@
       "source": "nflreadr::load_player_stats(summary_level = \"week\")",
       "refresh": "pipeline_and_evening",
       "formula": "sum(passing TDs)",
-      "candidates": 1842,
+      "candidates": 1840,
       "qualified_count": 50,
       "excluded_no_value": 0,
       "notes": null,
@@ -270,17 +270,6 @@
         },
         {
           "rank": 8,
-          "player_id": "00-0033106",
-          "player": "Jared Goff",
-          "team": "DET",
-          "position": "QB",
-          "value": 21,
-          "sample": null,
-          "required": null,
-          "team_games_played": 11
-        },
-        {
-          "rank": 8,
           "player_id": "00-0036264",
           "player": "Jordan Love",
           "team": "GB",
@@ -289,6 +278,17 @@
           "sample": null,
           "required": null,
           "team_games_played": 11
+        },
+        {
+          "rank": 9,
+          "player_id": "00-0033106",
+          "player": "Jared Goff",
+          "team": "DET",
+          "position": "QB",
+          "value": 20,
+          "sample": null,
+          "required": null,
+          "team_games_played": 10
         },
         {
           "rank": 10,
@@ -314,7 +314,7 @@
       "unit_label": "dropbacks",
       "minimum_full_season": 250,
       "minimum_constant": "LEADERS_MIN_DROPBACKS_PASSING_RATES",
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -364,6 +364,17 @@
         },
         {
           "rank": 4,
+          "player_id": "00-0033106",
+          "player": "Jared Goff",
+          "team": "DET",
+          "position": "QB",
+          "value": 0.2095,
+          "sample": 361,
+          "required": 147.1,
+          "team_games_played": 10
+        },
+        {
+          "rank": 5,
           "player_id": "00-0034857",
           "player": "Josh Allen",
           "team": "BUF",
@@ -374,7 +385,7 @@
           "team_games_played": 10
         },
         {
-          "rank": 5,
+          "rank": 6,
           "player_id": "00-0033873",
           "player": "Patrick Mahomes",
           "team": "KC",
@@ -385,24 +396,13 @@
           "team_games_played": 10
         },
         {
-          "rank": 6,
+          "rank": 7,
           "player_id": "00-0033077",
           "player": "Dak Prescott",
           "team": "DAL",
           "position": "QB",
           "value": 0.1964,
           "sample": 458,
-          "required": 161.8,
-          "team_games_played": 11
-        },
-        {
-          "rank": 7,
-          "player_id": "00-0033106",
-          "player": "Jared Goff",
-          "team": "DET",
-          "position": "QB",
-          "value": 0.1882,
-          "sample": 400,
           "required": 161.8,
           "team_games_played": 11
         },
@@ -423,10 +423,10 @@
           "player": "Caleb Williams",
           "team": "CHI",
           "position": "QB",
-          "value": 0.1646,
-          "sample": 304,
-          "required": 161.8,
-          "team_games_played": 11
+          "value": 0.1642,
+          "sample": 254,
+          "required": 147.1,
+          "team_games_played": 10
         },
         {
           "rank": 10,
@@ -452,7 +452,7 @@
       "unit_label": "dropbacks",
       "minimum_full_season": 250,
       "minimum_constant": "LEADERS_MIN_DROPBACKS_PASSING_RATES",
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": true,
       "noise_note_text": "Mostly noise at season sample sizes: treat the order as rough.",
@@ -506,10 +506,10 @@
           "player": "Caleb Williams",
           "team": "CHI",
           "position": "QB",
-          "value": 4.8323,
-          "sample": 304,
-          "required": 161.8,
-          "team_games_played": 11
+          "value": 6.2244,
+          "sample": 254,
+          "required": 147.1,
+          "team_games_played": 10
         },
         {
           "rank": 5,
@@ -590,7 +590,7 @@
       "unit_label": "dropbacks",
       "minimum_full_season": 250,
       "minimum_constant": "LEADERS_MIN_DROPBACKS_PASSING_RATES",
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -629,6 +629,17 @@
         },
         {
           "rank": 3,
+          "player_id": "00-0033106",
+          "player": "Jared Goff",
+          "team": "DET",
+          "position": "QB",
+          "value": 0.5208,
+          "sample": 361,
+          "required": 147.1,
+          "team_games_played": 10
+        },
+        {
+          "rank": 4,
           "player_id": "00-0033873",
           "player": "Patrick Mahomes",
           "team": "KC",
@@ -639,7 +650,7 @@
           "team_games_played": 10
         },
         {
-          "rank": 4,
+          "rank": 5,
           "player_id": "00-0036971",
           "player": "Trevor Lawrence",
           "team": "JAX",
@@ -648,17 +659,6 @@
           "sample": 332,
           "required": 147.1,
           "team_games_played": 10
-        },
-        {
-          "rank": 5,
-          "player_id": "00-0033106",
-          "player": "Jared Goff",
-          "team": "DET",
-          "position": "QB",
-          "value": 0.5125,
-          "sample": 400,
-          "required": 161.8,
-          "team_games_played": 11
         },
         {
           "rank": 6,
@@ -688,10 +688,10 @@
           "player": "Caleb Williams",
           "team": "CHI",
           "position": "QB",
-          "value": 0.5033,
-          "sample": 304,
-          "required": 161.8,
-          "team_games_played": 11
+          "value": 0.5039,
+          "sample": 254,
+          "required": 147.1,
+          "team_games_played": 10
         },
         {
           "rank": 9,
@@ -728,7 +728,7 @@
       "unit_label": "dropbacks",
       "minimum_full_season": 250,
       "minimum_constant": "LEADERS_MIN_DROPBACKS_PASSING_RATES",
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -866,7 +866,7 @@
       "unit_label": "dropbacks",
       "minimum_full_season": 250,
       "minimum_constant": "LEADERS_MIN_DROPBACKS_PASSING_RATES",
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": true,
       "noise_note_text": "Mostly noise at season sample sizes: treat the order as rough.",
@@ -931,10 +931,10 @@
           "player": "Jared Goff",
           "team": "DET",
           "position": "QB",
-          "value": 0.0136,
-          "sample": 400,
-          "required": 161.8,
-          "team_games_played": 11
+          "value": 0.012,
+          "sample": 361,
+          "required": 147.1,
+          "team_games_played": 10
         },
         {
           "rank": 6,
@@ -1142,7 +1142,7 @@
       "unit_label": "designed carries",
       "minimum_full_season": 100,
       "minimum_constant": "LEADERS_MIN_DESIGNED_CARRIES_RUSHING_RATES",
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": true,
       "noise_note_text": "Mostly noise at season sample sizes: treat the order as rough.",
@@ -1170,17 +1170,6 @@
         },
         {
           "rank": 2,
-          "player_id": "00-0039139",
-          "player": "Jahmyr Gibbs",
-          "team": "DET",
-          "position": "RB",
-          "value": 0.1102,
-          "sample": 243,
-          "required": 64.7,
-          "team_games_played": 11
-        },
-        {
-          "rank": 3,
           "player_id": "00-0033280",
           "player": "Christian McCaffrey",
           "team": "SF",
@@ -1191,13 +1180,24 @@
           "team_games_played": 10
         },
         {
-          "rank": 4,
+          "rank": 3,
           "player_id": "00-0038134",
           "player": "Kenneth Walker III",
           "team": "KC",
           "position": "RB",
           "value": 0.0881,
           "sample": 159,
+          "required": 58.8,
+          "team_games_played": 10
+        },
+        {
+          "rank": 4,
+          "player_id": "00-0039139",
+          "player": "Jahmyr Gibbs",
+          "team": "DET",
+          "position": "RB",
+          "value": 0.0812,
+          "sample": 222,
           "required": 58.8,
           "team_games_played": 10
         },
@@ -1251,10 +1251,10 @@
           "player": "Kyle Monangai",
           "team": "CHI",
           "position": "RB",
-          "value": 0.0678,
-          "sample": 76,
-          "required": 64.7,
-          "team_games_played": 11
+          "value": 0.0539,
+          "sample": 68,
+          "required": 58.8,
+          "team_games_played": 10
         },
         {
           "rank": 10,
@@ -1280,7 +1280,7 @@
       "unit_label": "designed carries",
       "minimum_full_season": 100,
       "minimum_constant": "LEADERS_MIN_DESIGNED_CARRIES_RUSHING_RATES",
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": true,
       "noise_note_text": "Mostly noise at season sample sizes: treat the order as rough.",
@@ -1319,23 +1319,23 @@
         },
         {
           "rank": 3,
-          "player_id": "00-0039139",
-          "player": "Jahmyr Gibbs",
-          "team": "DET",
-          "position": "RB",
-          "value": 0.5144,
-          "sample": 243,
-          "required": 64.7,
-          "team_games_played": 11
-        },
-        {
-          "rank": 4,
           "player_id": "00-0041496",
           "player": "Jonah Coleman",
           "team": "DEN",
           "position": "RB",
           "value": 0.507,
           "sample": 71,
+          "required": 58.8,
+          "team_games_played": 10
+        },
+        {
+          "rank": 4,
+          "player_id": "00-0039139",
+          "player": "Jahmyr Gibbs",
+          "team": "DET",
+          "position": "RB",
+          "value": 0.5045,
+          "sample": 222,
           "required": 58.8,
           "team_games_played": 10
         },
@@ -1566,10 +1566,10 @@
       "source": "nflreadr::load_player_stats(summary_level = \"week\") + load_snap_counts()",
       "refresh": "pipeline_and_evening",
       "formula": "sum(receiving yards) / games played",
-      "candidates": 467,
-      "qualified_count": 366,
+      "candidates": 464,
+      "qualified_count": 365,
       "excluded_no_value": 0,
-      "notes": "1 of 468 pool players have no linked snap-count rows and cannot be ranked.",
+      "notes": "1 of 465 pool players have no linked snap-count rows and cannot be ranked.",
       "leaders": [
         {
           "rank": 1,
@@ -1694,7 +1694,7 @@
       "unit_label": "season total",
       "minimum_full_season": null,
       "minimum_constant": null,
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -1704,8 +1704,8 @@
       "source": "nflreadr::load_player_stats(summary_level = \"week\")",
       "refresh": "pipeline_and_evening",
       "formula": "sum(receptions)",
-      "candidates": 1842,
-      "qualified_count": 443,
+      "candidates": 1840,
+      "qualified_count": 441,
       "excluded_no_value": 0,
       "notes": null,
       "leaders": [
@@ -1748,13 +1748,13 @@
           "player": "Amon-Ra St. Brown",
           "team": "DET",
           "position": "WR",
-          "value": 77,
+          "value": 70,
           "sample": null,
           "required": null,
-          "team_games_played": 11
+          "team_games_played": 10
         },
         {
-          "rank": 5,
+          "rank": 4,
           "player_id": "00-0039075",
           "player": "Puka Nacua",
           "team": "LA",
@@ -1832,7 +1832,7 @@
       "unit_label": "targets",
       "minimum_full_season": 80,
       "minimum_constant": "LEADERS_MIN_TARGETS_RECEIVING_RATES",
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": true,
       "noise_note_text": "Mostly noise at season sample sizes: treat the order as rough.",
@@ -1842,7 +1842,7 @@
       "source": "nflreadr::load_pbp()",
       "refresh": "pipeline_and_evening",
       "formula": "sum(epa) / targets",
-      "candidates": 468,
+      "candidates": 465,
       "qualified_count": 67,
       "excluded_no_value": 0,
       "notes": null,
@@ -1893,17 +1893,6 @@
         },
         {
           "rank": 5,
-          "player_id": "00-0039919",
-          "player": "Rome Odunze",
-          "team": "CHI",
-          "position": "WR",
-          "value": 0.4942,
-          "sample": 64,
-          "required": 51.8,
-          "team_games_played": 11
-        },
-        {
-          "rank": 6,
           "player_id": "00-0039338",
           "player": "Brock Bowers",
           "team": "LV",
@@ -1912,6 +1901,17 @@
           "sample": 71,
           "required": 51.8,
           "team_games_played": 11
+        },
+        {
+          "rank": 6,
+          "player_id": "00-0037240",
+          "player": "Jameson Williams",
+          "team": "DET",
+          "position": "WR",
+          "value": 0.4794,
+          "sample": 57,
+          "required": 47.1,
+          "team_games_played": 10
         },
         {
           "rank": 7,
@@ -1926,17 +1926,6 @@
         },
         {
           "rank": 8,
-          "player_id": "00-0039065",
-          "player": "Sam LaPorta",
-          "team": "DET",
-          "position": "TE",
-          "value": 0.4565,
-          "sample": 64,
-          "required": 51.8,
-          "team_games_played": 11
-        },
-        {
-          "rank": 9,
           "player_id": "00-0036554",
           "player": "Nico Collins",
           "team": "HOU",
@@ -1947,15 +1936,26 @@
           "team_games_played": 10
         },
         {
+          "rank": 9,
+          "player_id": "00-0039065",
+          "player": "Sam LaPorta",
+          "team": "DET",
+          "position": "TE",
+          "value": 0.4112,
+          "sample": 59,
+          "required": 47.1,
+          "team_games_played": 10
+        },
+        {
           "rank": 10,
-          "player_id": "00-0037247",
-          "player": "George Pickens",
-          "team": "DAL",
+          "player_id": "00-0039919",
+          "player": "Rome Odunze",
+          "team": "CHI",
           "position": "WR",
-          "value": 0.3749,
-          "sample": 90,
-          "required": 51.8,
-          "team_games_played": 11
+          "value": 0.3903,
+          "sample": 55,
+          "required": 47.1,
+          "team_games_played": 10
         }
       ]
     },
@@ -1970,7 +1970,7 @@
       "unit_label": "targets",
       "minimum_full_season": 80,
       "minimum_constant": "LEADERS_MIN_TARGETS_RECEIVING_RATES",
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -1980,7 +1980,7 @@
       "source": "nflreadr::load_pbp()",
       "refresh": "pipeline_and_evening",
       "formula": "receptions / targets",
-      "candidates": 468,
+      "candidates": 465,
       "qualified_count": 67,
       "excluded_no_value": 0,
       "notes": null,
@@ -2020,17 +2020,6 @@
         },
         {
           "rank": 4,
-          "player_id": "00-0039139",
-          "player": "Jahmyr Gibbs",
-          "team": "DET",
-          "position": "RB",
-          "value": 0.7937,
-          "sample": 63,
-          "required": 51.8,
-          "team_games_played": 11
-        },
-        {
-          "rank": 5,
           "player_id": "00-0039066",
           "player": "Michael Mayer",
           "team": "LV",
@@ -2039,6 +2028,17 @@
           "sample": 53,
           "required": 51.8,
           "team_games_played": 11
+        },
+        {
+          "rank": 5,
+          "player_id": "00-0039139",
+          "player": "Jahmyr Gibbs",
+          "team": "DET",
+          "position": "RB",
+          "value": 0.7759,
+          "sample": 58,
+          "required": 47.1,
+          "team_games_played": 10
         },
         {
           "rank": 6,
@@ -2108,7 +2108,7 @@
       "unit_label": "season total",
       "minimum_full_season": null,
       "minimum_constant": null,
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -2118,7 +2118,7 @@
       "source": "nflreadr::load_player_stats(summary_level = \"week\")",
       "refresh": "pipeline_and_evening",
       "formula": "sum(def_sacks)",
-      "candidates": 1842,
+      "candidates": 1840,
       "qualified_count": 362,
       "excluded_no_value": 0,
       "notes": null,
@@ -2176,7 +2176,7 @@
           "value": 9,
           "sample": null,
           "required": null,
-          "team_games_played": 11
+          "team_games_played": 10
         },
         {
           "rank": 6,
@@ -2246,7 +2246,7 @@
       "unit_label": "season total",
       "minimum_full_season": null,
       "minimum_constant": null,
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -2256,7 +2256,7 @@
       "source": "nflreadr::load_player_stats(summary_level = \"week\")",
       "refresh": "pipeline_and_evening",
       "formula": "sum(def_interceptions)",
-      "candidates": 1842,
+      "candidates": 1840,
       "qualified_count": 162,
       "excluded_no_value": 0,
       "notes": null,
@@ -2362,9 +2362,9 @@
         },
         {
           "rank": 8,
-          "player_id": "00-0041538",
-          "player": "Dillon Thieneman",
-          "team": "CHI",
+          "player_id": "00-0039813",
+          "player": "Evan Williams",
+          "team": "GB",
           "position": "SAF",
           "value": 3,
           "sample": null,
@@ -2384,7 +2384,7 @@
       "unit_label": "season total",
       "minimum_full_season": null,
       "minimum_constant": null,
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-25",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -2394,8 +2394,8 @@
       "source": "nflreadr::load_player_stats(summary_level = \"week\")",
       "refresh": "pipeline_and_evening",
       "formula": "sum(def_tackles_for_loss)",
-      "candidates": 1842,
-      "qualified_count": 505,
+      "candidates": 1840,
+      "qualified_count": 504,
       "excluded_no_value": 0,
       "notes": null,
       "leaders": [
@@ -2423,17 +2423,6 @@
         },
         {
           "rank": 3,
-          "player_id": "00-0035643",
-          "player": "Jeffery Simmons",
-          "team": "CHI",
-          "position": "DT",
-          "value": 13,
-          "sample": null,
-          "required": null,
-          "team_games_played": 11
-        },
-        {
-          "rank": 4,
           "player_id": "00-0041026",
           "player": "David Bailey",
           "team": "NYJ",
@@ -2444,7 +2433,7 @@
           "team_games_played": 11
         },
         {
-          "rank": 4,
+          "rank": 3,
           "player_id": "00-0037192",
           "player": "George Karlaftis",
           "team": "KC",
@@ -2455,11 +2444,22 @@
           "team_games_played": 10
         },
         {
-          "rank": 4,
+          "rank": 3,
           "player_id": "00-0036914",
           "player": "Greg Rousseau",
           "team": "BUF",
           "position": "LB",
+          "value": 12,
+          "sample": null,
+          "required": null,
+          "team_games_played": 10
+        },
+        {
+          "rank": 3,
+          "player_id": "00-0035643",
+          "player": "Jeffery Simmons",
+          "team": "CHI",
+          "position": "DT",
           "value": 12,
           "sample": null,
           "required": null,
@@ -3035,7 +3035,6 @@
     "players": "nflreadr::load_players() for the pfr -> gsis link (09:00 pipeline)",
     "pfr_rush": "nflreadr::load_pfr_advstats(stat_type = \"rush\") (09:00 pipeline)",
     "pfr_def": "nflreadr::load_pfr_advstats(stat_type = \"def\") (09:00 pipeline)",
-    "study": "tools/leader_reliability_study.R at 75998e2d55f705d76f4ee4530829d01f81122894",
-    "evening_refresh": "Non-model cards rebuilt by tools/refresh_live_results.R from the nflverse release files at 2026-11-27T05:00:24Z; total EPA copied from the 09:00 run"
+    "study": "tools/leader_reliability_study.R at 75998e2d55f705d76f4ee4530829d01f81122894"
   }
 }
