@@ -1,14 +1,31 @@
 {
   "schema_version": 1,
   "sport": "nfl",
-  "generated_at": "2026-11-26T22:07:12Z",
-  "slate_date": "2026-11-26",
+  "generated_at": "2026-11-27T05:00:19Z",
+  "slate_date": "2026-11-27",
   "season_state": "regular",
   "next_milestone": {
     "label": "Final regular-season games",
     "date": "2027-01-10"
   },
   "today": [
+    {
+      "game_id": "2026_12_DEN_PIT",
+      "start_time_utc": "2026-11-27T20:00:00Z",
+      "home": "PIT",
+      "away": "DEN",
+      "status": "scheduled",
+      "home_win_prob": 0.394,
+      "away_win_prob": 0.606,
+      "prediction_status": "available",
+      "home_score": null,
+      "away_score": null,
+      "final": false,
+      "predicted_winner": "DEN",
+      "hit": null
+    }
+  ],
+  "yesterday": [
     {
       "game_id": "2026_12_CHI_DET",
       "start_time_utc": "2026-11-26T18:00:00Z",
@@ -29,58 +46,41 @@
       "start_time_utc": "2026-11-26T21:30:00Z",
       "home": "DAL",
       "away": "PHI",
-      "status": "scheduled",
+      "status": "final",
       "home_win_prob": 0.681,
       "away_win_prob": 0.319,
       "prediction_status": "available",
-      "home_score": null,
-      "away_score": null,
-      "final": false,
+      "home_score": 38,
+      "away_score": 39,
+      "final": true,
       "predicted_winner": "DAL",
-      "hit": null
+      "hit": false
     },
     {
       "game_id": "2026_12_KC_BUF",
       "start_time_utc": "2026-11-27T01:20:00Z",
       "home": "BUF",
       "away": "KC",
-      "status": "scheduled",
+      "status": "final",
       "home_win_prob": 0.672,
       "away_win_prob": 0.328,
       "prediction_status": "available",
-      "home_score": null,
-      "away_score": null,
-      "final": false,
-      "predicted_winner": "BUF",
-      "hit": null
-    }
-  ],
-  "yesterday": [
-    {
-      "game_id": "2026_12_GB_LA",
-      "start_time_utc": "2026-11-26T01:00:00Z",
-      "home": "LA",
-      "away": "GB",
-      "status": "final",
-      "home_win_prob": 0.694,
-      "away_win_prob": 0.306,
-      "prediction_status": "available",
-      "home_score": 26,
-      "away_score": 13,
+      "home_score": 13,
+      "away_score": 10,
       "final": true,
-      "predicted_winner": "LA",
+      "predicted_winner": "BUF",
       "hit": true
     }
   ],
   "record": {
     "season": {
-      "hits": 101,
-      "games": 161,
+      "hits": 102,
+      "games": 164,
       "excluded": 3
     },
     "last_7": {
       "hits": 10,
-      "games": 14,
+      "games": 16,
       "excluded": 0
     }
   },
@@ -88,16 +88,16 @@
     {
       "lo": 0.5,
       "hi": 0.6,
-      "predicted_mean": 0.555,
-      "actual_rate": 0.529,
-      "games": 68
+      "predicted_mean": 0.556,
+      "actual_rate": 0.522,
+      "games": 69
     },
     {
       "lo": 0.6,
       "hi": 0.7,
-      "predicted_mean": 0.64,
-      "actual_rate": 0.581,
-      "games": 62
+      "predicted_mean": 0.641,
+      "actual_rate": 0.578,
+      "games": 64
     },
     {
       "lo": 0.7,
