@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "sport": "nba",
-  "generated_at": "2026-11-28T05:08:09Z",
+  "generated_at": "2026-11-28T05:19:29Z",
   "slate_date": "2026-11-28",
   "season_state": "regular",
   "next_milestone": {
@@ -12,7 +12,7 @@
     {
       "game_id": "401910046",
       "game_date": "2026-11-28",
-      "start_time_utc": null,
+      "start_time_utc": "2026-11-28T22:00:00Z",
       "home": "WAS",
       "away": "ORL",
       "status": "scheduled",
@@ -28,7 +28,7 @@
     {
       "game_id": "401910047",
       "game_date": "2026-11-28",
-      "start_time_utc": null,
+      "start_time_utc": "2026-11-28T23:00:00Z",
       "home": "CHA",
       "away": "BKN",
       "status": "scheduled",
@@ -44,7 +44,7 @@
     {
       "game_id": "401910048",
       "game_date": "2026-11-28",
-      "start_time_utc": null,
+      "start_time_utc": "2026-11-29T01:00:00Z",
       "home": "CHI",
       "away": "IND",
       "status": "scheduled",
@@ -60,7 +60,7 @@
     {
       "game_id": "401910049",
       "game_date": "2026-11-28",
-      "start_time_utc": null,
+      "start_time_utc": "2026-11-29T01:00:00Z",
       "home": "MIL",
       "away": "OKC",
       "status": "scheduled",
@@ -76,7 +76,7 @@
     {
       "game_id": "401910050",
       "game_date": "2026-11-28",
-      "start_time_utc": null,
+      "start_time_utc": "2026-11-29T01:30:00Z",
       "home": "HOU",
       "away": "PHI",
       "status": "scheduled",
@@ -209,15 +209,15 @@
       "start_time_utc": "2026-11-28T02:30:00Z",
       "home": "SAS",
       "away": "LAL",
-      "status": "scheduled",
+      "status": "final",
       "home_win_prob": 0.79,
       "away_win_prob": 0.21,
       "prediction_status": "available",
-      "home_score": null,
-      "away_score": null,
-      "final": false,
+      "home_score": 99,
+      "away_score": 96,
+      "final": true,
       "predicted_winner": "SAS",
-      "hit": null
+      "hit": true
     },
     {
       "game_id": "401909334",
@@ -270,13 +270,13 @@
   ],
   "record": {
     "season": {
-      "hits": 170,
-      "games": 271,
+      "hits": 171,
+      "games": 272,
       "excluded": 0
     },
     "last_7": {
-      "hits": 23,
-      "games": 45,
+      "hits": 24,
+      "games": 46,
       "excluded": 0
     }
   },
@@ -298,9 +298,9 @@
     {
       "lo": 70,
       "hi": 80,
-      "predicted_mean": 0.7458,
-      "actual_rate": 0.6522,
-      "games": 69
+      "predicted_mean": 0.7464,
+      "actual_rate": 0.6571,
+      "games": 70
     },
     {
       "lo": 80,
@@ -319,10 +319,10 @@
   ],
   "movers": {
     "metric": "ensemble_net_rating",
-    "as_of": "2026-11-27",
+    "as_of": "2026-11-28",
     "windows": {
       "1": {
-        "compared_to": "2026-11-26",
+        "compared_to": "2026-11-27",
         "items": [
           {
             "team": "ATL",
@@ -357,37 +357,37 @@
         ]
       },
       "7": {
-        "compared_to": "2026-11-20",
+        "compared_to": "2026-11-21",
         "items": [
           {
-            "team": "MEM",
-            "previous": -1.79,
-            "current": -2.87,
-            "delta": -1.08
+            "team": "ORL",
+            "previous": -0.3,
+            "current": 0.92,
+            "delta": 1.22
           },
           {
-            "team": "MIN",
-            "previous": 1.27,
-            "current": 0.25,
-            "delta": -1.02
+            "team": "CHA",
+            "previous": -2.52,
+            "current": -3.05,
+            "delta": -0.53
           },
           {
-            "team": "DAL",
-            "previous": -2.56,
-            "current": -3.32,
-            "delta": -0.76
+            "team": "CHI",
+            "previous": -3.4,
+            "current": -3.86,
+            "delta": -0.46
           },
           {
-            "team": "HOU",
-            "previous": 5.67,
-            "current": 4.93,
-            "delta": -0.74
+            "team": "NYK",
+            "previous": 4.27,
+            "current": 3.89,
+            "delta": -0.38
           },
           {
-            "team": "LAC",
-            "previous": -5.85,
-            "current": -5.23,
-            "delta": 0.62
+            "team": "MIA",
+            "previous": 2.51,
+            "current": 2.85,
+            "delta": 0.34
           }
         ]
       },
