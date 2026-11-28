@@ -644,7 +644,10 @@ validation_frame <- function(p, w, horizon = VALIDATION_HORIZON, min_ranked = 20
 
 ic_summary <- function(vf, score) {
   ok <- !is.na(score) & !is.na(vf$future_margin)
-  if (sum(ok) < 10) return(list(mean_ic = NA_real_, pooled_spearman = NA_real_, n_dates = 0L, n_obs = sum(ok)))
+  # Short samples return the same fields as a full one (NA figures), so
+  # validation_report() can still build an entry that serialises them as null.
+  if (sum(ok) < 10) return(list(mean_ic = NA_real_, ic_t = NA_real_, pooled_spearman = NA_real_,
+                                n_dates = 0L, n_obs = sum(ok)))
   ics <- vapply(split(seq_len(nrow(vf))[ok], vf$as_of[ok]), function(ix) {
     if (length(ix) < 5) return(NA_real_)
     suppressWarnings(stats::cor(score[ix], vf$future_margin[ix], method = "spearman"))

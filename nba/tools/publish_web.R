@@ -459,6 +459,8 @@ if (!dir.exists(WEB_MEDIA_DIR)) dir.create(WEB_MEDIA_DIR, recursive = TRUE)
 # shapes (run_full_pipeline.R:40-46):
 #     >>> [WARN] <script>: declared output '<path>' was NOT rewritten ...
 #     >>> [FAIL] <script>: ...
+# and run_stage() reports a crashed stage through warning() as
+#     >>> [FAILED] <script>: <message>
 # The log carries no per-line timestamps, so the run window is taken as
 # "everything after the last run-start banner" rather than by parsing times --
 # which is exactly as precise here, since the banner is printed once per run.
@@ -466,7 +468,7 @@ if (!dir.exists(WEB_MEDIA_DIR)) dir.create(WEB_MEDIA_DIR, recursive = TRUE)
 .scan_stage_warnings <- function(log_lines) {
   starts <- grep("NBA QUANTITATIVE ENGINE.*STARTED", log_lines)
   window <- if (length(starts)) log_lines[tail(starts, 1):length(log_lines)] else log_lines
-  hits <- grep(">>> \\[(WARN|FAIL)\\]", window, value = TRUE)
+  hits <- grep(">>> \\[(WARN|FAIL|FAILED)\\]", window, value = TRUE)
   as.character(hits)
 }
 

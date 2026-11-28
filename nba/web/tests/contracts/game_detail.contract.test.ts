@@ -1007,11 +1007,11 @@ describe('Game detail dataset contracts (v3 §6 item 6)', () => {
     expect(detailShapScoredCount).toBeGreaterThan(0);
     expect(slateShapNullCount).toBeGreaterThanOrEqual(1);
     expect(slateShapScoredCount).toBeGreaterThan(0);
-    if (matchups.season === 2027) {
-      expect(detailShapNullCount).toBe(16);
-      expect(slateShapNullCount).toBe(16);
-      expect(slateShapScoredCount).toBe(1184);
-    }
+    // Counts are derived from the data: the schedule grows in-season as the
+    // league fills in dates, so every game is either scored or null, never lost.
+    expect(detailShapScoredCount + detailShapNullCount).toBe(loadedGames.length);
+    expect(slateShapScoredCount + slateShapNullCount).toBe(matchups.matchups.length);
+    expect(matchups.matchups).toHaveLength(matchups.total_games);
   });
 
   it('12. entering_baselines pooled factor invariants across games/*.json and each row\'s attribution source', () => {

@@ -275,5 +275,25 @@ rc3 <- env$rank_change_null_reasons(ss[1, ], as.Date("2026-11-15"), 10L, NA_inte
 ok("ranked 7 days ago but no current rank: rank_7d_ago has no reason, the change does",
    is.null(rc3$rank_7d_ago) && grepl("^no current rank", rc3$rank_change_7d))
 
+# --- 9. Short validation sample (fewer than 10 usable observations) ----------
+cat("\n[short validation sample]\n")
+# 12 team-dates, but only 7 have a forward margin: below ic_summary()'s 10-obs floor.
+short_vf <- data.frame(as_of = as.Date("2026-11-20") + rep(0:1, each = 6),
+                       future_margin = c(3, -2, 5, NA, 1, -4, 2, NA, NA, NA, -1, NA),
+                       z_form = seq(-1.1, 1.1, length.out = 12), z_trend = rep(c(0.5, -0.5), 6),
+                       z_residual = seq(1, -1, length.out = 12), z_elo = rep(c(-0.2, 0.2, 0), 4))
+short_ic <- env$ic_summary(short_vf, env$weighted_score(short_vf, env$COMBINED_WEIGHTS))
+ok("short sample: ic_summary() carries ic_t, and it is NA",
+   "ic_t" %in% names(short_ic) && is.na(short_ic$ic_t) && is.numeric(short_ic$ic_t))
+ok("short sample: ic_summary() has the same fields as a full sample",
+   setequal(names(short_ic), c("mean_ic", "ic_t", "pooled_spearman", "n_dates", "n_obs")) && short_ic$n_obs == 7L)
+short_rep <- tryCatch(env$validation_report(short_vf, env$COMBINED_WEIGHTS, "short sample"),
+                      error = function(e) e)
+ok("short sample: validation_report() returns without error", !inherits(short_rep, "error"))
+ok("short sample: report is available with NA figures that serialise as null",
+   !inherits(short_rep, "error") && isTRUE(short_rep$available) && is.na(short_rep$ic_t_stat) &&
+     is.na(short_rep$mean_ic) && short_rep$n_team_dates == 7L &&
+     grepl('"ic_t_stat":null', jsonlite::toJSON(short_rep, auto_unbox = TRUE, null = "null", na = "null"), fixed = TRUE))
+
 cat(sprintf("\n%d failure(s)\n", failures))
 if (failures > 0L) quit(status = 1L)
