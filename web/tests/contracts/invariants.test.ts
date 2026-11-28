@@ -81,12 +81,16 @@ describe('Domain & mathematical invariants: projections_season_teams.json', () =
     const sumShotFatigueWins = sum(teams.map((t) => t.variant_shot_fatigue_mean_wins));
     const sumEmbeddingsWins = sum(teams.map((t) => t.variant_embeddings_mean_wins));
 
-    expect(Math.abs(sumProjWins - totalGames), `sum(proj_wins)=${sumProjWins}`).toBeLessThanOrEqual(0.5);
-    expect(Math.abs(sumEnsembleWins - totalGames), `sum(ensemble_mean_wins)=${sumEnsembleWins}`).toBeLessThanOrEqual(0.5);
-    expect(Math.abs(sumBottomUpWins - totalGames), `sum(bu_mean_wins)=${sumBottomUpWins}`).toBeLessThanOrEqual(0.5);
-    expect(Math.abs(sumRapmWins - totalGames), `sum(rapm_mean_wins)=${sumRapmWins}`).toBeLessThanOrEqual(0.5);
-    expect(Math.abs(sumShotFatigueWins - totalGames), `sum(shot_mean_wins)=${sumShotFatigueWins}`).toBeLessThanOrEqual(0.5);
-    expect(Math.abs(sumEmbeddingsWins - totalGames), `sum(emb_mean_wins)=${sumEmbeddingsWins}`).toBeLessThanOrEqual(0.5);
+    // Each sum is of 30 per-team values; allow 1e-9 on top of the 0.5 tolerance
+    // so floating-point error in the addition cannot push an exact 0.5 over it.
+    const ZERO_SUM_TOL = 0.5 + 1e-9;
+
+    expect(Math.abs(sumProjWins - totalGames), `sum(proj_wins)=${sumProjWins}`).toBeLessThanOrEqual(ZERO_SUM_TOL);
+    expect(Math.abs(sumEnsembleWins - totalGames), `sum(ensemble_mean_wins)=${sumEnsembleWins}`).toBeLessThanOrEqual(ZERO_SUM_TOL);
+    expect(Math.abs(sumBottomUpWins - totalGames), `sum(bu_mean_wins)=${sumBottomUpWins}`).toBeLessThanOrEqual(ZERO_SUM_TOL);
+    expect(Math.abs(sumRapmWins - totalGames), `sum(rapm_mean_wins)=${sumRapmWins}`).toBeLessThanOrEqual(ZERO_SUM_TOL);
+    expect(Math.abs(sumShotFatigueWins - totalGames), `sum(shot_mean_wins)=${sumShotFatigueWins}`).toBeLessThanOrEqual(ZERO_SUM_TOL);
+    expect(Math.abs(sumEmbeddingsWins - totalGames), `sum(emb_mean_wins)=${sumEmbeddingsWins}`).toBeLessThanOrEqual(ZERO_SUM_TOL);
   });
 
   it('probability conservation: 16 playoff spots (sum(playoff_prob) ≈ 16.0) and 1 champion (sum(title_prob) ≈ 1.0)', () => {
