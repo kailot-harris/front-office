@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-28T05:07:14Z",
+  "generated_at": "2026-11-28T05:08:05Z",
   "season": "2026",
   "season_type": "REG",
-  "through_date": "2026-11-26",
+  "through_date": "2026-11-27",
   "groups": [
     {
       "key": "passing",
@@ -314,7 +314,7 @@
       "unit_label": "dropbacks",
       "minimum_full_season": 250,
       "minimum_constant": "LEADERS_MIN_DROPBACKS_PASSING_RATES",
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-27",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -452,7 +452,7 @@
       "unit_label": "dropbacks",
       "minimum_full_season": 250,
       "minimum_constant": "LEADERS_MIN_DROPBACKS_PASSING_RATES",
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-27",
       "through_date_null_reason": null,
       "noise_note": true,
       "noise_note_text": "Mostly noise at season sample sizes: treat the order as rough.",
@@ -590,7 +590,7 @@
       "unit_label": "dropbacks",
       "minimum_full_season": 250,
       "minimum_constant": "LEADERS_MIN_DROPBACKS_PASSING_RATES",
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-27",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -728,7 +728,7 @@
       "unit_label": "dropbacks",
       "minimum_full_season": 250,
       "minimum_constant": "LEADERS_MIN_DROPBACKS_PASSING_RATES",
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-27",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -745,17 +745,6 @@
       "leaders": [
         {
           "rank": 1,
-          "player_id": "00-0039732",
-          "player": "Bo Nix",
-          "team": "DEN",
-          "position": "QB",
-          "value": 0.035,
-          "sample": 343,
-          "required": 147.1,
-          "team_games_played": 10
-        },
-        {
-          "rank": 2,
           "player_id": "00-0033873",
           "player": "Patrick Mahomes",
           "team": "KC",
@@ -766,7 +755,7 @@
           "team_games_played": 11
         },
         {
-          "rank": 3,
+          "rank": 2,
           "player_id": "00-0033077",
           "player": "Dak Prescott",
           "team": "DAL",
@@ -777,7 +766,7 @@
           "team_games_played": 12
         },
         {
-          "rank": 4,
+          "rank": 3,
           "player_id": "00-0029604",
           "player": "Kirk Cousins",
           "team": "MIN",
@@ -788,7 +777,18 @@
           "team_games_played": 10
         },
         {
-          "rank": 5,
+          "rank": 4,
+          "player_id": "00-0039732",
+          "player": "Bo Nix",
+          "team": "DEN",
+          "position": "QB",
+          "value": 0.0388,
+          "sample": 387,
+          "required": 161.8,
+          "team_games_played": 11
+        },
+        {
+          "rank": 4,
           "player_id": "00-0026498",
           "player": "Matthew Stafford",
           "team": "LA",
@@ -866,7 +866,7 @@
       "unit_label": "dropbacks",
       "minimum_full_season": 250,
       "minimum_constant": "LEADERS_MIN_DROPBACKS_PASSING_RATES",
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-27",
       "through_date_null_reason": null,
       "noise_note": true,
       "noise_note_text": "Mostly noise at season sample sizes: treat the order as rough.",
@@ -960,17 +960,6 @@
         },
         {
           "rank": 8,
-          "player_id": "00-0039732",
-          "player": "Bo Nix",
-          "team": "DEN",
-          "position": "QB",
-          "value": 0.0155,
-          "sample": 343,
-          "required": 147.1,
-          "team_games_played": 10
-        },
-        {
-          "rank": 9,
           "player_id": "00-0033077",
           "player": "Dak Prescott",
           "team": "DAL",
@@ -981,7 +970,7 @@
           "team_games_played": 12
         },
         {
-          "rank": 10,
+          "rank": 9,
           "player_id": "00-0036442",
           "player": "Joe Burrow",
           "team": "CIN",
@@ -990,6 +979,17 @@
           "sample": 408,
           "required": 147.1,
           "team_games_played": 10
+        },
+        {
+          "rank": 10,
+          "player_id": "00-0023459",
+          "player": "Aaron Rodgers",
+          "team": "PIT",
+          "position": "QB",
+          "value": 0.0168,
+          "sample": 395,
+          "required": 161.8,
+          "team_games_played": 11
         }
       ]
     },
@@ -1142,7 +1142,7 @@
       "unit_label": "designed carries",
       "minimum_full_season": 100,
       "minimum_constant": "LEADERS_MIN_DESIGNED_CARRIES_RUSHING_RATES",
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-27",
       "through_date_null_reason": null,
       "noise_note": true,
       "noise_note_text": "Mostly noise at season sample sizes: treat the order as rough.",
@@ -1153,7 +1153,7 @@
       "refresh": "pipeline_and_evening",
       "formula": "sum(epa) / designed carries",
       "candidates": 274,
-      "qualified_count": 44,
+      "qualified_count": 45,
       "excluded_no_value": 0,
       "notes": null,
       "leaders": [
@@ -1236,17 +1236,6 @@
         },
         {
           "rank": 8,
-          "player_id": "00-0041496",
-          "player": "Jonah Coleman",
-          "team": "DEN",
-          "position": "RB",
-          "value": 0.0766,
-          "sample": 71,
-          "required": 58.8,
-          "team_games_played": 10
-        },
-        {
-          "rank": 9,
           "player_id": "00-0040236",
           "player": "Kyle Monangai",
           "team": "CHI",
@@ -1257,13 +1246,24 @@
           "team_games_played": 11
         },
         {
-          "rank": 10,
-          "player_id": "00-0037228",
-          "player": "Jaylen Warren",
-          "team": "PIT",
+          "rank": 9,
+          "player_id": "00-0041013",
+          "player": "Emmett Johnson",
+          "team": "KC",
           "position": "RB",
-          "value": 0.0385,
-          "sample": 135,
+          "value": 0.0294,
+          "sample": 88,
+          "required": 64.7,
+          "team_games_played": 11
+        },
+        {
+          "rank": 10,
+          "player_id": "00-0039361",
+          "player": "Bucky Irving",
+          "team": "TB",
+          "position": "RB",
+          "value": 0.0209,
+          "sample": 185,
           "required": 58.8,
           "team_games_played": 10
         }
@@ -1280,7 +1280,7 @@
       "unit_label": "designed carries",
       "minimum_full_season": 100,
       "minimum_constant": "LEADERS_MIN_DESIGNED_CARRIES_RUSHING_RATES",
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-27",
       "through_date_null_reason": null,
       "noise_note": true,
       "noise_note_text": "Mostly noise at season sample sizes: treat the order as rough.",
@@ -1291,7 +1291,7 @@
       "refresh": "pipeline_and_evening",
       "formula": "sum(success) / designed carries",
       "candidates": 274,
-      "qualified_count": 44,
+      "qualified_count": 45,
       "excluded_no_value": 0,
       "notes": null,
       "leaders": [
@@ -1330,17 +1330,6 @@
         },
         {
           "rank": 4,
-          "player_id": "00-0041496",
-          "player": "Jonah Coleman",
-          "team": "DEN",
-          "position": "RB",
-          "value": 0.507,
-          "sample": 71,
-          "required": 58.8,
-          "team_games_played": 10
-        },
-        {
-          "rank": 5,
           "player_id": "00-0035261",
           "player": "Tony Pollard",
           "team": "TEN",
@@ -1351,7 +1340,7 @@
           "team_games_played": 10
         },
         {
-          "rank": 6,
+          "rank": 5,
           "player_id": "00-0033280",
           "player": "Christian McCaffrey",
           "team": "SF",
@@ -1362,7 +1351,7 @@
           "team_games_played": 10
         },
         {
-          "rank": 7,
+          "rank": 6,
           "player_id": "00-0038134",
           "player": "Kenneth Walker III",
           "team": "KC",
@@ -1373,7 +1362,7 @@
           "team_games_played": 11
         },
         {
-          "rank": 8,
+          "rank": 7,
           "player_id": "00-0041013",
           "player": "Emmett Johnson",
           "team": "KC",
@@ -1384,7 +1373,7 @@
           "team_games_played": 11
         },
         {
-          "rank": 9,
+          "rank": 8,
           "player_id": "00-0037248",
           "player": "James Cook",
           "team": "BUF",
@@ -1395,13 +1384,24 @@
           "team_games_played": 11
         },
         {
-          "rank": 10,
+          "rank": 9,
           "player_id": "00-0036919",
           "player": "Kenny Gainwell",
           "team": "TB",
           "position": "RB",
           "value": 0.4627,
           "sample": 67,
+          "required": 58.8,
+          "team_games_played": 10
+        },
+        {
+          "rank": 10,
+          "player_id": "00-0036555",
+          "player": "Chuba Hubbard",
+          "team": "CAR",
+          "position": "RB",
+          "value": 0.4574,
+          "sample": 188,
           "required": 58.8,
           "team_games_played": 10
         }
@@ -1832,7 +1832,7 @@
       "unit_label": "targets",
       "minimum_full_season": 80,
       "minimum_constant": "LEADERS_MIN_TARGETS_RECEIVING_RATES",
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-27",
       "through_date_null_reason": null,
       "noise_note": true,
       "noise_note_text": "Mostly noise at season sample sizes: treat the order as rough.",
@@ -1970,7 +1970,7 @@
       "unit_label": "targets",
       "minimum_full_season": 80,
       "minimum_constant": "LEADERS_MIN_TARGETS_RECEIVING_RATES",
-      "through_date": "2026-11-26",
+      "through_date": "2026-11-27",
       "through_date_null_reason": null,
       "noise_note": false,
       "noise_note_text": null,
@@ -3035,6 +3035,7 @@
     "players": "nflreadr::load_players() for the pfr -> gsis link (09:00 pipeline)",
     "pfr_rush": "nflreadr::load_pfr_advstats(stat_type = \"rush\") (09:00 pipeline)",
     "pfr_def": "nflreadr::load_pfr_advstats(stat_type = \"def\") (09:00 pipeline)",
-    "study": "tools/leader_reliability_study.R at 75998e2d55f705d76f4ee4530829d01f81122894"
+    "study": "tools/leader_reliability_study.R at 75998e2d55f705d76f4ee4530829d01f81122894",
+    "evening_refresh": "Non-model cards rebuilt by tools/refresh_live_results.R from the nflverse release files at 2026-11-28T05:08:05Z; total EPA copied from the 09:00 run"
   }
 }
