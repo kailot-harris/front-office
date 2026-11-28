@@ -151,7 +151,8 @@ describe('Strict Zod schema contracts against public/data/*.json', () => {
   });
 
   it('matchups_slates.json matches MatchupsDatasetSchema', () => {
-    expect(d.matchups.matchups.length).toBe(1200);
+    expect(d.matchups.matchups.length).toBeGreaterThan(0);
+    expect(d.matchups.matchups.length).toBe(d.matchups.total_games);
     assertValid(MatchupsDatasetSchema, d.matchups, 'matchups_slates.json');
   });
 

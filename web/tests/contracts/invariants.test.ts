@@ -580,10 +580,13 @@ describe('Domain & mathematical invariants: clutch, defense, playerDna, coaches,
     }
   });
 
-  it('matchups_slates.json: all 1,200 games carry projections and probabilities sum to 1.0', () => {
-    expect(matchups.total_games).toBe(1200);
+  it('matchups_slates.json: every scheduled game carries a projection and probabilities sum to 1.0', () => {
+    // The in-season schedule grows as the league fills in dates, so the game
+    // count comes from the data itself rather than a fixed number.
+    expect(matchups.total_games).toBeGreaterThan(0);
     expect(matchups.games_without_projection).toBe(0);
-    expect(matchups.matchups).toHaveLength(1200);
+    expect(matchups.matchups).toHaveLength(matchups.total_games);
+    expect(matchups.games_with_projection).toBe(matchups.total_games);
     expect(matchups.slates).toHaveLength(25);
 
     for (const m of matchups.matchups) {
