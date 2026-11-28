@@ -1,13 +1,22 @@
 {
   "version": "2026-2027.1.0",
-  "lastPublished": "2026-11-27T12:00:29Z",
-  "currentWeekNumber": 4,
-  "baselineAsOfDate": "2026-11-25T12:00:33Z",
-  "elapsedDaysSinceLastPublish": 2,
+  "lastPublished": "2026-11-28T12:00:28Z",
+  "currentWeekNumber": 5,
+  "baselineAsOfDate": "2026-11-27T12:00:29Z",
+  "elapsedDaysSinceLastPublish": 1,
   "leagueOperatingStatus": "NORMAL",
   "freezeDayCount": null,
   "activePhase": "Pre-Lockout Surge",
   "availableEditions": [
+    {
+      "weekNumber": 5,
+      "weekStartDate": "2026-11-28",
+      "weekEndDate": "2026-12-04",
+      "publishDate": "2026-11-28",
+      "isQuietWeek": false,
+      "isFrozenWeek": false,
+      "isArchived": false
+    },
     {
       "weekNumber": 4,
       "weekStartDate": "2026-11-21",
@@ -46,6 +55,133 @@
     }
   ],
   "editions": [
+    {
+      "weekNumber": 5,
+      "weekStartDate": "2026-11-28",
+      "weekEndDate": "2026-12-04",
+      "publishDate": "2026-11-28",
+      "isQuietWeek": false,
+      "isFrozenWeek": false,
+      "freezeDayCount": null,
+      "freezeStartDate": null,
+      "stateOfPlay": "6 confirmed state transitions recorded across 3 club(s) (6 40-man roster moves, 0 minor-league moves). By transaction type: 3 Free agent signing, 2 Designated for Assignment, 1 Trade. Notable moves: Luis Gil (FA, Free agent signing), Beau Brieske (DET, Designated for Assignment), JoJo Romero (FA, Free agent signing).",
+      "totalConfirmedCount": 6,
+      "confirmedChanges": [
+        {
+          "date": "2026-11-27",
+          "team": "FA",
+          "playerName": "Luis Gil",
+          "playerId": "P_21052",
+          "rosterTier": "MAJOR_40_MAN",
+          "transactionType": "FREE_AGENT_SIGNING",
+          "priorValue": "FREE_AGENT",
+          "newValue": "40_MAN",
+          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=116&transactionIds=951281"
+        },
+        {
+          "date": "2026-11-27",
+          "team": "DET",
+          "playerName": "Beau Brieske",
+          "playerId": "P_26079",
+          "rosterTier": "MAJOR_40_MAN",
+          "transactionType": "DFA",
+          "priorValue": "40_MAN",
+          "newValue": "DFA",
+          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=116&transactionIds=951282"
+        },
+        {
+          "date": "2026-11-27",
+          "team": "FA",
+          "playerName": "JoJo Romero",
+          "playerId": "P_19574",
+          "rosterTier": "MAJOR_40_MAN",
+          "transactionType": "FREE_AGENT_SIGNING",
+          "priorValue": "FREE_AGENT",
+          "newValue": "40_MAN",
+          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=135&transactionIds=951260"
+        },
+        {
+          "date": "2026-11-27",
+          "team": "DET",
+          "playerName": "Tsung-Che Cheng",
+          "playerId": "B_28344",
+          "rosterTier": "MAJOR_40_MAN",
+          "transactionType": "DFA",
+          "priorValue": "40_MAN",
+          "newValue": "DFA",
+          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=116&transactionIds=951283"
+        },
+        {
+          "date": "2026-11-27",
+          "team": "FA",
+          "playerName": "David Peterson",
+          "playerId": "P_20302",
+          "rosterTier": "MAJOR_40_MAN",
+          "transactionType": "FREE_AGENT_SIGNING",
+          "priorValue": "FREE_AGENT",
+          "newValue": "40_MAN",
+          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=115&transactionIds=951315"
+        },
+        {
+          "date": "2026-11-27",
+          "team": "ARI",
+          "playerName": "Henry Davis",
+          "playerId": "B_29617",
+          "rosterTier": "MAJOR_40_MAN",
+          "transactionType": "TRADE",
+          "priorValue": "PIT",
+          "newValue": "ARI",
+          "sourceUrl": "https://statsapi.mlb.com/api/v1/transactions?teamId=109&transactionIds=951271"
+        }
+      ],
+      "reportedClaims": [],
+      "expiredClaims": [],
+      "laborEvents": [],
+      "upcomingMilestones": [
+        {
+          "date": "2026-11-02",
+          "event": "Deadline to exercise contract options and extend qualifying offers",
+          "status": "Confirmed"
+        },
+        {
+          "date": "2026-11-17",
+          "event": "Deadline to accept/reject qualifying offers (4:00 p.m. ET)",
+          "status": "Confirmed"
+        },
+        {
+          "date": "2026-11-17",
+          "event": "MLB Owners Meetings begin",
+          "status": "Confirmed"
+        },
+        {
+          "date": "2026-12-01",
+          "event": "Collective Bargaining Agreement expires (11:59 p.m. ET)",
+          "status": "Confirmed"
+        },
+        {
+          "date": "2026-12-07",
+          "event": "Winter Meetings, San Diego (conditional on CBA)",
+          "status": "Tentative"
+        }
+      ],
+      "modelPriorImpact": {
+        "hasChanges": false,
+        "summary": "No change to 2027 baseline Marcel priors."
+      },
+      "winterLeagueNotes": [
+        {
+          "playerName": "Jackson Chourio",
+          "mlbTeam": "MIL",
+          "league": "AFL",
+          "notes": "Participating in instructional development program."
+        }
+      ],
+      "sourcesVisited": [
+        "MLB Official Transaction Wire (statsapi.mlb.com)",
+        "30 Club Official Media Portals",
+        "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"
+      ]
+    },
     {
       "weekNumber": 4,
       "weekStartDate": "2026-11-21",
@@ -563,11 +699,7 @@
           "notes": "Participating in instructional development program."
         }
       ],
-      "sourcesVisited": [
-        "MLB Official Transaction Wire (statsapi.mlb.com)",
-        "30 Club Official Media Portals",
-        "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"
-      ]
+      "sourcesVisited": ["MLB Official Transaction Wire (statsapi.mlb.com)", "30 Club Official Media Portals", "Credited Beat Outlets (MLB Trade Rumors, Athletic, ESPN)"]
     },
     {
       "weekNumber": 3,
@@ -2111,8 +2243,8 @@
     }
   ],
   "currentStateSummary": {
-    "totalConfirmedTransactions": 42,
-    "totalConfirmedCount": 42,
+    "totalConfirmedTransactions": 6,
+    "totalConfirmedCount": 6,
     "pendingReportedRumors": 0,
     "expiredRumorCount": 0,
     "cbtPayrollLeader": "NYM"
